@@ -34,23 +34,17 @@ class VersionTable(tag: Tag)
   def createForumPost    = column[Boolean]("create_forum_post")
   def postId             = column[Option[Int]]("post_id")
 
-  def usesMixin              = column[Boolean]("uses_mixin")
-  def stability              = column[Version.Stability]("stability")
-  def releaseType            = column[Version.ReleaseType]("release_type")
-  def platforms              = column[List[String]]("platforms")
-  def platformVersions       = column[List[Option[String]]]("platform_versions")
-  def platformCoarseVersions = column[List[Option[String]]]("platform_coarse_versions")
-  def channelName            = column[String]("legacy_channel_name")
-  def channelColor           = column[TagColor]("legacy_channel_color")
+  def usesMixin    = column[Boolean]("uses_mixin")
+  def stability    = column[Version.Stability]("stability")
+  def releaseType  = column[Version.ReleaseType]("release_type")
+  def channelName  = column[String]("legacy_channel_name")
+  def channelColor = column[TagColor]("legacy_channel_color")
 
   def tags =
     (
       usesMixin,
       stability,
       releaseType.?,
-      platforms,
-      platformVersions,
-      platformCoarseVersions,
       channelName.?,
       channelColor.?
     ) <> (Version.VersionTags.tupled, Version.VersionTags.unapply)

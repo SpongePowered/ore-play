@@ -4,7 +4,7 @@ import java.nio.file.{Files, Path}
 
 import ore.data.{Platform, VersionedPlatform}
 import ore.db.{DbRef, Model}
-import ore.models.project.{Project, Version}
+import ore.models.project.{Project, Version, VersionPlatform}
 import ore.models.user.User
 import ore.util.StringUtils
 
@@ -56,10 +56,10 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
     tags = Version.VersionTags(
       usesMixin = data.containsMixins,
       stability = stability,
-      releaseType = releaseType,
-      platforms = versionedPlatforms.map(_.id),
-      platformsVersions = versionedPlatforms.map(_.version),
-      platformsCoarseVersions = versionedPlatforms.map(_.coarseVersion)
+      releaseType = releaseType
     )
   )
+
+  def asPlatforms(versionId: DbRef[Version]): List[VersionPlatform] =
+    versionedPlatforms.map(p => VersionPlatform(versionId, p.id, p.version, p.coarseVersion))
 }

@@ -31,7 +31,7 @@ import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.{PluginFile, PluginUpload}
 import ore.models.user.{LoggedActionType, LoggedActionVersion, User}
 import ore.permission.Permission
-import ore.rest.ApiV1HomeProjectsTable
+import ore.rest.ApiV1ProjectsTable
 import ore.util.OreMDC
 import ore.util.StringUtils._
 import ore.{OreEnv, StatTracker}
@@ -505,7 +505,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
   private def firstPromotedVersion(id: DbRef[Project]) =
     for {
-      hp <- TableQuery[ApiV1HomeProjectsTable]
+      hp <- TableQuery[ApiV1ProjectsTable]
       p  <- TableQuery[ProjectTable] if hp.id === p.id
       v  <- TableQuery[VersionTable]
       if hp.id === id

@@ -34,26 +34,8 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
   implicit def zioMode[R]: scalacache.Mode[ZIO[R, Throwable, *]] =
     scalacache.CatsEffect.modes.async[ZIO[R, Throwable, *]]
 
-  private val resultCache       = scalacache.caffeine.CaffeineCache[IO[Result, Result]]
   private val actionResultCache = scalacache.caffeine.CaffeineCache[Future[Result]]
-
-  lifecycle.addStopHook(() => zioRuntime.unsafeRunToFuture(resultCache.close[Task]()))
-
-  protected def cachingF[R, A, B](
-      cacheKey: String
-  )(parts: Any*)(fa: ZIO[R, Result, Result])(implicit request: ApiRequest[B]): ZIO[R, Result, Result] =
-    resultCache
-      .cachingF[ZIO[R, Throwable, *]](
-        cacheKey +: parts :+
-          request.apiInfo.key.map(_.tokenIdentifier) :+
-          //We do both the user and the token for authentication methods that don't use a token
-          request.apiInfo.user.map(_.id) :+
-          request.body
-      )(
-        Some(1.minute)
-      )(fa.memoize)
-      .asError(InternalServerError)
-      .flatten
+  lifecycle.addStopHook(() => zioRuntime.unsafeRunToFuture(actionResultCache.close[Task]()))
 
   protected def limitOrDefault(limit: Option[Long], default: Long): Long = math.min(limit.getOrElse(default), default)
   protected def offsetOrZero(offset: Long): Long                         = math.max(offset, 0)
@@ -192,16 +174,16 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
         import scalacache.modes.scalaFuture._
         require(request.method == "GET")
 
-        request.request.target
-
-        actionResultCache
-          .caching[Future](
-            request.path,
-            request.apiInfo.key.map(_.tokenIdentifier),
-            request.apiInfo.user.map(_.id),
-            request.queryString.toSeq.sortBy(_._1)
-          )(Some(1.minute))(block(request))
-          .flatten
+        if (request.user.isDefined) {
+          block(request)
+        } else {
+          actionResultCache
+            .caching[Future](
+              request.path,
+              request.queryString.toSeq.sortBy(_._1)
+            )(Some(5.minute))(block(request))
+            .flatten
+        }
       }
     }
 

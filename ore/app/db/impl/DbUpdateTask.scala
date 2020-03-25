@@ -15,6 +15,7 @@ import ore.util.OreMDC
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import doobie.`enum`.TransactionIsolation
+import doobie.implicits._
 import zio.clock.Clock
 import zio.{Schedule, RIO, Task, UIO, ZIO, duration}
 
@@ -25,14 +26,14 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
     service: ModelService[Task]
 ) {
 
-  val interval: duration.Duration = duration.Duration.fromScala(config.ore.homepage.updateInterval)
+  val interval: duration.Duration = duration.Duration.fromScala(config.ore.materializedUpdateInterval)
 
   private val Logger               = scalalogging.Logger.takingImplicit[OreMDC]("DbUpdateTask")
   implicit private val mdc: OreMDC = OreMDC.NoMDC
 
   Logger.info("DbUpdateTask starting")
 
-  private val homepageSchedule: Schedule[Clock, Any, Int] = Schedule
+  private val materializedViewsSchedule: Schedule[Clock, Any, Int] = Schedule
     .fixed(interval)
     .tapInput(_ => UIO(Logger.debug(s"Updating homepage view")))
 
@@ -47,7 +48,12 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
     runtime.unsafeRun(safeTask.repeat(schedule).fork)
   }
 
-  private val homepageTask = runningTask(projects.refreshHomePage(Logger), homepageSchedule)
+  private val materializedViewsTask = runningTask(
+    service.runDbCon(
+      sql"REFRESH MATERIALIZED VIEW project_stats".update.run *> sql"REFRESH MATERIALIZED VIEW promoted_versions".update.run.void
+    ),
+    materializedViewsSchedule
+  )
 
   private def runManyInTransaction(updates: Seq[doobie.Update0]) = {
     import cats.instances.list._
@@ -70,7 +76,7 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
   )
   lifecycle.addStopHook { () =>
     Future {
-      runtime.unsafeRun(homepageTask.interrupt)
+      runtime.unsafeRun(materializedViewsTask.interrupt)
       runtime.unsafeRun(statsTask.interrupt)
     }
   }

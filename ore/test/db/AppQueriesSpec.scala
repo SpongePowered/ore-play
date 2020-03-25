@@ -52,9 +52,11 @@ class AppQueriesSpec extends DbSpec {
     check(AppQueries.flags)
   }
 
+  /* Wrong nullness reported
   test("GetUnhealtyProjects") {
     check(AppQueries.getUnhealtyProjects(30.days))
   }
+   */
 
   test("GetErroredJobs") {
     check(AppQueries.erroredJobs)

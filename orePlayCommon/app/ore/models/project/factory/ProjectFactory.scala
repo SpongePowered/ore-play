@@ -233,11 +233,12 @@ trait ProjectFactory {
       createForumPost: Boolean,
       stability: Version.Stability,
       releaseType: Option[Version.ReleaseType]
-  ): ZIO[Blocking, NonEmptyList[String], (Model[Project], Model[Version])] = {
+  ): ZIO[Blocking, NonEmptyList[String], (Model[Project], Model[Version], Seq[Model[VersionPlatform]])] = {
 
     for {
       // Create version
-      version <- service.insert(plugin.asVersion(project.id, description, createForumPost, stability, releaseType))
+      version   <- service.insert(plugin.asVersion(project.id, description, createForumPost, stability, releaseType))
+      platforms <- service.bulkInsert(plugin.asPlatforms(version.id))
       // Notify watchers
       _ <- notifyWatchers(version, project)
       _ <- uploadPluginFile(project, plugin, version).orDieWith(s => new Exception(s))
@@ -249,17 +250,14 @@ trait ProjectFactory {
 
           val addForumJob = service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob)
 
-          val initProject =
-            if (project.topicId.isEmpty) addForumJob *> setVisibility
-            else setVisibility
-
-          initProject <* projects.refreshHomePage(MDCLogger)(OreMDC.NoMDC)
+          if (project.topicId.isEmpty) addForumJob *> setVisibility
+          else setVisibility
         } else UIO.succeed(project)
       }
       _ <- if (createForumPost) {
         service.insert(Job.UpdateDiscourseVersionPost.newJob(version.id).toJob).unit
       } else UIO.unit
-    } yield (firstTimeUploadProject, version)
+    } yield (firstTimeUploadProject, version, platforms)
   }
 
   private def uploadPluginFile(

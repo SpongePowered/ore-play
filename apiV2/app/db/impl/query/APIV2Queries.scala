@@ -118,32 +118,44 @@ object APIV2Queries extends DoobieOreProtocol {
             |       p.name,
             |       p.owner_name,
             |       p.slug,
-            |       p.promoted_versions,
-            |       p.views,
-            |       p.downloads,
-            |       p.recent_views,
-            |       p.recent_downloads,
-            |       p.stars,
-            |       p.watchers,
+            |       to_jsonb(
+            |               ARRAY(SELECT DISTINCT
+            |                   ON (promoted.version_string) jsonb_build_object(
+            |                                                        'version_string', promoted.version_string,
+            |                                                        'platforms', promoted.platforms,
+            |                                                        'platform_versions', promoted.platform_versions,
+            |                                                        'platform_coarse_versions', promoted.platform_coarse_versions,
+            |                                                        'stability', promoted.stability,
+            |                                                        'release_type', promoted.release_type)
+            |                         FROM promoted_versions promoted
+            |                         WHERE promoted.project_id = p.id
+            |                         LIMIT 5)) AS promoted_versions,
+            |       ps.views,
+            |       ps.downloads,
+            |       ps.recent_views,
+            |       ps.recent_downloads,
+            |       ps.stars,
+            |       ps.watchers,
             |       p.category,
             |       p.description,
-            |       COALESCE(p.last_updated, p.created_at) AS last_updated,
+            |       ps.last_updated,
             |       p.visibility,""".stripMargin ++ userActionsTaken ++
-        fr"""|       ps.homepage,
-             |       ps.issues,
-             |       ps.source,
-             |       ps.support,
-             |       ps.license_name,
-             |       ps.license_url,
-             |       ps.forum_sync
-             |  FROM home_projects p
-             |         JOIN projects ps ON p.id = ps.id""".stripMargin
+        fr"""|       p.homepage,
+             |       p.issues,
+             |       p.source,
+             |       p.support,
+             |       p.license_name,
+             |       p.license_url,
+             |       p.forum_sync
+             |  FROM projects p JOIN project_stats ps ON p.id = ps.id JOIN promoted_versions ppv on p.id = ppv.project_id""".stripMargin
 
     val visibilityFrag =
       if (canSeeHidden) None
       else
         currentUserId.fold(Some(fr"(p.visibility = 1)")) { id =>
-          Some(fr"(p.visibility = 1 OR ($id = ANY(p.project_members) AND p.visibility != 5))")
+          Some(
+            fr"(p.visibility = 1 OR ($id IN (SELECT pm.user_id FROM project_members_all pm WHERE pm.id = p.id) AND p.visibility != 5))"
+          )
         }
 
     val (platformsWithVersion, platformsWithoutVersion) = platforms.partitionEither {
@@ -158,10 +170,10 @@ object APIV2Queries extends DoobieOreProtocol {
       if (platforms.nonEmpty || stability.nonEmpty) {
         val jsSelect =
           sql"""|SELECT promoted.platform
-                |    FROM (SELECT unnest(platforms)                AS platform,
-                |                 unnest(platform_coarse_versions) AS platform_coarse_version,
-                |                 stability
-                |              FROM jsonb_to_recordset(p.promoted_versions) AS promoted(platforms TEXT[], platform_coarse_versions TEXT[], stability STABILITY)) AS promoted """.stripMargin ++
+                |    FROM (SELECT unnest(ppv.platforms)                AS platform,
+                |                 unnest(ppv.platform_coarse_versions) AS platform_coarse_version,
+                |                 ppv.stability
+                |              FROM promoted_versions ppv) AS promoted """.stripMargin ++
             Fragments.whereAndOpt(
               NonEmptyList
                 .fromList(platformsWithVersion)
@@ -183,7 +195,10 @@ object APIV2Queries extends DoobieOreProtocol {
       visibilityFrag
     )
 
-    base ++ filters
+    val groupBy =
+      fr"GROUP BY p.id, ps.views, ps.downloads, ps.recent_views, ps.recent_downloads, ps.stars, ps.watchers, ps.last_updated"
+
+    base ++ filters ++ groupBy
   }
 
   def projectQuery(
@@ -216,16 +231,16 @@ object APIV2Queries extends DoobieOreProtocol {
       // 86400 seconds to days
       // 604800‬ seconds to weeks
       order match {
-        case ProjectSortingStrategy.MostStars     => fr"p.stars *" ++ relevance
-        case ProjectSortingStrategy.MostDownloads => fr"(p.downloads / 100) *" ++ relevance
-        case ProjectSortingStrategy.MostViews     => fr"(p.views / 200) *" ++ relevance
+        case ProjectSortingStrategy.MostStars     => fr"ps.stars *" ++ relevance
+        case ProjectSortingStrategy.MostDownloads => fr"(ps.downloads / 100) *" ++ relevance
+        case ProjectSortingStrategy.MostViews     => fr"(ps.views / 200) *" ++ relevance
         case ProjectSortingStrategy.Newest =>
           fr"((EXTRACT(EPOCH FROM p.created_at) - 1483056000) / 86400) *" ++ relevance
         case ProjectSortingStrategy.RecentlyUpdated =>
-          fr"((EXTRACT(EPOCH FROM p.last_updated) - 1483056000) / 604800) *" ++ relevance
+          fr"((EXTRACT(EPOCH FROM ps.last_updated) - 1483056000) / 604800) *" ++ relevance
         case ProjectSortingStrategy.OnlyRelevance   => relevance
-        case ProjectSortingStrategy.RecentViews     => fr"p.recent_views *" ++ relevance
-        case ProjectSortingStrategy.RecentDownloads => fr"p.recent_downloads*" ++ relevance
+        case ProjectSortingStrategy.RecentViews     => fr"ps.recent_views *" ++ relevance
+        case ProjectSortingStrategy.RecentDownloads => fr"ps.recent_downloads*" ++ relevance
       }
     } else order.fragment
 
@@ -366,16 +381,16 @@ object APIV2Queries extends DoobieOreProtocol {
             |       pv.uses_mixin,
             |       pv.stability,
             |       pv.release_type,
-            |       pv.platforms,
-            |       pv.platform_versions
+            |       array_agg(pvp.platform),
+            |       array_agg(pvp.platform_version)
             |    FROM projects p
             |             JOIN project_versions pv ON p.id = pv.project_id
-            |             LEFT JOIN users u ON pv.author_id = u.id """.stripMargin
+            |             LEFT JOIN users u ON pv.author_id = u.id
+            |             LEFT JOIN project_version_platforms pvp ON pv.id = pvp.version_id """.stripMargin
 
-    val (platformsWithVersion, platformsWithoutVersion) = platforms.partitionEither {
-      case (name, Some(version)) =>
-        Left((name, Platform.withValueOpt(name).fold(version)(_.coarseVersionOf(version))))
-      case (name, None) => Right(name)
+    val coarsePlatfgorms = platforms.map {
+      case (name, optVersion) =>
+        (name, optVersion.map(version => Platform.withValueOpt(name).fold(version)(_.coarseVersionOf(version))))
     }
 
     val visibilityFrag =
@@ -392,13 +407,16 @@ object APIV2Queries extends DoobieOreProtocol {
     val filters = Fragments.whereAndOpt(
       Some(fr"p.plugin_id = $pluginId"),
       versionName.map(v => fr"pv.version_string = $v"),
-      NonEmptyList.fromList(platformsWithoutVersion).map(array(_) ++ fr"&& pv.platforms"),
-      NonEmptyList
-        .fromList(platformsWithVersion)
-        .map { t =>
-          array2Text("TEXT", "TEXT")(t) ++
-            fr"&& ARRAY(SELECT (platform, coarse_version)::TEXT FROM unnest(pv.platforms, pv.platform_coarse_versions) as plat(platform, coarse_version))"
-        },
+      if (coarsePlatfgorms.isEmpty) None
+      else
+        Some(
+          Fragments.or(
+            platforms.map {
+              case (platform, Some(version)) => fr"pvp.platform = $platform AND pvp.platform_coarse_version = $version"
+              case (platform, None)          => fr"pvp.platform = $platform"
+            }: _*
+          )
+        ),
       NonEmptyList.fromList(stability).map(Fragments.in(fr"pv.stability", _)),
       NonEmptyList.fromList(releaseType).map(Fragments.in(fr"pv.release_type", _)),
       visibilityFrag
@@ -476,24 +494,37 @@ object APIV2Queries extends DoobieOreProtocol {
             |       p.name,
             |       p.owner_name,
             |       p.slug,
-            |       p.promoted_versions,
-            |       p.views,
-            |       p.downloads,
-            |       p.recent_views,
-            |       p.recent_downloads,
-            |       p.stars,
-            |       p.watchers,
+            |       to_jsonb(
+            |               ARRAY(SELECT DISTINCT
+            |                   ON (promoted.version_string) jsonb_build_object(
+            |                                                        'version_string', promoted.version_string,
+            |                                                        'platforms', promoted.platforms,
+            |                                                        'platform_versions', promoted.platform_versions,
+            |                                                        'platform_coarse_versions', promoted.platform_coarse_versions,
+            |                                                        'stability', promoted.stability,
+            |                                                        'release_type', promoted.release_type)
+            |                         FROM promoted_versions promoted
+            |                         WHERE promoted.project_id = p.id
+            |                         LIMIT 5)) AS promoted_versions,
+            |       pss.views,
+            |       pss.downloads,
+            |       pss.recent_views,
+            |       pss.recent_downloads,
+            |       pss.stars,
+            |       pss.watchers,
             |       p.category,
             |       p.visibility
             |    FROM users u JOIN """.stripMargin ++ table ++
         fr"""|ps ON u.id = ps.user_id
-             |             JOIN home_projects p ON ps.project_id = p.id""".stripMargin
+             |             JOIN projects p ON ps.project_id = p.id JOIN pss ON ps.project_id = pss.id""".stripMargin
 
     val visibilityFrag =
       if (canSeeHidden) None
       else
         currentUserId.fold(Some(fr"(p.visibility = 1 OR p.visibility = 2)")) { id =>
-          Some(fr"(p.visibility = 1 OR p.visibility = 2 OR ($id = ANY(p.project_members) AND p.visibility != 5))")
+          Some(
+            fr"(p.visibility = 1 OR p.visibility = 2 OR ($id IN (SELECT pm.user_id FROM project_members_all pm WHERE pm.id = p.id) AND p.visibility != 5))"
+          )
         }
 
     val filters = Fragments.whereAndOpt(

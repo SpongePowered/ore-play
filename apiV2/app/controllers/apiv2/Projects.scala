@@ -133,7 +133,6 @@ class Projects(
           project <- factory
             .createProject(canUpload._1, settings.ownerName, settings.asFactoryTemplate)
             .mapError(e => BadRequest(UserError(messagesApi(e))))
-          _ <- projects.refreshHomePage(MDCLogger)
         } yield {
 
           Created(

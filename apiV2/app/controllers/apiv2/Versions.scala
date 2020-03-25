@@ -350,7 +350,7 @@ class Versions(
               BadRequest(UserErrors(es.map(messagesApi(_))))
             }
         } yield {
-          val (_, version) = t
+          val (_, version, platforms) = t
 
           val apiVersion = APIV2QueryVersion(
             version.createdAt,
@@ -367,8 +367,8 @@ class Versions(
             version.tags.usesMixin,
             version.tags.stability,
             version.tags.releaseType,
-            version.tags.platforms,
-            version.tags.platformsVersions
+            platforms.map(_.platform).toList,
+            platforms.map(_.platformVersion).toList
           )
 
           Created(apiVersion.asProtocol)

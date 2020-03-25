@@ -79,7 +79,7 @@ class APIV2QueriesSpec extends DbSpec {
     check(
       APIV2Queries.versionCountQuery(
         "Foo",
-        List("Foo" -> Some("Bar")),
+        List("Foo" -> Some("Bar"), "Baz" -> None),
         canSeeHidden = false,
         stability = List(Version.Stability.Stable),
         releaseType = List(Version.ReleaseType.MajorUpdate),
