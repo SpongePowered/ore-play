@@ -5,8 +5,8 @@
                 <div class="col-md-12">
                     <editor :enabled="permissions && permissions.includes('edit_page')"
                             :raw="description"
-                            :deletable="page !== 'Home'"
-                            subject="Page"/>
+                            subject="Page"
+                            v-on:saved="savePage" />
                 </div>
             </div>
         </div>
@@ -142,6 +142,7 @@
     import MemberList from "../../components/MemberList";
     import {Category} from "../../enums";
     import PageList from "../../components/PageList";
+    import _ from 'lodash'
 
     export default {
         components: {
@@ -214,8 +215,14 @@
             newPage() {
                 return typeof this.requestPage.existing === 'undefined'
             },
+            splitPage() {
+                return Array.isArray(this.page) ? this.page : this.page.split('/')
+            },
             joinedPage() {
                 return Array.isArray(this.page) ? this.page.join('/') : this.page
+            },
+            currentPage() {
+                return this.pages.filter(p => _.isEqual(p.slug, this.splitPage))[0]
             }
         },
         created() {
@@ -296,6 +303,16 @@
 
                     console.error(err);
                     this.pagePutError = err;
+                });
+            },
+            savePage(newContent) {
+                API.request('projects/' + this.project.plugin_id + '/_pages/' + this.joinedPage, 'PUT', {
+                    'name': this.currentPage.name[this.currentPage.name.length - 1],
+                    'content': newContent
+                }).then(res => {
+                    this.description = newContent
+                }).catch(err => {
+                    //TODO: Handle error here
                 });
             },
             deletePage() {
