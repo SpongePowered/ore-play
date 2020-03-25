@@ -763,6 +763,29 @@ PUT     /projects/:pluginId/_pages/*page                     @controllers.apiv2.
 #+nocsrf
 DELETE   /projects/:pluginId/_pages/*page                     @controllers.apiv2.Pages.deletePage(pluginId, page)
 
+### NoDocs ###
+#+nocsrf
+GET      /projects/:pluginId/_projectData                     @controllers.apiv2.Projects.projectData(pluginId)
+
+###
+#  summary: Gets a current logged in user
+#  description: Gets a current logged in user. Requires the `view_public_info` permission.
+#  tags:
+#    - Users
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.User'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /users/@me                                            @controllers.apiv2.Users.showCurrentUser()
+
 ###
 #  summary: Gets a specific user
 #  description: Gets a specific user. Requires the `view_public_info` permission.

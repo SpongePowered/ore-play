@@ -154,7 +154,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
 
       user.hasUnresolvedFlagFor(project, ModelView.now(Flag)).flatMap {
         // One flag per project, per user at a time
-        case true => IO.fail(BadRequest)
+        case true => IO.fail(BadRequest("Already submitted flag"))
         case false =>
           project
             .flagFor(user, formData.reason, formData.comment)

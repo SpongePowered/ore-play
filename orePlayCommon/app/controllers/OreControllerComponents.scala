@@ -25,7 +25,7 @@ trait OreControllerComponents extends ControllerComponents {
   def uioEffects: OreControllerEffects[UIO]
   def bakery: Bakery
   def config: OreConfig
-  def projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]]
+  def projectFiles: ProjectFiles[ZIO[Blocking, Nothing, *]]
   def zioRuntime: zio.Runtime[Blocking with Clock]
   def assetsFinder: AssetsFinder
 }

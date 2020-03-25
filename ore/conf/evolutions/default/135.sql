@@ -157,22 +157,43 @@ WHERE sq.row_num = 1
     WINDOW w AS (PARTITION BY sq.project_id, sq.version_string)
 ORDER BY sq.platform_version DESC;
 
-CREATE MATERIALIZED VIEW project_stats AS
+CREATE TABLE project_stats
+(
+    id               BIGINT      NOT NULL PRIMARY KEY REFERENCES projects,
+    views            BIGINT      NOT NULL,
+    downloads        BIGINT      NOT NULL,
+    recent_views     BIGINT      NOT NULL,
+    recent_downloads BIGINT      NOT NULL,
+    stars            BIGINT      NOT NULL,
+    watchers         BIGINT      NOT NULL,
+    last_updated     TIMESTAMPTZ NOT NULL
+);
+
+CREATE FUNCTION refreshProjectStats() RETURNS VOID
+    LANGUAGE SQL AS
+$$
+INSERT INTO project_stats (id, views, downloads, recent_views, recent_downloads, stars, watchers, last_updated)
 SELECT p.id,
-       coalesce(pva.views, 0)                     AS views,
-       coalesce(pda.downloads, 0)                 AS downloads,
-       coalesce(pvr.recent_views, 0)              AS recent_views,
-       coalesce(pdr.recent_downloads, 0)          AS recent_downloads,
-       coalesce(ps.stars, 0)                      AS stars,
-       coalesce(pw.watchers, 0)                   AS watchers,
-       coalesce(max(lv.created_at), p.created_at) AS last_updated
+       COALESCE(pva.views, 0)                     AS views,
+       COALESCE(pda.downloads, 0)                 AS downloads,
+       COALESCE(pvr.recent_views, 0)              AS recent_views,
+       COALESCE(pdr.recent_downloads, 0)          AS recent_downloads,
+       COALESCE(ps.stars, 0)                      AS stars,
+       COALESCE(pw.watchers, 0)                   AS watchers,
+       COALESCE(max(lv.created_at), p.created_at) AS last_updated
 FROM projects p
          LEFT JOIN project_versions lv ON p.id = lv.project_id
-         LEFT JOIN (SELECT ps.project_id, COUNT(*) AS stars FROM project_stars ps GROUP BY ps.project_id) ps
+         LEFT JOIN (SELECT ps.project_id, COUNT(*) AS stars
+                    FROM project_stars ps
+                    GROUP BY ps.project_id) ps
                    ON p.id = ps.project_id
-         LEFT JOIN (SELECT pw.project_id, COUNT(*) AS watchers FROM project_watchers pw GROUP BY pw.project_id) pw
+         LEFT JOIN (SELECT pw.project_id, COUNT(*) AS watchers
+                    FROM project_watchers pw
+                    GROUP BY pw.project_id) pw
                    ON p.id = pw.project_id
-         LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS views FROM project_views pv GROUP BY pv.project_id) pva
+         LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS views
+                    FROM project_views pv
+                    GROUP BY pv.project_id) pva
                    ON p.id = pva.project_id
          LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS downloads
                     FROM project_versions_downloads pv
@@ -186,7 +207,19 @@ FROM projects p
                     FROM project_versions_downloads pv
                     WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
                     GROUP BY pv.project_id) pdr ON p.id = pdr.project_id
-GROUP BY p.id, ps.stars, pw.watchers, pva.views, pda.downloads, pvr.recent_views, pdr.recent_downloads;
+GROUP BY p.id, ps.stars, pw.watchers, pva.views, pda.downloads, pvr.recent_views,
+         pdr.recent_downloads
+ON CONFLICT (id) DO UPDATE SET views            = excluded.views,
+                               downloads        = excluded.downloads,
+                               recent_views     = excluded.recent_views,
+                               recent_downloads = excluded.recent_downloads,
+                               stars            = excluded.stars,
+                               watchers         = excluded.watchers,
+                               last_updated     = excluded.last_updated;;
+$$;
+
+SELECT refreshProjectStats();
+
 
 CREATE FUNCTION add_project_stats_trigger() RETURNS TRIGGER
     LANGUAGE plpgsql AS
@@ -207,7 +240,7 @@ BEGIN
         UPDATE project_stats SET stars = stars + 1 WHERE id = new.project_id;;
         RETURN new;;
     ELSIF (tg_op = 'DELETE') THEN
-        UPDATE project_stats SET stars = stars - 1 WHERE id = new.project_id;;
+        UPDATE project_stats SET stars = stars - 1 WHERE id = old.project_id;;
         RETURN old;;
     END IF;;
 
@@ -223,7 +256,7 @@ BEGIN
         UPDATE project_stats SET watchers = watchers + 1 WHERE id = new.project_id;;
         RETURN new;;
     ELSIF (tg_op = 'DELETE') THEN
-        UPDATE project_stats SET watchers = watchers - 1 WHERE id = new.project_id;;
+        UPDATE project_stats SET watchers = watchers - 1 WHERE id = old.project_id;;
         RETURN old;;
     END IF;;
 
@@ -329,7 +362,9 @@ DROP FUNCTION update_project_stats_last_updated_trigger;
 DROP FUNCTION add_project_stats_trigger;
 DROP FUNCTION remove_invalid_promoted_versions_trigger;
 
-DROP MATERIALIZED VIEW project_stats;
+DROP FUNCTION refreshprojectstats;
+
+DROP TABLE project_stats;
 
 DROP VIEW apiv1_projects;
 

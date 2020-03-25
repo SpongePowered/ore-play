@@ -6,7 +6,7 @@ import play.api.mvc.{Action, AnyContent, Result}
 
 import controllers.OreControllerComponents
 import controllers.apiv2.Users.PaginatedCompactProjectResult
-import controllers.apiv2.helpers.{APIScope, Pagination}
+import controllers.apiv2.helpers.{APIScope, ApiError, Pagination}
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
 import ore.db.DbRef
@@ -27,6 +27,13 @@ class Users(
 )(
     implicit oreComponents: OreControllerComponents
 ) extends AbstractApiV2Controller(lifecycle) {
+
+  def showCurrentUser: Action[AnyContent] = ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { r =>
+    r.user match {
+      case Some(user) => service.runDbCon(APIV2Queries.userQuery(user.name).unique).map(a => Ok(a.asJson))
+      case None       => ZIO.fail(Unauthorized(ApiError("Only user sessions for this endpoint")))
+    }
+  }
 
   def showUser(user: String): Action[AnyContent] =
     CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {

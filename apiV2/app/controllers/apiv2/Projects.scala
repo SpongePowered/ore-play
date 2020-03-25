@@ -9,13 +9,14 @@ import play.api.inject.ApplicationLifecycle
 import play.api.mvc.{Action, AnyContent, Result}
 
 import controllers.OreControllerComponents
-import controllers.apiv2.helpers.{APIScope, ApiError, ApiErrors, Pagination, UserError}
+import controllers.apiv2.helpers._
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
 import models.querymodels.APIV2ProjectStatsQuery
+import models.viewhelper.ProjectData
 import ore.data.project.Category
-import ore.models.project.{ProjectSortingStrategy, Version}
 import ore.models.project.factory.{ProjectFactory, ProjectTemplate}
+import ore.models.project.{ProjectSortingStrategy, Version}
 import ore.permission.Permission
 import ore.util.OreMDC
 import util.PatchDecoder
@@ -23,15 +24,16 @@ import util.syntax._
 
 import cats.data.{NonEmptyList, Validated}
 import cats.syntax.all._
-import squeal.category._
-import squeal.category.syntax.all._
-import squeal.category.macros.Derive
-import io.circe._
-import io.circe.syntax._
 import com.typesafe.scalalogging
+import io.circe._
 import io.circe.derivation.annotations.SnakeCaseJsonCodec
+import io.circe.syntax._
+import squeal.category._
+import squeal.category.macros.Derive
+import squeal.category.syntax.all._
+import zio.ZIO
+import zio.blocking.Blocking
 import zio.interop.catz._
-import zio.{UIO, ZIO}
 
 class Projects(
     factory: ProjectFactory,
@@ -262,6 +264,25 @@ class Projects(
           APIV2Queries.projectStats(pluginId, fromDate, toDate).to[Vector].map(APIV2ProjectStatsQuery.asProtocol)
         )
       } yield Ok(res.asJson)
+    }
+
+  def projectData(pluginId: String): Action[AnyContent] =
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit r =>
+      for {
+        project <- projects.withPluginId(pluginId).get.asError(NotFound)
+        data    <- ProjectData.of[ZIO[Blocking, Throwable, *]](project).orDie
+      } yield Ok(
+        Json.obj(
+          "flagCount" := data.flagCount,
+          "noteCount" := data.noteCount,
+          "lastVisibilityChange" := data.lastVisibilityChange.map { change =>
+            Json.obj(
+              "comment" := change.comment
+            )
+          },
+          "lastVisibilityChangeUser" := data.lastVisibilityChangeUser
+        )
+      )
     }
 }
 object Projects {

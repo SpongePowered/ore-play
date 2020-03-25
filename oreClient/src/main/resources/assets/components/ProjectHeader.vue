@@ -10,14 +10,14 @@
                         <a v-if="permissions.includes(permission.EditPage)" class="btn btn-success pull-right"
                            :href="fullSlug + '/manage/sendforapproval'">Send for approval</a>
                         <strong>This project requires changes:</strong>
-                        {{ renderVisibilityChange("Unknown")}}
+                        <span v-html="renderVisibilityChange('Unknown')"></span>
                     </span>
                     <span v-else-if="project.visibility === 'needsApproval'">
                         You have sent the project for review
                     </span>
                     <span v-else-if="project.visibility === 'softDelete'">
-                        Project deleted by {{ project.lastVisibilityChangeUser }}
-                        {{ renderVisibilityChange("") }}
+                        Project deleted by {{ projectData.lastVisibilityChangeUser }}
+                        <span v-html="renderVisibilityChange('')"></span>
                     </span>
                 </div>
             </div>
@@ -44,30 +44,34 @@
                         <i class="fas fa-thumbs-up"></i>
                         Flag submitted for review
                     </span>
+                    <span v-if="flagError" class="flag-msg">
+                        <i class="fas fa-thumbs-down"></i>
+                        Error when submitting flag for review:
+                        {{ flagError }}
+                    </span>
 
                     <template v-if="project.visibility !== 'softDelete'">
-                        <template v-if="!isOwner">
-                            <button class="btn btn-default btn-star">
+                        <template v-if="!isMember && currentUser">
+                            <button @click="toggleStarred" class="btn btn-default btn-star">
                                 <i :class="staredClasses"></i>
-                                <span class="starred">{{ project.stats.stars }}</span>
+                                <span :class="{starred: project.user_actions.starred }">{{ project.stats.stars }}</span>
                             </button>
 
-                            <button class="btn btn-watch btn-default" :class="{watching: project.stats.watching}">
-                                <template v-if="project.stats.watching">
-                                    <i class="fas fa-eye-slash"></i>
-                                    <span class="watch-status">Unwatch</span>
-                                </template>
-                                <template v-else>
-                                    <i class="fas fa-eye"></i>
-                                    <span class="watch-status">Watch</span>
-                                </template>
+                            <button @click="toggleWatching" class="btn btn-default btn-watch">
+                                <i :class="watchingClasses"></i>
+                                <span :class="{watching: project.user_actions.watching}">{{ project.stats.watchers }}</span>
                             </button>
-
                         </template>
-                        <span v-else class="minor stars-static">
-                            <i :class="staredClasses"></i>
-                            {{ project.stats.stars }}
-                        </span>
+                        <template v-else>
+                            <span class="minor stat-static">
+                                <i :class="staredClasses"></i>
+                                {{ project.stats.stars }}
+                            </span>
+                            <span class="minor stat-static">
+                                <i :class="watchingClasses"></i>
+                                {{ project.stats.watchers }}
+                            </span>
+                        </template>
 
                         <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
                             <i class="fas fa-flag"></i> Flag
@@ -84,28 +88,40 @@
                                         </button>
                                         <h4 class="modal-title" id="label-flag">Flag project</h4>
                                     </div>
-                                    <form :action="routes.project.Projects.flag(project.namespace.owner, project.namespace.slug).absoluteURL()" method="post">
+                                    <form id="flagForm" :action="routes.project.Projects.flag(project.namespace.owner, project.namespace.slug).absoluteURL()" method="post">
                                         <CSRFField></CSRFField>
                                         <div class="modal-body">
                                             <ul class="list-group list-flags">
+                                                <li class="list-group-item">
+                                                    <span>Select a reason</span>
+                                                    <span class="pull-right">
+                                                        <input v-model="reportReason"
+                                                               required disabled hidden
+                                                               type="radio"
+                                                               value="none-selected"
+                                                               name="flag-reason"/>
+                                                    </span>
+                                                </li>
                                                 <li v-for="reason in flagReason.values" class="list-group-item">
                                                     <span>{{ reason.title }}</span>
                                                     <span class="pull-right">
-                                                        <input required type="radio"
+                                                        <input v-model="reportReason"
+                                                               required type="radio"
                                                                :value="reason.value"
                                                                name="flag-reason"/>
-                                                        </span>
+                                                    </span>
                                                 </li>
                                             </ul>
-                                            <input class="form-control" name="comment" type="text"
-                                                   maxlength="255" required="required"
+                                            <input v-model="reportComment"
+                                                   class="form-control" name="comment" type="text"
+                                                   maxlength="255" required
                                                    placeholder="Comment&hellip;"/>
                                         </div>
                                         <div class="modal-footer">
-                                            <button type="button" class="btn btn-default" data-dismiss="modal">
+                                            <button type="button" class="btn btn-default" data-dismiss="modal" @click="clearFlag">
                                                 Close
                                             </button>
-                                            <button type="submit" class="btn btn-primary">Flag</button>
+                                            <button type="button" class="btn btn-primary" @click="sendFlag">Flag</button>
                                         </div>
                                     </form>
                                 </div>
@@ -123,12 +139,12 @@
                         <ul class="dropdown-menu" aria-labelledby="admin-actions">
                             <li v-if="permissions.includes(permission.ModNotesAndFlags)">
                                 <a :href="routes.project.Projects.showFlags(project.namespace.owner, project.namespace.slug).absoluteURL()">
-                                    Flag history ({{ project.flagCount }})
+                                    Flag history ({{ projectData.flagCount }})
                                 </a>
                             </li>
                             <li v-if="permissions.includes(permission.ModNotesAndFlags)">
                                 <a :href="routes.project.Projects.showNotes(project.namespace.owner, project.namespace.slug).absoluteURL()">
-                                    Staff notes ({{ project.noteCount }})
+                                    Staff notes ({{ projectData.noteCount }})
                                 </a>
                             </li>
                             <li v-if="permissions.includes(permission.ViewLogs)">
@@ -215,16 +231,35 @@
     import {Permission, FlagReason} from "../enums";
     import CSRFField from "./CSRFField";
 
+    import markdownIt from "markdown-it"
+    import markdownItAnchor from "markdown-it-anchor"
+    import markdownItWikilinks from "markdown-it-wikilinks"
+    import markdownItTaskLists from "markdown-it-task-lists"
+    import {API} from "../api";
+
+    const md = markdownIt({
+        linkify: true,
+        typographer: true
+    }).use(markdownItAnchor).use(markdownItWikilinks({relativeBaseURL: location.pathname + "/pages/", uriSuffix: ''})).use(markdownItTaskLists);
+
     export default {
         components: {
             CSRFField
         },
+        data() {
+            return {
+                reported: false,
+                flagError: null,
+                reportReason: 'none-selected',
+                reportComment: '',
+                projectData: {
+                    flagCount: -1,
+                    noteCount: -1
+                }
+            }
+        },
         props: {
             noButtons: {
-                type: Boolean,
-                default: false
-            },
-            reported: {
                 type: Boolean,
                 default: false
             },
@@ -236,24 +271,35 @@
                 type: Object,
                 required: true
             },
+            members: {
+                type: Array,
+                required: true,
+            },
             currentUser: Object
         },
         computed: {
             fullSlug: function () {
-                return project.namespace.owner + '/' + project.slug
+                return this.project.namespace.owner + '/' + this.project.slug
             },
             routes: function () {
                 return jsRoutes.controllers;
             },
             staredClasses: function () {
                 return {
-                    fas: this.project.user_actions.stared,
-                    far: !this.project.user_actions.stared,
+                    fas: this.project.user_actions.starred,
+                    far: !this.project.user_actions.starred,
                     'fa-star': true
                 }
             },
-            isOwner: function () {
-                return this.currentUser && this.project.namespace.owner === this.currentUser.name;
+            watchingClasses() {
+                return {
+                    'fas': true,
+                    'fa-eye-slash': this.project.user_actions.watching,
+                    'fa-eye': !this.project.user_actions.watching,
+                }
+            },
+            isMember: function () {
+                return this.currentUser && this.members.filter(m => m.user === this.currentUser.name).length > 0;
             },
             permission() {
                 return Permission;
@@ -262,10 +308,70 @@
                 return FlagReason
             }
         },
+        created() {
+            API.request('projects/' + this.project.plugin_id + '/_projectData').then((res) => {
+                this.projectData = res;
+            })
+        },
         methods: {
             renderVisibilityChange: function (orElse) {
-                //TODO
+                if(this.projectData && this.projectData.lastVisibilityChange) {
+                    return md.render(this.projectData.lastVisibilityChange.comment)
+                }
+                else {
+                    return orElse
+                }
             },
+            clearFlag() {
+                this.reportReason = 'none-selected';
+                this.reportComment = ''
+            },
+            sendFlag() {
+                $.ajax({
+                    type: 'POST',
+                    url: this.routes.project.Projects.flag(this.project.namespace.owner, this.project.namespace.slug).absoluteURL(),
+                    data: $('#flagForm').serialize()
+                }).done((res) => {
+                    this.reported = true;
+                    console.log('Sent flag');
+                    $('#modal-flag').modal('toggle');
+                    this.clearFlag()
+                }).fail((xhr) => {
+                    $('#modal-flag').modal('toggle');
+                    console.log(xhr);
+                    this.flagError = xhr.responseText;
+                    //TODO: Handle error
+                });
+            },
+            toggleStarred() {
+                $.ajax({
+                    type: 'POST',
+                    url: this.routes.project.Projects.toggleStarred(this.project.namespace.owner, this.project.namespace.slug).absoluteURL(),
+                    data: {
+                        'csrfToken': window.csrf
+                    }
+                }).done((res) => {
+                    this.$emit('toggle-starred');
+                }).fail((xhr) => {
+                    console.log(xhr)
+                    //TODO: Handle error
+                });
+            },
+            toggleWatching() {
+                let newWatching = !this.project.user_actions.watching;
+                $.ajax({
+                    type: 'POST',
+                    url: this.routes.project.Projects.setWatching(this.project.namespace.owner, this.project.namespace.slug, newWatching).absoluteURL(),
+                    data: {
+                        'csrfToken': window.csrf
+                    }
+                }).done((res) => {
+                    this.$emit('set-watching', newWatching);
+                }).fail((xhr) => {
+                    console.log(xhr)
+                    //TODO: Handle error
+                });
+            }
         }
     }
 </script>

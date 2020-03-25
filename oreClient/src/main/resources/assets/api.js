@@ -87,6 +87,10 @@ export class API {
         });
     }
 
+    static hasUser() {
+        return window.isLoggedIn;
+    }
+
     static invalidateSession() {
         if (window.isLoggedIn) {
             localStorage.removeItem('api_session')

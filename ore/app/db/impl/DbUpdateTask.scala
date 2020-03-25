@@ -50,7 +50,9 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
 
   private val materializedViewsTask = runningTask(
     service.runDbCon(
-      sql"REFRESH MATERIALIZED VIEW project_stats".update.run *> sql"REFRESH MATERIALIZED VIEW promoted_versions".update.run.void
+      sql"SELECT refreshProjectStats()"
+        .query[Option[Int]]
+        .unique *> sql"REFRESH MATERIALIZED VIEW promoted_versions".update.run.void
     ),
     materializedViewsSchedule
   )
