@@ -32,7 +32,7 @@
                     <div class="list-group category-list">
                         <a v-for="category in availableOptions.category" class="list-group-item" @click="changeCategory(category)"
                            v-bind:class="{ active: categories.includes(category.id) }">
-                            <i class="fas fa-fw" :class="'fa-' + category.icon"></i>
+                            <font-awesome-icon class="fa-fw" :icon="['fas', category.icon]" />
                             <strong>{{ category.name }}</strong>
                         </a>
                     </div>

@@ -148,6 +148,7 @@ lazy val oreClient = project
       NPMDeps.lodash,
       NPMDeps.queryString,
       NPMDeps.fontAwesome,
+      NPMDeps.fontAwesomeVue,
       NPMDeps.fontAwesomeSolid,
       NPMDeps.fontAwesomeRegular,
       NPMDeps.fontAwesomeBrands,

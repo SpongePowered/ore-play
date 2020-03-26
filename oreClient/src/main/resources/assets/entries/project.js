@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 import ProjectDiscussion from "../pages/project/ProjectDiscussion";
 import ProjectSettings from "../pages/project/ProjectSettings";
@@ -10,6 +11,7 @@ import VersionPage from "../pages/project/VersionPage";
 import NewVersion from "../pages/project/NewVersion";
 
 Vue.use(VueRouter);
+Vue.component('font-awesome-icon', FontAwesomeIcon);
 
 const router = new VueRouter({
     base: window.PROJECT_OWNER + "/" + window.PROJECT_SLUG,
