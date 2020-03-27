@@ -4,11 +4,15 @@
             <div class="project-search" :class="{'input-group': q.length > 0}">
                 <input type="text" class="form-control" v-model="q" @keydown="resetPage" :placeholder="queryPlaceholder" />
                 <span class="input-group-btn" v-if="q.length > 0">
-                    <button class="btn btn-default" type="button" @click="q = ''"><i class="fas fa-times"></i></button>
+                    <button class="btn btn-default" type="button" @click="q = ''">
+                        <font-awesome-icon :icon="['fas', 'times']" />
+                    </button>
                 </span>
             </div>
             <div v-if="!isDefault" class="clearSelection">
-                <a @click="reset"><i class="fa fa-window-close"></i> Clear current search query, categories, platform, and sort</a>
+                <a @click="reset">
+                    <font-awesome-icon :icon="['fas', 'window-close']" />
+                    Clear current search query, categories, platform, and sort</a>
             </div>
             <project-list v-bind="listBinding" ref="list" @prevPage="page--"
                           @nextPage="page++" @jumpToPage="page = $event" v-bind:projectCount.sync="projectCount"></project-list>
@@ -25,14 +29,14 @@
                     <div class="panel-heading">
                         <h3 class="panel-title">Categories</h3>
                         <a class="category-reset" @click="categories = []" v-if="categories.length > 0">
-                            <i class="fas fa-times white"></i>
+                            <font-awesome-icon class="white" :icon="['fas', 'times']" />
                         </a>
                     </div>
 
                     <div class="list-group category-list">
                         <a v-for="category in availableOptions.category" class="list-group-item" @click="changeCategory(category)"
                            v-bind:class="{ active: categories.includes(category.id) }">
-                            <i class="fas fa-fw" :class="'fa-' + category.icon"></i>
+                            <font-awesome-icon fixed-width :icon="['fas', category.icon]" />
                             <strong>{{ category.name }}</strong>
                         </a>
                     </div>

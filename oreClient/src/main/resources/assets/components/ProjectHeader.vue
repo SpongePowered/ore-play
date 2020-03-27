@@ -41,11 +41,11 @@
             <div class="col-md-6">
                 <div v-if="!noButtons" class="pull-right project-controls">
                     <span v-if="reported" class="flag-msg">
-                        <i class="fas fa-thumbs-up"></i>
+                        <font-awesome-icon :icon="['fas', 'thumbs-up']" />
                         Flag submitted for review
                     </span>
                     <span v-if="flagError" class="flag-msg">
-                        <i class="fas fa-thumbs-down"></i>
+                        <font-awesome-icon :icon="['fas', 'thumbs-down']" />
                         Error when submitting flag for review:
                         {{ flagError }}
                     </span>
@@ -53,28 +53,28 @@
                     <template v-if="project.visibility !== 'softDelete'">
                         <template v-if="!isMember && currentUser">
                             <button @click="toggleStarred" class="btn btn-default btn-star">
-                                <i :class="staredClasses"></i>
+                                <font-awesome-icon :icon="starredIcon" />
                                 <span :class="{starred: project.user_actions.starred }">{{ project.stats.stars }}</span>
                             </button>
 
                             <button @click="toggleWatching" class="btn btn-default btn-watch">
-                                <i :class="watchingClasses"></i>
+                                <font-awesome-icon :icon="watchingIcon" />
                                 <span :class="{watching: project.user_actions.watching}">{{ project.stats.watchers }}</span>
                             </button>
                         </template>
                         <template v-else>
                             <span class="minor stat-static">
-                                <i :class="staredClasses"></i>
+                                <font-awesome-icon :icon="starredIcon" />
                                 {{ project.stats.stars }}
                             </span>
                             <span class="minor stat-static">
-                                <i :class="watchingClasses"></i>
+                                <font-awesome-icon :icon="watchingIcon" />
                                 {{ project.stats.watchers }}
                             </span>
                         </template>
 
                         <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
-                            <i class="fas fa-flag"></i> Flag
+                            <font-awesome-icon :icon="['fas', 'flag']" /> Flag
                         </button>
 
                         <div class="modal fade" id="modal-flag" tabindex="-1" role="dialog"
@@ -154,7 +154,7 @@
                             </li>
                             <li>
                                 <a :href="'https://forums.spongepowered.org/users/' + project.namespace.owner">
-                                    Owner on forum <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                                    Owner on forum <font-awesome-icon :icon="['fas', 'external-link-alt']" aria-hidden="true" />
                                 </a>
                             </li>
                         </ul>
@@ -170,53 +170,52 @@
                         <ul class="nav navbar-nav">
                             <router-link :to="{name: 'home', params: {project, permissions}}" v-slot="{ href, navigate, isExactActive }">
                                 <li :class="[isExactActive && 'active']">
-                                    <a :href="href" @click="navigate"><i class="fas fa-book"></i> Docs</a>
+                                    <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'book']" /> Docs</a>
                                 </li>
                             </router-link>
 
                             <router-link :to="{name: 'versions'}" v-slot="{ href, navigate, isActive }">
                                 <li :class="[isActive && 'active']">
-                                    <a :href="href" @click="navigate"><i class="fas fa-download"></i> Versions</a>
+                                    <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'download']" /> Versions</a>
                                 </li>
                             </router-link>
 
                             <!-- TODO only show if topic -->
                             <router-link :to="{name: 'discussion'}" v-slot="{ href, navigate, isActive }">
                                 <li :class="[isActive && 'active']">
-                                    <a :href="href" @click="navigate"><i class="fas fa-users"></i> Discuss</a>
+                                    <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'users']" /> Discuss</a>
                                 </li>
                             </router-link>
 
                             <router-link v-if="permissions.includes(permission.EditSubjectSettings)" :to="{name: 'settings'}" v-slot="{ href, navigate, isActive }">
                                 <li :class="[isActive && 'active']">
-                                    <a :href="href" @click="navigate"><i class="fas fas fa-cog"></i> Settings</a>
+                                    <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'cog']" /> Settings</a>
                                 </li>
                             </router-link>
 
                             <li v-if="project.settings.homepage" id="homepage">
                                 <a :title="project.settings.homepage" target="_blank" rel="noopener"
                                    :href="routes.Application.linkOut(project.settings.homepage).absoluteURL()">
-                                    <i class="fas fa-home"></i> Homepage <i class="fas fa-external-link-alt"></i></a>
+                                    <font-awesome-icon :icon="['fas', 'home']" /> Homepage <font-awesome-icon :icon="['fas', 'external-link-alt']" /></a>
                             </li>
 
                             <li v-if="project.settings.issues" id="issues">
                                 <a :title="project.settings.issues" target="_blank" rel="noopener"
                                    :href="routes.Application.linkOut(project.settings.issues).absoluteURL()">
-                                    <i class="fas fa-bug"></i> Issues <i class="fas fa-external-link-alt"></i></a>
+                                    <font-awesome-icon :icon="['fas', 'bug']" /> Issues <font-awesome-icon :icon="['fas', 'external-link-alt']" /></a>
                             </li>
 
                             <li v-if="project.settings.sources" id="source">
                                 <a :title="project.settings.sources" target="_blank" rel="noopener"
                                    :href="routes.Application.linkOut(project.settings.sources).absoluteURL()">
-                                    <i class="fas fa-code"></i> Source <i class="fas fa-external-link-alt"></i>
+                                    <font-awesome-icon :icon="['fas', 'code']" /> Source <font-awesome-icon :icon="['fas', 'external-link-alt']" />
                                 </a>
                             </li>
 
                             <li v-if="project.settings.support" id="support">
                                 <a :title="project.settings.support" target="_blank" rel="noopener"
                                    :href="routes.Application.linkOut(project.settings.support).absoluteURL()">
-                                    <i class="fas fa-question-circle"></i> Support <i
-                                        class="fas fa-external-link-alt"></i>
+                                    <font-awesome-icon :icon="['fas', 'question-circle']" /> Support <font-awesome-icon :icon="['fas', 'external-link-alt']" />
                                 </a>
                             </li>
                         </ul>
@@ -284,19 +283,17 @@
             routes: function () {
                 return jsRoutes.controllers;
             },
-            staredClasses: function () {
-                return {
-                    fas: this.project.user_actions.starred,
-                    far: !this.project.user_actions.starred,
-                    'fa-star': true
-                }
+            starredIcon() {
+                return [
+                    this.project.user_actions.starred ? 'fas' : 'far',
+                    'star'
+                ]
             },
-            watchingClasses() {
-                return {
-                    'fas': true,
-                    'fa-eye-slash': this.project.user_actions.watching,
-                    'fa-eye': !this.project.user_actions.watching,
-                }
+            watchingIcon() {
+                return [
+                    'fas',
+                    this.project.user_actions.watching ? 'eye-slash' : 'eye'
+                ]
             },
             isMember: function () {
                 return this.currentUser && this.members.filter(m => m.user === this.currentUser.name).length > 0;

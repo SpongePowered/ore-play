@@ -46,7 +46,7 @@
                 <div class="panel-heading">
                     <h3 class="panel-title">Pages</h3>
                     <button class="new-page btn yellow btn-xs pull-right" data-toggle="modal" data-target="#new-page" title="New">
-                        <i class="fas fa-plus"></i>
+                        <font-awesome-icon :icon="['fas', 'plus']" />
                         <!-- TODO Use API to create page -->
                     </button>
                 </div>

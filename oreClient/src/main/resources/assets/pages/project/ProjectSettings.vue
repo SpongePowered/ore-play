@@ -24,8 +24,8 @@
                                         </div>
                                         <div class="modal-footer">
                                             <button class="btn btn-default" data-dismiss="modal">Close</button>
-                                            <button class="btn btn-visibility-comment-submit btn-primary"><i
-                                                    class="fas fa-pencil-alt"></i> Submit
+                                            <button class="btn btn-visibility-comment-submit btn-primary">
+                                                <font-awesome-icon :icon="['fas', 'pencil-alt']" /> Submit
                                             </button>
                                         </div>
                                     </div>
@@ -191,7 +191,7 @@
                         </div>
 
                         <button name="save" class="btn btn-success btn-spinner" data-icon="fa-check">
-                            <i class="fas fa-check"></i> Save changes
+                            <font-awesome-icon :icon="['fas', 'check']" /> Save changes
                             {{ dataToSend }}
                         </button>
                     </div>
@@ -223,7 +223,7 @@
                                         <div class="btn-group pull-right">
                                             <button class="btn btn-default btn-reset">Reset</button>
                                             <button class="btn btn-info btn-upload pull-right" disabled>
-                                                <i class="fas fa-upload"></i> Upload
+                                                <font-awesome-icon :icon="['fas', 'upload']" /> Upload
                                             </button>
                                         </div>
                                     </div>
@@ -237,20 +237,20 @@
                                 <h4>Deployment key</h4>
                                 <p>
                                     Generate a unique deployment key to enable build deployment from Gradle
-                                    <a href="#"><i class="fas fa-question-circle"></i></a>
+                                    <a href="#"><font-awesome-icon :icon="['fas', 'question-circle']" /></a>
                                 </p>
                                 <input class="form-control input-key" type="text" :value="deployKey" readonly/>
                             </div>
                             <div class="setting-content">
                                 <template v-if="deployKey !== null">
                                     <button class="btn btn-danger btn-block btn-key-revoke" :data-key-id="deployKey">
-                                        <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                        <span class="spinner" style="display: none;"><font-awesome-icon :icon="['fas', 'spinner']" spin /></span>
                                         <span class="text">Revoke key</span>
                                     </button>
                                 </template>
                                 <template v-else>
                                     <button class="btn btn-info btn-block btn-key-gen">
-                                        <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                        <span class="spinner" style="display: none;"><font-awesome-icon :icon="['fas', 'spinner']" spin /></span>
                                         <span class="text">Generate key</span>
                                     </button>
                                 </template>

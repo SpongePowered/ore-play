@@ -13,6 +13,7 @@ object NPMDeps {
   val queryString = "query-string" -> "6.11.1"
 
   val fontAwesome        = "@fortawesome/fontawesome-svg-core"   -> "1.2.27"
+  val fontAwesomeVue     = "@fortawesome/vue-fontawesome"        -> "0.1.9"
   val fontAwesomeSolid   = "@fortawesome/free-solid-svg-icons"   -> "5.12.1"
   val fontAwesomeRegular = "@fortawesome/free-regular-svg-icons" -> "5.12.1"
   val fontAwesomeBrands  = "@fortawesome/free-brands-svg-icons"  -> "5.12.1"
