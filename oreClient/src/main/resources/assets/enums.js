@@ -30,6 +30,19 @@ export class Platform {
                 color: { background: "#F7Cf0D", foreground: "#333333" },
                 priority: 0,
                 url: "https://spongepowered.org/downloads",
+                versions: {
+                    "8.x": ["8.0"],
+                    "7.x": ["7.0"],
+                    "6.x": ["6.0"],
+                    "5.x": ["5.0"],
+                    "4.x": ["4.0"]
+                },
+                minecraftVersions: {
+                    "1.12.x": ["7.0"],
+                    "1.11.x": ["6.0"],
+                    "1.10.x": ["5.0"],
+                    "1.8.9": ["4.0"],
+                }
             },
             {
                 id: "spongeforge",
@@ -37,7 +50,17 @@ export class Platform {
                 name: "SpongeForge",
                 color: { background: "#910020", foreground: "#FFFFFF" },
                 priority: 2,
-                url: "https://www.spongepowered.org/downloads/spongeforge"
+                url: "https://www.spongepowered.org/downloads/spongeforge",
+                versions: {
+                    "7.x": ["1.12.2-2838-7.1.10"],
+                    "6.x": ["1.11.2-2476-6.1.0-BETA-2792"],
+                    "5.x": ["1.10.2-2477-5.2.0-BETA-2793"]
+                },
+                minecraftVersions: {
+                    "1.12.x": ["1.12.2-2838-7.1.10"],
+                    "1.11.x": ["1.11.2-2476-6.1.0-BETA-2792"],
+                    "1.10.x": ["1.10.2-2477-5.2.0-BETA-2793"]
+                }
             },
             {
                 id: "spongevanilla",
@@ -45,7 +68,19 @@ export class Platform {
                 name: "SpongeVanilla",
                 color: { background: "#50C888", foreground: "#FFFFFF" },
                 priority: 2,
-                url: "https://www.spongepowered.org/downloads/spongevanilla"
+                url: "https://www.spongepowered.org/downloads/spongevanilla",
+                versions: {
+                    "7.x": ["1.12.2-7.1.10"],
+                    "6.x": ["1.11.2-6.1.0-BETA-27"],
+                    "5.x": ["1.10.2-5.2.0-BETA-403"],
+                    "4.x": ["1.8.9-4.2.0-BETA-352"],
+                },
+                minecraftVersions: {
+                    "1.12.x": ["1.12.2-7.1.10"],
+                    "1.11.x": ["1.11.2-6.1.0-BETA-27"],
+                    "1.10.x": ["1.10.2-5.2.0-BETA-403"],
+                    "1.8.9": ["1.8.9-4.2.0-BETA-352"],
+                }
             },
             {
                 id: "sponge",
@@ -53,7 +88,9 @@ export class Platform {
                 name: "SpongeCommon",
                 color: { background: "#5D5DFF", foreground: "#FFFFFF" },
                 priority: 1,
-                url: "https://www.spongepowered.org/downloads"
+                url: "https://www.spongepowered.org/downloads",
+                versions: {},
+                minecraftVersions: {}
             },
             {
                 id: "lantern",
@@ -61,7 +98,9 @@ export class Platform {
                 name: "Lantern",
                 color: { background: "#4EC1B4", foreground: "#FFFFFF" },
                 priority: 2,
-                url: "https://www.lanternpowered.org/"
+                url: "https://www.lanternpowered.org/",
+                versions: {},
+                minecraftVersions: {}
             },
             {
                 id: "forge",
@@ -70,7 +109,27 @@ export class Platform {
                 parent: true,
                 color: { background: "#DFA86A", foreground: "#FFFFFF" },
                 priority: 0,
-                url: "https://files.minecraftforge.net/"
+                url: "https://files.minecraftforge.net/",
+                versions: {},
+                minecraftVersions: {
+                    "1.15.2": ["31.1.0"],
+                    "1.15.1": ["30.0.51"],
+                    "1.15": ["29.0.4"],
+                    "1.14.4": ["28.2.0"],
+                    "1.14.3": ["27.0.60"],
+                    "1.14.2": ["26.0.63"],
+                    "1.13.2": ["25.0.219"],
+                    "1.12.2": ["14.23.5.2768"],
+                    "1.12.1": ["14.22.1.2478"],
+                    "1.12": ["14.21.1.2387"],
+                    "1.11.2": ["13.20.1.2386"],
+                    "1.11": ["13.19.1.2189"],
+                    "1.10.2": ["12.18.3.2185"],
+                    "1.10": ["12.18.0.2000"],
+                    "1.9.4": ["12.17.0.2051"],
+                    "1.9": ["12.16.1.1887"],
+                    "1.8.9": ["11.15.1.2318"]
+                }
             }
         ];
     }

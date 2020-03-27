@@ -388,7 +388,7 @@ object APIV2Queries extends DoobieOreProtocol {
             |             LEFT JOIN users u ON pv.author_id = u.id
             |             LEFT JOIN project_version_platforms pvp ON pv.id = pvp.version_id """.stripMargin
 
-    val coarsePlatfgorms = platforms.map {
+    val coarsePlatforms = platforms.map {
       case (name, optVersion) =>
         (name, optVersion.map(version => Platform.withValueOpt(name).fold(version)(_.coarseVersionOf(version))))
     }
@@ -402,16 +402,14 @@ object APIV2Queries extends DoobieOreProtocol {
           )
         }
 
-    NonEmptyList.fromList(stability).map(Fragments.in(fr"pv.stability", _))
-
     val filters = Fragments.whereAndOpt(
       Some(fr"p.plugin_id = $pluginId"),
       versionName.map(v => fr"pv.version_string = $v"),
-      if (coarsePlatfgorms.isEmpty) None
+      if (coarsePlatforms.isEmpty) None
       else
         Some(
           Fragments.or(
-            platforms.map {
+            coarsePlatforms.map {
               case (platform, Some(version)) => fr"pvp.platform = $platform AND pvp.platform_coarse_version = $version"
               case (platform, None)          => fr"pvp.platform = $platform"
             }: _*

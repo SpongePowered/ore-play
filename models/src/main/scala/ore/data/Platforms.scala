@@ -79,7 +79,7 @@ object Platform extends StringEnum[Platform] {
         2,
         "spongevanilla",
         "https://www.spongepowered.org/downloads/spongevanilla",
-        Some("""^\d+\.\d+\.\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$""".r)
+        Some("""^\d+\.\d+(?:\.\d+)?-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$""".r)
       )
 
   case object SpongeCommon
@@ -109,7 +109,7 @@ object Platform extends StringEnum[Platform] {
         0,
         "forge",
         "https://files.minecraftforge.net/",
-        Some("""^\d+\.(\d+)\.\d+(?:\.\d+)?$""".r)
+        Some("""^(?:\d+\.)?(\d+)\.\d+\.\d+$""".r)
       )
 
   def createVersionedPlatforms(

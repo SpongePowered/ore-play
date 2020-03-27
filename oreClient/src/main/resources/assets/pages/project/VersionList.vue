@@ -23,8 +23,8 @@
                                             <div class="col-xs-12">
                                                 <span class="text-bold">{{ version.name }}</span>
                                             </div>
-                                            <div class="col-xs-12" :set="stability = stabilities.fromId(version.tags.stability)">
-                                                <span class="channel" v-bind:style="{ background: stability.color }">{{ stability.title }}</span>
+                                            <div class="col-xs-12" :set="stabilityObj = stabilities.fromId(version.tags.stability)">
+                                                <span class="channel" v-bind:style="{ background: stabilityObj.color }">{{ stabilityObj.title }}</span>
                                             </div>
                                             <div v-if="version.tags.release_type" class="col-xs-12" :set="releaseType = releaseTypes.fromId(version.tags.release_type)">
                                                 <span class="channel" v-bind:style="{ background: releaseType.color }">{{ releaseType.title }}</span>
@@ -80,6 +80,7 @@
     import Tag from "../../components/Tag";
     import Pagination from "../../components/Pagination";
     import {Visibility, Stability, ReleaseType, Platform} from "../../enums";
+    import {API} from "../../api";
 
     export default {
         components: {
@@ -90,6 +91,14 @@
             permissions: Array,
             project: {
                 type: Object,
+                required: true
+            },
+            stability: {
+                type: Array,
+                required: true
+            },
+            platforms: {
+                type: Array,
                 required: true
             }
         },
@@ -108,10 +117,26 @@
                 this.update();
                 window.scrollTo(0,0);
             });
+            this.$watch(vm => vm.stability, () => {
+                this.page = 1;
+                this.update();
+                window.scrollTo(0,0);
+            });
+            this.$watch(vm => vm.platforms, () => {
+                this.page = 1;
+                this.update();
+                window.scrollTo(0,0);
+            });
         },
         methods: {
             update() {
-                apiV2Request("projects/" + this.project.plugin_id + "/versions", "GET", { limit: this.limit, offset: this.offset}).then((response) => {
+                let requestParams = {
+                    limit: this.limit,
+                    offset: this.offset,
+                    platforms: this.platforms,
+                    stability: this.stability
+                };
+                API.request("projects/" + this.project.plugin_id + "/versions", "GET", requestParams).then((response) => {
                     this.versions = response.result;
                     this.totalVersions = response.pagination.count;
                     this.loading = false;
