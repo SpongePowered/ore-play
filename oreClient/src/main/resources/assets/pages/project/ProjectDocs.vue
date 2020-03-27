@@ -16,14 +16,14 @@
             <div class="stats minor">
                 <p>Category: {{ parseCategory(project.category) }}</p>
                 <p>Published on {{ parseDate(project.created_at) }}</p>
-                <p>{{ project.stats.views }} views</p>
-                <p>{{ project.stats.stars }} <a
+                <p>{{ formatStats(project.stats.views) }} views</p>
+                <p>{{ formatStats(project.stats.stars) }} <a
                         :href="routes.Projects.showStargazers(project.namespace.owner, project.namespace.slug, null).absoluteURL()">stars</a>
                 </p>
-                <p>{{ project.stats.watchers }} <a
+                <p>{{ formatStats(project.stats.watchers) }} <a
                         :href="routes.Projects.showWatchers(project.namespace.owner, project.namespace.slug, null).absoluteURL()">watchers</a>
                 </p>
-                <p>{{ project.stats.downloads }} total downloads</p>
+                <p>{{ formatStats(project.stats.downloads) }} total downloads</p>
                 <p v-if="project.settings.license.name !== null">
                     <span>Licensed under </span>
                     <a target="_blank" rel="noopener" :href="project.settings.license.url">{{project.settings.license.name}}</a>
@@ -356,6 +356,9 @@
                         //TODO
                     }
                 });
+            },
+            formatStats(number) {
+                return numberWithCommas(number);
             }
         }
     }
