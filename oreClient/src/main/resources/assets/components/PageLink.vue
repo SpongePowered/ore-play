@@ -2,9 +2,7 @@
     <li class="list-group-item">
         <a v-if="page.children" :class="expandedChildren ? 'page-collapse' : 'page-expand'"
            @click="expandedChildren = !expandedChildren">
-            <!-- FIXME This isn't working -->
-            <i v-show="expandedChildren" class="far fa-minus-square"></i>
-            <i v-show="!expandedChildren" class="far fa-plus-square"></i>
+            <font-awesome-icon :icon="['far', expandedChildren ? 'minus-square' : 'plus-square']" />
         </a>
         <router-link
                 v-if="!page.navigational"
@@ -17,7 +15,7 @@
         </span>
 
         <div v-if="permissions.includes('edit_page')" class="pull-right">
-            <a href="#" @click="$emit('edit-page', page)"><i style="padding-left:5px" class="fas fa-edit"></i></a>
+            <a href="#" @click="$emit('edit-page', page)"><font-awesome-icon style="padding-left:5px" :icon="['fas', 'edit']" /></a>
         </div>
 
         <page-list v-if="page.children && expandedChildren" :pages="page.children" :project="project"
