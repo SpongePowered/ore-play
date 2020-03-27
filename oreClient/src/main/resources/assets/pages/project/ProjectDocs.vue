@@ -51,7 +51,7 @@
                     <template v-if="permissions.includes('edit_page')">
                         <button class="new-page btn yellow btn-xs pull-right" data-toggle="modal"
                                 data-target="#edit-page" title="New">
-                            <i class="fas fa-plus"></i>
+                            <font-awesome-icon :icon="['fas', 'plus']" />
                         </button>
 
                         <div class="modal fade" id="edit-page" tabindex="-1" role="dialog"

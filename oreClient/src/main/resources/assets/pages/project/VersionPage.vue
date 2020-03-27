@@ -26,10 +26,10 @@
                                 <i v-if="permissions.includes('reviewer') && versionObj.review_state.approved_by && versionObj.review_state.approved_at" class="minor">
                                     <strong> {{ versionObj.review_state.approved_by }} </strong> approved this version on <strong> {{ prettifyDate(versionObj.review_state.approved_at) }} </strong>
                                 </i>
-                                <i data-toggle="tooltip"
-                                   data-placement="left"
-                                   :title="versionObj.review_state = 'partially_reviewed' ? 'Partially Approved' : 'Approved'"
-                                   class="far fa-lg fa-check-circle"></i>
+                                <font-awesome-icon :icon="['far', 'check-circle']" size="lg"
+                                                   data-toggle="tooltip"
+                                                   data-placement="left"
+                                                   :title="versionObj.review_state = 'partially_reviewed' ? 'Partially Approved' : 'Approved'" />
                             </template>
                         </div>
                     </div>
@@ -40,20 +40,20 @@
                         <div>
                             <a v-if="permissions.includes('reviewer')" :href="routes.Reviews.showReviews(project.namespace.owner, project.namespace.slug, versionObj.name).absoluteURL()" :class="{btn: true, 'btn-info': isReviewStateChecked, 'btn-success': !isReviewStateChecked}">
                                 <template v-if="isReviewStateChecked">Review logs</template>
-                                <i v-else class="fas fa-play"></i> Start review
+                                <font-awesome-icon :icon="['fas', 'play']" /> Start review
                             </a>
 
                             <a v-if="versionObj.visibility === 'softDelete'" class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                title="This version has already been deleted">
-                                <i class="fas fa-trash"></i> Delete
+                                <font-awesome-icon :icon="['fas', 'trash']" /> Delete
                             </a>
                             <template v-else-if="permissions.includes('delete_version')">
                                 <a v-if="publicVersions === 1" class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                    title="Every project must have at least one version">
-                                    <i class="fas fa-trash"></i> Delete
+                                    <font-awesome-icon :icon="['fas', 'trash']" /> Delete
                                 </a>
                                 <button v-else type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
-                                    <i class="fas fa-trash"></i> Delete
+                                    <font-awesome-icon :icon="['fas', 'trash']" /> Delete
                                 </button>
                             </template>
 
@@ -61,7 +61,7 @@
                                 <a :href="routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null).absoluteURL()"
                                    title="Download the latest recommended version" data-toggle="tooltip"
                                 data-placement="bottom" class="btn btn-primary">
-                                <i class="fas fa-download"></i> Download
+                                    <font-awesome-icon :icon="['fas', 'download']" /> Download
                                 </a>
                                 <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="caret"></span>
@@ -100,7 +100,7 @@
                 <div class="row">
                     <div v-if="!isReviewStateChecked" class="col-md-12">
                         <div class="alert-review alert alert-info" role="alert">
-                            <i class="fas fa-info-circle"></i>
+                            <font-awesome-icon :icon="['fas', 'info-circle']" />
                             This version has not been reviewed by our moderation staff and may not be safe for download.
                         </div>
                     </div>
@@ -135,14 +135,14 @@
 
                         <li class="list-group-item" v-for="depend in dependencyObs.filter(d => !platforms.isPlatformDependency(d))">
                             <!-- TODO: Use vue link -->
-                            <a v-if="depend.project" :href="routes.project.Projects.show(depend.project.namespace.owner, depend.project.namespace.slug).absoluteURL()">
+                            <a v-if="depend.project" :href="routes.project.Projects.show(depend.project.namespace.owner, depend.project.namespace.slug, '').absoluteURL()">
                                 <strong>{{ depend.project.name }}</strong>
                             </a>
                             <div v-else class="minor">
                                 {{ depend.pluginId }}
-                                <i class="fas fa-question-circle"
-                                   title="This plugin is not available for download on Ore"
-                                data-toggle="tooltip" data-placement="right"></i>
+                                <font-awesome-icon :icon="['fas', 'question-circle']"
+                                                   title="This plugin is not available for download on Ore"
+                                                   data-toggle="tooltip" data-placement="right"/>
                             </div>
                             <p class="version-string" v-if="depend.version">{{ depend.version }}</p>
                         </li>
@@ -307,22 +307,25 @@
                     this.versionObj = v;
 
                     for(let dependency of v.dependencies) {
+                        let depObj = {pluginId: dependency.plugin_id, version: dependency.version, project: null};
 
-                        API.request('projects/' + this.project.plugin_id).then(d => {
-                            if (this.version === v.name) {
-                                this.dependencyObs.push({pluginId: dependency.plugin_id, version: dependency.version, project: d})
-                            }
-                        }).catch(error => {
+                        if(Platform.isPlatformDependency(depObj)) {
+                            this.dependencyObs.push(depObj)
+                        }
+                        else {
+                            API.request('projects/' + dependency.plugin_id).then(d => {
+                                depObj.project = d;
+                                this.dependencyObs.push(depObj)
+                            }).catch(error => {
 
-                            if(error === 404) {
-                                if(this.version === v.name) {
-                                    this.dependencyObs.push({pluginId: dependency.plugin_id, version: dependency.version, project: null})
+                                if(error === 404) {
+                                    this.dependencyObs.push(depObj)
                                 }
-                            }
-                            else {
-                                // TODO
-                            }
-                        })
+                                else {
+                                    // TODO
+                                }
+                            })
+                        }
                     }
                 }).catch((error) => {
                     this.versionObj = null;

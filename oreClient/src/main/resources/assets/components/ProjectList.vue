@@ -1,7 +1,7 @@
 <template>
     <div>
         <div v-show="loading">
-            <i class="fas fa-spinner fa-spin"></i>
+            <font-awesome-icon spin :icon="['fas', 'spinner']" />
             <span>Loading projects for you...</span>
         </div>
         <div v-show="!loading">
@@ -24,12 +24,12 @@
                                         </div>
                                         <div class="col-sm-6 hidden-xs">
                                             <div class="info minor">
-                                                <span class="stat" title="Views"><i class="fas fa-eye"></i> {{ formatStats(project.stats.views) }}</span>
-                                                <span class="stat" title="Download"><i class="fas fa-download"></i> {{ formatStats(project.stats.downloads) }}</span>
-                                                <span class="stat" title="Stars"><i class="fas fa-star"></i> {{ formatStats(project.stats.stars) }}</span>
+                                                <span class="stat" title="Views"><font-awesome-icon :icon="['fas', 'eye']" /> {{ formatStats(project.stats.views) }}</span>
+                                                <span class="stat" title="Download"><font-awesome-icon :icon="['fas', 'download']" /> {{ formatStats(project.stats.downloads) }}</span>
+                                                <span class="stat" title="Stars"><font-awesome-icon :icon="['fas', 'star']" /> {{ formatStats(project.stats.stars) }}</span>
 
                                                 <span :title="categoryFromId(project.category).name" class="stat">
-                                                    <i :class="'fa-' + categoryFromId(project.category).icon" class="fas"></i>
+                                                    <font-awesome-icon :icon="['fas', categoryFromId(project.category).icon]" />
                                                 </span>
                                             </div>
                                         </div>
@@ -52,7 +52,7 @@
                             @prev="$emit('prevPage')"></Pagination>
             </div>
             <div v-else class="list-group-item empty-project-list">
-                <i class="far fa-2x fa-sad-tear"></i>
+                <font-awesome-icon :icon="['far', 'sad-tear']" size="2x" />
                 <span>Oops! No projects found...</span>
             </div>
         </div>
