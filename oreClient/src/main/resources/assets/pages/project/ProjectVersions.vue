@@ -18,7 +18,7 @@
                         <label :for="'stability-' + stabilityFor.id" class="channel" :style="{background: stabilityFor.color}">{{ stabilityFor.title }}</label>
                         <input :id="'stability-' + stabilityFor.id" type="checkbox" class="pull-right"
                                :checked="stability.includes(stabilityFor.id)"
-                               @click="toggleStability(stabilityFor.id)">
+                               @click="toggleStability($event, stabilityFor.id)">
                     </li>
                 </ul>
             </div>
@@ -116,11 +116,12 @@
             }
         },
         methods: {
-            toggleStability(id) {
+            toggleStability(event, id) {
                 if(this.stability.includes(id)) {
                     this.stability.splice(this.stability.indexOf(id), 1);
                 } else if(this.stability.length + 1 === Stability.values.length) {
                     this.stability = [];
+                    event.preventDefault();
                 } else {
                     this.stability.push(id);
                 }
