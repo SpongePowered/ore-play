@@ -11,7 +11,7 @@ import play.api.mvc.{ActionBuilder, ActionFilter, ActionFunction, ActionRefiner,
 import controllers.apiv2.helpers.{APIScope, ApiError, ApiErrors}
 import controllers.{OreBaseController, OreControllerComponents}
 import controllers.sugar.CircePlayController
-import controllers.sugar.Requests.ApiRequest
+import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
 import db.impl.query.APIV2Queries
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{OrganizationTable, ProjectTable, UserTable}
@@ -83,8 +83,13 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
     } yield res
   }
 
-  def apiAction: ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
+  def apiAction(scope: APIScope): ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
     def executionContext: ExecutionContext = ec
+
+    def permissionIn(scope: Scope, apiInfo: ApiAuthInfo): UIO[Permission] =
+      if (scope == GlobalScope) ZIO.succeed(apiInfo.globalPerms)
+      else apiInfo.key.fold(ZIO.succeed(apiInfo.globalPerms))(_.permissionsIn(scope))
+
     override protected def refine[A](request: Request[A]): Future[Either[Result, ApiRequest[A]]] = {
       def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> "OreApi")
 
@@ -97,10 +102,14 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
           .runDbCon(APIV2Queries.getApiAuthInfo(token).option)
           .get
           .asError(unAuth("Invalid session"))
+        scopePerms <- {
+          val res: IO[Result, Permission] = apiScopeToRealScope(scope).flatMap(permissionIn(_, info)).asError(NotFound)
+          res
+        }
         res <- {
           if (info.expires.isBefore(OffsetDateTime.now())) {
             service.deleteWhere(ApiSession)(_.token === token) *> IO.fail(unAuth("Api session expired"))
-          } else ZIO.succeed(ApiRequest(info, request))
+          } else ZIO.succeed(ApiRequest(info, scopePerms, request))
         }
       } yield res
 
@@ -155,15 +164,9 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
   def permApiAction(perms: Permission, scope: APIScope): ActionFilter[ApiRequest] = new ActionFilter[ApiRequest] {
     override protected def executionContext: ExecutionContext = ec
 
-    override protected def filter[A](request: ApiRequest[A]): Future[Option[Result]] = {
-      //Techically we could make this faster by first checking if the global perms have the needed perms,
-      //but then we wouldn't get the 404 on a non existent scope.
-      val scopePerms: IO[Unit, Permission] =
-        apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, *]](_))
-      val res = scopePerms.asError(NotFound).ensure(Forbidden)(_.has(perms))
-
-      zioToFuture(res.flip.option)
-    }
+    override protected def filter[A](request: ApiRequest[A]): Future[Option[Result]] =
+      if (request.scopePermission.has(perms)) Future.successful(None)
+      else Future.successful(Some(Forbidden))
   }
 
   def cachingAction: ActionFunction[ApiRequest, ApiRequest] =
@@ -188,7 +191,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
     }
 
   def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
-    Action.andThen(apiAction).andThen(permApiAction(perms, scope))
+    Action.andThen(apiAction(scope)).andThen(permApiAction(perms, scope))
 
   def CachingApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
     ApiAction(perms, scope).andThen(cachingAction)

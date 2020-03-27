@@ -366,7 +366,10 @@ GET     /projects/:pluginId/description                      @controllers.apiv2.
 
 ###
 #  summary: Returns the members of a project
-#  description: Returns the members of a project. Requires the `view_public_info` permission.
+#  description: >-
+#    Returns the members of a project. Requires the `view_public_info` permission.
+#    Unless the user also has the 'manage_subject_members' permission, only accepted roles
+#    will be shown.
 #  tags:
 #    - Projects
 #  parameters:

@@ -5,6 +5,7 @@ import java.time.OffsetDateTime
 import ore.data.project.Category
 import ore.models.project.Version.{ReleaseType, Stability}
 import ore.models.project.{ReviewState, Visibility}
+import ore.permission.NamedPermission
 
 import enumeratum._
 import enumeratum.values._
@@ -34,6 +35,8 @@ object APIV2 {
   implicit val visibilityCodec: Codec[Visibility]   = valueEnumCodec(Visibility)(_.nameKey)
   implicit val categoryCodec: Codec[Category]       = valueEnumCodec(Category)(_.apiName)
   implicit val reviewStateCodec: Codec[ReviewState] = valueEnumCodec(ReviewState)(_.apiName)
+
+  implicit val namedPermissionCodec: Codec[NamedPermission] = APIV2.enumCodec(NamedPermission)(_.entryName)
 
   //Project
   @SnakeCaseJsonCodec case class Project(
@@ -92,7 +95,9 @@ object APIV2 {
   @SnakeCaseJsonCodec case class Role(
       name: String,
       title: String,
-      color: String
+      color: String,
+      permissions: List[NamedPermission],
+      isAccepted: Boolean
   )
 
   //Version

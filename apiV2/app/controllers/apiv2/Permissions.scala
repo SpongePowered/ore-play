@@ -62,8 +62,7 @@ class Permissions(
     has(permissions, pluginId, organizationName)((seq, perm) => seq.exists(perm.has(_)))
 }
 object Permissions {
-
-  implicit val namedPermissionCodec: Codec[NamedPermission] = APIV2.enumCodec(NamedPermission)(_.entryName)
+  import APIV2.namedPermissionCodec
 
   @SnakeCaseJsonCodec case class KeyPermissions(
       `type`: APIScopeType,

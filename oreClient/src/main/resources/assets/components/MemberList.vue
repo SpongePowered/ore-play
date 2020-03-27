@@ -47,10 +47,11 @@
                 <h3 class="pull-left panel-title">Members</h3>
 
                 <div v-if="permissions.includes('manage_subject_members')" class="pull-right">
-                    <a v-if="!editable" :href="settingsCall"
-                       class="btn yellow btn-xs">
-                        <font-awesome-icon :icon="['fas', 'pencil-alt']" />
-                    </a>
+                    <router-link v-if="!editable && settingsRoute" :to="settingsRoute" v-slot="{ href, navigate }">
+                        <a v-if="!editable" :href="href" @click="navigate" class="btn yellow btn-xs">
+                            <font-awesome-icon :icon="['fas', 'pencil-alt']" />
+                        </a>
+                    </router-link>
 
                     <form v-if="saveCall !== null" :action="saveCall" method="post" id="save">
                         <CSRFField></CSRFField>
@@ -73,7 +74,7 @@
                         <p style="display: none;" class="role-id">{{ role.name }}</p>
 
                         <template
-                                v-if="editable && permissions.includes('manage_subject_members') /*&& role.permissions.includes('manage_subject_members')*/">
+                                v-if="editable && permissions.includes('manage_subject_members') && !role.permissions.includes('manage_subject_members')">
                             <a href="#">
                                 <font-awesome-icon style="padding-left:5px" :icon="['fas', 'trash']" data-toggle="modal"
                                    data-target="#modal-user-delete" />
@@ -83,8 +84,8 @@
 
 
                         <span class="minor pull-right">
-                            <!-- TODO <template v-if="role.is_accepted">{{ role.title }}</template> -->
-                            <span class="minor">(Invited as {{ role.title }})</span>
+                            <span v-if="role.is_accepted">{{ role.title }}</span>
+                            <span v-else class="minor">(Invited as {{ role.title }})</span>
                         </span>
                     </li>
                 </template>
@@ -125,7 +126,7 @@
                 default: false
             },
             removeCall: String,
-            settingsCall: String,
+            settingsRoute: Object,
             saveCall: String
         },
         computed: {

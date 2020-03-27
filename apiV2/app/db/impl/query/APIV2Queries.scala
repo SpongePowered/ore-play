@@ -347,7 +347,7 @@ object APIV2Queries extends DoobieOreProtocol {
   }
 
   def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2.ProjectMember] =
-    sql"""|SELECT u.name, array_agg(r.name)
+    sql"""|SELECT u.name, array_agg(r.name), array_agg(upr.is_accepted)
           |  FROM projects p
           |         JOIN user_project_roles upr ON p.id = upr.project_id
           |         JOIN users u ON upr.user_id = u.id

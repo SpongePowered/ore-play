@@ -31,7 +31,9 @@ object Requests {
       globalPerms: Permission
   )
 
-  case class ApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) with OreMDC {
+  case class ApiRequest[A](apiInfo: ApiAuthInfo, scopePermission: Permission, request: Request[A])
+      extends WrappedRequest[A](request)
+      with OreMDC {
     def user: Option[Model[User]] = apiInfo.user
 
     def globalPermissions: Permission = apiInfo.globalPerms

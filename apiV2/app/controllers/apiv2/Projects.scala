@@ -233,14 +233,20 @@ class Projects(
       }
 
   def showMembers(pluginId: String, limit: Option[Long], offset: Long): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { r =>
       service
         .runDbCon(
           APIV2Queries
             .projectMembers(pluginId, limitOrDefault(limit, 25), offsetOrZero(offset))
             .to[Vector]
         )
-        .map(xs => Ok(xs.asJson))
+        .map { xs =>
+          val users =
+            if (r.scopePermission.has(Permission.ManageProjectMembers)) xs
+            else xs.map(u => u.copy(roles = u.roles.filter(_.isAccepted))).filter(_.roles.nonEmpty)
+
+          Ok(users.asJson)
+        }
     }
 
   def showProjectStats(pluginId: String, fromDateString: String, toDateString: String): Action[AnyContent] =
