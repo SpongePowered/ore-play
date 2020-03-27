@@ -92,7 +92,8 @@ SELECT pv.id,
        nullif(nullif(dep.dep_version, 'null'), ''),
        platform_coarse_version_from_dependency(dep.dep_id, dep.dep_version)
 FROM project_versions pv,
-     unnest(pv.dependency_ids, pv.dependency_versions) AS dep(dep_id, dep_version);
+     unnest(pv.dependency_ids, pv.dependency_versions) AS dep(dep_id, dep_version)
+WHERE dep.dep_id IN ('spongeapi', 'sponge', 'spongeforge', 'spongevanilla', 'forge', 'lanern');
 
 DROP FUNCTION platform_coarse_version_from_dependency;
 

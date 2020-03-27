@@ -2,27 +2,27 @@
     <div v-if="enabled">
         <!-- Edit -->
         <button type="button" class="btn btn-sm btn-edit btn-page btn-default" :class="editClasses" title="Edit" @click="state = 'edit'">
-            <i class="fas fa-edit"></i> Edit
+            <font-awesome-icon :icon="['fas', 'edit']" /> Edit
         </button>
 
         <!-- Preview -->
         <div class="btn-edit-container btn-preview-container" :class="buttonStateClasses" title="Preview">
             <button v-if="state !== 'display'" type="button" class="btn btn-sm btn-preview btn-page btn-default" :class="previewClasses" @click="state = 'preview'">
-                <i class="fas fa-eye"></i>
+                <font-awesome-icon :icon="['fas', 'eye']" />
             </button>
         </div>
 
         <!-- Save -->
         <div v-if="savable" class="btn-edit-container btn-save-container" :class="buttonStateClasses" title="Save">
             <button class="btn btn-sm btn-save btn-page btn-default" @click="$emit('saved', rawData)">
-                <i class="fas fa-save"></i>
+                <font-awesome-icon :icon="['fas', 'save']" />
             </button>
         </div>
 
         <!-- Cancel -->
         <div v-if="cancellable" class="btn-edit-container btn-cancel-container" :class="buttonStateClasses" title="Cancel">
             <button type="button" class="btn btn-sm btn-cancel btn-page btn-default" @click="reset">
-                <i class="fas fa-times"></i>
+                <font-awesome-icon :icon="['fas', 'times']" />
             </button>
         </div>
 
@@ -31,7 +31,7 @@
             <div class="btn-edit-container btn-delete-container" :class="buttonStateClasses" title="Delete">
                 <button type="button" class="btn btn-sm btn-page-delete btn-page btn-default"
                         data-toggle="modal" data-target="#modal-page-delete">
-                    <i class="fas fa-trash"></i>
+                    <font-awesome-icon :icon="['fas', 'trash']" />
                 </button>
             </div>
 

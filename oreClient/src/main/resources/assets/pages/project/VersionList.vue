@@ -8,7 +8,7 @@
             </div>
         </div>
         <div v-show="loading">
-            <i class="fas fa-spinner fa-spin"></i>
+            <font-awesome-icon :icon="['fas', 'spinner']" spin></font-awesome-icon>
             <span>Loading versions for you...</span>
         </div>
         <div v-show="!loading">
@@ -43,11 +43,11 @@
                                     <div class="col-xs-3 hidden-xs">
                                         <div class="row">
                                             <div class="col-xs-12">
-                                                <i class="fas fa-fw fa-calendar"></i>
+                                                <font-awesome-icon :icon="['fas', 'calendar']" fixed-width></font-awesome-icon>
                                                 {{ formatDate(version.created_at) }}
                                             </div>
                                             <div class="col-xs-12">
-                                                <i class="far fa-fw fa-file"></i>
+                                                <font-awesome-icon :icon="['far', 'file']" fixed-width></font-awesome-icon>
                                                 {{ formatSize(version.file_info.size_bytes) }}
                                             </div>
                                         </div>
@@ -55,11 +55,11 @@
                                     <div class="col-xs-3 hidden-xs">
                                         <div class="row">
                                             <div class="col-xs-12">
-                                                <i class="fas fa-fw fa-user-tag"></i>
+                                                <font-awesome-icon :icon="['fas', 'user-tag']" fixed-width></font-awesome-icon>
                                                 {{ version.author }}
                                             </div>
                                             <div class="col-xs-12">
-                                                <i class="fas fa-fw fa-download"></i>
+                                                <font-awesome-icon :icon="['fas', 'download']" fixed-width></font-awesome-icon>
                                                 {{ version.stats.downloads }} Downloads
                                             </div>
                                         </div>

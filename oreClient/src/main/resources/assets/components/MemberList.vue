@@ -8,7 +8,7 @@
                     <input type="hidden"/>
                     <icon :src="avatarUrl('Spongie')" class="user-avatar-xs"></icon>
                     <a class="username"></a>
-                    <i class="fas fa-times user-cancel"></i>
+                    <font-awesome-icon :icon="['fas', 'times']" class="user-cancel" />
                     <role-select class="pull-right" :role-category="roleCategory"></role-select>
                 </li>
             </ul>
@@ -49,14 +49,14 @@
                 <div v-if="permissions.includes('manage_subject_members')" class="pull-right">
                     <a v-if="!editable" :href="settingsCall"
                        class="btn yellow btn-xs">
-                        <i class="fas fa-pencil-alt"></i>
+                        <font-awesome-icon :icon="['fas', 'pencil-alt']" />
                     </a>
 
                     <form v-if="saveCall !== null" :action="saveCall" method="post" id="save">
                         <CSRFField></CSRFField>
                         <button class="btn-members-save btn btn-default btn-panel btn-xs" data-toggle="tooltip"
                                 data-placement="top" data-title="Save Users" style="display: none;">
-                            <i class="fas fa-paper-plane"></i>
+                            <font-awesome-icon :icon="['fas', 'paper-plane']" />
                         </button>
                     </form>
                 </div>
@@ -75,10 +75,10 @@
                         <template
                                 v-if="editable && permissions.includes('manage_subject_members') /*&& role.permissions.includes('manage_subject_members')*/">
                             <a href="#">
-                                <i style="padding-left:5px" class="fas fa-trash" data-toggle="modal"
-                                   data-target="#modal-user-delete"></i>
+                                <font-awesome-icon style="padding-left:5px" :icon="['fas', 'trash']" data-toggle="modal"
+                                   data-target="#modal-user-delete" />
                             </a>
-                            <a href="#"><i style="padding-left:5px" class="fas fa-edit"></i></a>
+                            <a href="#"><font-awesome-icon style="padding-left:5px" :icon="['fas', 'edit']" /></a>
                         </template>
 
 
