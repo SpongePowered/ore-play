@@ -246,3 +246,32 @@
     margin-top: 15px;
   }
 }
+
+.ignore-anchor {
+  color:#555;
+}
+
+.ignore-anchor:hover {
+  text-decoration:none;
+  color:#555;
+}
+
+.version-list {
+  .list-group > .list-group-item > .container-fluid > .row {
+    display: flex;
+    align-items: center;
+  }
+  .btn {
+    margin-bottom: 1rem;
+  }
+
+  div.list-group-item {
+    color: #555;
+  }
+
+  div.list-group-item:hover, div.list-group-item:focus {
+    text-decoration:none;
+    color:#555;
+    background-color:#f5f5f5
+  }
+}

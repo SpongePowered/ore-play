@@ -389,6 +389,12 @@ select.form-control, input.form-control {
   font-style: italic;
 }
 
+.text-truncated {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 @media(min-width: 768px) {
   .pull-right-sm {
     float: right;

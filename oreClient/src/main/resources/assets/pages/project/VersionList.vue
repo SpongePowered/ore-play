@@ -14,60 +14,69 @@
         <div v-show="!loading">
             <div class="list-group">
                 <template v-for="version in versions">
-                    <router-link :to="{name: 'version', params: {project, permissions, 'version': version.name}}" v-slot="{ href, navigate }">
-                        <a :href="href" @click="navigate" class="list-group-item" :class="[classForVisibility(version.visibility)]">
-                            <div class="container-fluid">
-                                <div class="row">
-                                    <div class="col-xs-6 col-sm-3">
-                                        <div class="row">
-                                            <div class="col-xs-12">
-                                                <span class="text-bold">{{ version.name }}</span>
-                                            </div>
-                                            <div class="col-xs-12" :set="stabilityObj = stabilities.fromId(version.tags.stability)">
-                                                <span class="channel" v-bind:style="{ background: stabilityObj.color }">{{ stabilityObj.title }}</span>
-                                            </div>
-                                            <div v-if="version.tags.release_type" class="col-xs-12" :set="releaseType = releaseTypes.fromId(version.tags.release_type)">
-                                                <span class="channel" v-bind:style="{ background: releaseType.color }">{{ releaseType.title }}</span>
-                                            </div>
+                    <div class="list-group-item" :class="classForVisibility(version.visibility)">
+                        <div class="container-fluid">
+                            <div class="row">
+                                <div class="col-xs-4">
+                                    <span class="text-bold" style="font-size: 16px;">{{ version.name }}</span>
+                                </div>
+                                <div class="col-xs-4">
+                                    <span class="channel"
+                                          :style="{ background: stabilities.fromId(version.tags.stability).color }">{{ stabilities.fromId(version.tags.stability).title }}</span>
+                                    <span v-if="version.tags.release_type" class="channel"
+                                          :style="{ background: releaseTypes.fromId(version.tags.release_type).color }">{{ releaseTypes.fromId(version.tags.release_type).title }}</span>
+                                </div>
+                                <div class="col-xs-4">
+                                    <Tag v-if="version.tags.mixin"
+                                         name="Mixin"
+                                         :color="{background: '#FFA500', foreground: '#333333'}"
+                                    /><Tag v-for="platform in groupPlatforms(version.tags.platforms)"
+                                         :key="platform.id + ':' + platform.versions.join('|')"
+                                         :name="platform.shortName"
+                                         :data="platform.versions.join('|')"
+                                         :color="platform.color" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-4">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <font-awesome-icon :icon="['fas', 'calendar']" fixed-width></font-awesome-icon>
+                                            <span class="text-bold">Uploaded: </span>
+                                            {{ formatDate(version.created_at) }}
                                         </div>
-                                    </div>
-                                    <div class="col-xs-6 col-sm-3">
-                                        <Tag v-if="version.tags.mixin" name="Mixin" :color="{background: '#FFA500', foreground: '#333333'}"></Tag>
-
-                                        <Tag v-for="platform in version.tags.platforms" :set="platformObj = platformById(platform.platform)"
-                                             :key="platform.platform + ':' + platform.platform_version"
-                                             :name="platformObj.shortName"
-                                             :data="platform.platform_version"
-                                             :color="platformObj.color"></Tag>
-                                    </div>
-                                    <div class="col-xs-3 hidden-xs">
-                                        <div class="row">
-                                            <div class="col-xs-12">
-                                                <font-awesome-icon :icon="['fas', 'calendar']" fixed-width></font-awesome-icon>
-                                                {{ formatDate(version.created_at) }}
-                                            </div>
-                                            <div class="col-xs-12">
-                                                <font-awesome-icon :icon="['far', 'file']" fixed-width></font-awesome-icon>
-                                                {{ formatSize(version.file_info.size_bytes) }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-xs-3 hidden-xs">
-                                        <div class="row">
-                                            <div class="col-xs-12">
-                                                <font-awesome-icon :icon="['fas', 'user-tag']" fixed-width></font-awesome-icon>
-                                                {{ version.author }}
-                                            </div>
-                                            <div class="col-xs-12">
-                                                <font-awesome-icon :icon="['fas', 'download']" fixed-width></font-awesome-icon>
-                                                {{ version.stats.downloads }} Downloads
-                                            </div>
+                                        <div class="col-xs-12">
+                                            <font-awesome-icon :icon="['far', 'file']" fixed-width></font-awesome-icon>
+                                            <span class="text-bold">Size: </span>
+                                            {{ formatSize(version.file_info.size_bytes) }}
                                         </div>
                                     </div>
                                 </div>
+                                <div class="col-xs-4">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <font-awesome-icon :icon="['fas', 'user-tag']" fixed-width></font-awesome-icon>
+                                            <span class="text-bold">Author: </span>
+                                            {{ version.author }}
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <font-awesome-icon :icon="['fas', 'download']" fixed-width></font-awesome-icon>
+                                            <span class="text-bold">Downloads: </span>
+                                            {{ formatStats(version.stats.downloads) }} Downloads
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-4">
+                                    <div class="btn-group" role="button">
+                                        <router-link :to="{name: 'version', params: {project, permissions, 'version': version.name}}" v-slot="{ href, navigate }">
+                                            <a :href="href" @click="navigate" class="btn btn-primary"><font-awesome-icon :icon="['fas', 'info-circle']" /> Changelog</a>
+                                        </router-link>
+                                        <a :href="routes.Versions.download(project.namespace.owner, project.namespace.slug, version.name, null).absoluteURL()" class="btn btn-primary"><font-awesome-icon :icon="['fas', 'download']" /> Download</a>
+                                    </div>
+                                </div>
                             </div>
-                        </a>
-                    </router-link>
+                        </div>
+                    </div>
                 </template>
             </div>
 
@@ -151,8 +160,42 @@
             classForVisibility(visibility) {
                 return Visibility.fromName(visibility).class;
             },
-            platformById(id) {
-                return Platform.fromId(id)
+            groupPlatforms(platforms) {
+                let versions = {};
+
+                for (let platform of platforms) {
+                    if (typeof versions[platform.platform] === 'undefined') {
+                        versions[platform.platform] = []
+                    }
+
+                    if (platform.display_platform_version) {
+                        versions[platform.platform].push(platform.display_platform_version);
+                    }
+                    else {
+                        versions[platform.platform].push(platform.platform_version);
+                    }
+                }
+
+                let platformObjs = [];
+
+                for(let platform in versions) {
+                    if(versions.hasOwnProperty(platform)) {
+                        let obj = Platform.fromId(platform);
+
+                        platformObjs.push({
+                            id: platform,
+                            shortName: obj.shortName,
+                            versions: versions[platform],
+                            color: obj.color
+                        })
+                    }
+                }
+
+                return platformObjs;
+
+            },
+            formatStats(number) {
+                return numberWithCommas(number);
             }
         },
         computed: {
@@ -180,15 +223,3 @@
         }
     }
 </script>
-
-<style lang="scss">
-    .version-list {
-        .list-group > .list-group-item > .container-fluid > .row {
-            display: flex;
-            align-items: center;
-        }
-        .btn {
-            margin-bottom: 1rem;
-        }
-    }
-</style>

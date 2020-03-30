@@ -88,7 +88,7 @@ POST    /notifications/read/:id                                     @controllers
 
 POST    /prompts/read/:id                                           @controllers.Users.markPromptRead(id: Int)
 
-GET     /$user<^\w[\w.-]+[A-Za-z0-9](?<!\.js|\.json|\.css|\.htm|\.html|\.xml|\.jpg|\.jpeg|\.png|\.gif|\.bmp|\.ico|\.tif|\.tiff|\.woff)$>                                                      @controllers.Users.showProjects(user)
+GET     /$user<.\w[\w.-]+[A-Za-z0-9](?<!\.js|\.json|\.css|\.htm|\.html|\.xml|\.jpg|\.jpeg|\.png|\.gif|\.bmp|\.ico|\.tif|\.tiff|\.woff)$>                                                      @controllers.Users.showProjects(user)
 GET     /:user/sitemap.xml                                          @controllers.Users.userSitemap(user)
 POST    /:user/settings/tagline                                     @controllers.Users.saveTagline(user)
 POST    /:user/settings/lock/:locked                                @controllers.Users.setLocked(user, locked: Boolean, sso: Option[String], sig: Option[String])

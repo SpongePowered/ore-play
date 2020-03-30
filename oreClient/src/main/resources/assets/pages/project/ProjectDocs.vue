@@ -36,11 +36,14 @@
                 </div>
 
                 <ul class="list-group promoted-list">
-                    <li v-for="version in project.promoted_versions" class="list-group-item">
+                    <li v-for="version in project.promoted_versions" class="list-group-item" style="line-height: 2.4em;">
                         <router-link :to="{name: 'version', params: {project, permissions, 'version': version.version}}"
                                      v-slot="{ href, navigate }">
                             <a :href="href" @click="navigate">{{ version.version }}</a>
                         </router-link>
+                        <a class="pull-right btn btn-primary" :href="routes.Versions.download(project.namespace.owner, project.namespace.slug, version.version, null).absoluteURL()">
+                            <font-awesome-icon :icon="['fas', 'download']" /> Download
+                        </a>
                     </li>
                 </ul>
             </div>

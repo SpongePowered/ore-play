@@ -119,17 +119,16 @@ object APIV2Queries extends DoobieOreProtocol {
             |       p.owner_name,
             |       p.slug,
             |       to_jsonb(
-            |               ARRAY(SELECT DISTINCT
-            |                   ON (promoted.version_string) jsonb_build_object(
-            |                                                        'version_string', promoted.version_string,
-            |                                                        'platforms', promoted.platforms,
-            |                                                        'platform_versions', promoted.platform_versions,
-            |                                                        'platform_coarse_versions', promoted.platform_coarse_versions,
-            |                                                        'stability', promoted.stability,
-            |                                                        'release_type', promoted.release_type)
+            |               ARRAY(SELECT jsonb_build_object(
+            |                                    'version_string', promoted.version_string,
+            |                                    'platforms', promoted.platforms,
+            |                                    'platform_versions', promoted.platform_versions,
+            |                                    'platform_coarse_versions', promoted.platform_coarse_versions,
+            |                                    'stability', promoted.stability,
+            |                                    'release_type', promoted.release_type)
             |                         FROM promoted_versions promoted
             |                         WHERE promoted.project_id = p.id
-            |                         LIMIT 5)) AS promoted_versions,
+            |                         ORDER BY promoted.platform_coarse_versions DESC LIMIT 5)) AS promoted_versions,
             |       ps.views,
             |       ps.downloads,
             |       ps.recent_views,
@@ -381,8 +380,8 @@ object APIV2Queries extends DoobieOreProtocol {
             |       pv.uses_mixin,
             |       pv.stability,
             |       pv.release_type,
-            |       array_agg(pvp.platform),
-            |       array_agg(pvp.platform_version)
+            |       coalesce(array_agg(pvp.platform) FILTER ( WHERE pvp.platform IS NOT NULL ), ARRAY []::TEXT[]),
+            |       coalesce(array_agg(pvp.platform_version) FILTER ( WHERE pvp.platform IS NOT NULL ), ARRAY []::TEXT[])
             |    FROM projects p
             |             JOIN project_versions pv ON p.id = pv.project_id
             |             LEFT JOIN users u ON pv.author_id = u.id
@@ -493,28 +492,27 @@ object APIV2Queries extends DoobieOreProtocol {
             |       p.owner_name,
             |       p.slug,
             |       to_jsonb(
-            |               ARRAY(SELECT DISTINCT
-            |                   ON (promoted.version_string) jsonb_build_object(
-            |                                                        'version_string', promoted.version_string,
-            |                                                        'platforms', promoted.platforms,
-            |                                                        'platform_versions', promoted.platform_versions,
-            |                                                        'platform_coarse_versions', promoted.platform_coarse_versions,
-            |                                                        'stability', promoted.stability,
-            |                                                        'release_type', promoted.release_type)
+            |               ARRAY(SELECT jsonb_build_object(
+            |                                    'version_string', promoted.version_string,
+            |                                    'platforms', promoted.platforms,
+            |                                    'platform_versions', promoted.platform_versions,
+            |                                    'platform_coarse_versions', promoted.platform_coarse_versions,
+            |                                    'stability', promoted.stability,
+            |                                    'release_type', promoted.release_type)
             |                         FROM promoted_versions promoted
             |                         WHERE promoted.project_id = p.id
-            |                         LIMIT 5)) AS promoted_versions,
-            |       pss.views,
-            |       pss.downloads,
-            |       pss.recent_views,
-            |       pss.recent_downloads,
-            |       pss.stars,
-            |       pss.watchers,
+            |                         ORDER BY promoted.platform_coarse_versions DESC LIMIT 5)) AS promoted_versions,
+            |       ps.views,
+            |       ps.downloads,
+            |       ps.recent_views,
+            |       ps.recent_downloads,
+            |       ps.stars,
+            |       ps.watchers,
             |       p.category,
             |       p.visibility
             |    FROM users u JOIN """.stripMargin ++ table ++
-        fr"""|ps ON u.id = ps.user_id
-             |             JOIN projects p ON ps.project_id = p.id JOIN pss ON ps.project_id = pss.id""".stripMargin
+        fr"""|psw ON u.id = psw.user_id
+             |             JOIN projects p ON psw.project_id = p.id JOIN project_stats ps ON psw.project_id = ps.id""".stripMargin
 
     val visibilityFrag =
       if (canSeeHidden) None
