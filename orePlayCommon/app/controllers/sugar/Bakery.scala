@@ -1,10 +1,8 @@
 package controllers.sugar
 
-import javax.inject.Inject
-
 import ore.OreConfig
 
-final class Bakery @Inject()(config: OreConfig) {
+final class Bakery(config: OreConfig) {
 
   def bake(
       name: String,

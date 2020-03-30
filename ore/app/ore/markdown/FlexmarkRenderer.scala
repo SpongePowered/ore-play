@@ -2,7 +2,6 @@ package ore.markdown
 
 import java.net.{URI, URISyntaxException}
 import java.util
-import javax.inject.{Inject, Singleton}
 
 import play.twirl.api.Html
 
@@ -22,8 +21,7 @@ import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.ast.Node
 import com.vladsch.flexmark.util.data.MutableDataSet
 
-@Singleton
-class FlexmarkRenderer @Inject()(config: OreConfig) extends MarkdownRenderer {
+class FlexmarkRenderer(config: OreConfig) extends MarkdownRenderer {
   private val options = new MutableDataSet()
     .set[java.lang.Boolean](HtmlRenderer.SUPPRESS_HTML, true)
     .set[java.lang.String](AnchorLinkExtension.ANCHORLINKS_TEXT_PREFIX, "<i class=\"fas fa-link\"></i>")
@@ -56,13 +54,9 @@ class FlexmarkRenderer @Inject()(config: OreConfig) extends MarkdownRenderer {
   override def render(s: String, settings: MarkdownRenderer.RenderSettings): Html = {
     val options = new MutableDataSet(this.options)
 
-    settings.linkEscapeChars.foreach { chars =>
-      options.set[String](WikiLinkExtension.LINK_ESCAPE_CHARS, chars)
-    }
+    settings.linkEscapeChars.foreach(chars => options.set[String](WikiLinkExtension.LINK_ESCAPE_CHARS, chars))
 
-    settings.linkPrefix.foreach { prefix =>
-      options.set[String](WikiLinkExtension.LINK_PREFIX, prefix)
-    }
+    settings.linkPrefix.foreach(prefix => options.set[String](WikiLinkExtension.LINK_PREFIX, prefix))
 
     Html(htmlRenderer.withOptions(options).render(markdownParser.parse(s)))
   }

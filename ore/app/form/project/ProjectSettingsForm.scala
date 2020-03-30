@@ -124,9 +124,7 @@ case class ProjectSettingsForm(
         val addRoles = this
           .build()
           .toVector
-          .parTraverse { role =>
-            dossier.addRole(newProject)(role.userId, role.copy(projectId = newProject.id))
-          }
+          .parTraverse(role => dossier.addRole(newProject)(role.userId, role.copy(projectId = newProject.id)))
           .flatMap { roles =>
             val notifications = roles.map { role =>
               Notification(

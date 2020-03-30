@@ -1,7 +1,5 @@
 package controllers
 
-import javax.inject.{Inject, Singleton}
-
 import play.api.i18n.{Lang, MessagesApi}
 import play.api.mvc.{Action, AnyContent}
 
@@ -25,8 +23,7 @@ import zio.{IO, Task, UIO}
 /**
   * Controller for handling Organization based actions.
   */
-@Singleton
-class Organizations @Inject()(forms: OreForms)(
+class Organizations(forms: OreForms)(
     implicit oreComponents: OreControllerComponents,
     auth: SpongeAuthApi[UIO],
     messagesApi: MessagesApi

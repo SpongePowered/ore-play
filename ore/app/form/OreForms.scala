@@ -1,7 +1,6 @@
 package form
 
 import java.net.{MalformedURLException, URL}
-import javax.inject.Inject
 
 import scala.util.Try
 
@@ -33,7 +32,7 @@ import zio.UIO
   * Collection of forms used in this application.
   */
 //noinspection ConvertibleToMethodValue
-class OreForms @Inject()(
+class OreForms(
     implicit config: OreConfig,
     factory: ProjectFactory,
     service: ModelService[UIO],

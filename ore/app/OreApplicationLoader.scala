@@ -291,9 +291,7 @@ class OreComponents(context: ApplicationLoader.Context)
   def applicationResource[A](resource: Resource[Task, A]): A = {
     val (a, finalize) = runtime.unsafeRunSync(resource.allocated).toEither.toTry.get
 
-    applicationLifecycle.addStopHook { () =>
-      runtime.unsafeRunToFuture(finalize)
-    }
+    applicationLifecycle.addStopHook(() => runtime.unsafeRunToFuture(finalize))
 
     a
   }

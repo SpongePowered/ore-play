@@ -1,7 +1,5 @@
 package util
 
-import javax.inject.Inject
-
 import play.api.libs.json.{JsObject, Json}
 
 import ore.OreConfig
@@ -9,7 +7,7 @@ import ore.OreConfig
 /**
   * Contains status information about the application.
   */
-final class StatusZ @Inject()(config: OreConfig) {
+final class StatusZ(config: OreConfig) {
 
   val BuildNum  = "BUILD_NUMBER"
   val GitBranch = "GIT_BRANCH"

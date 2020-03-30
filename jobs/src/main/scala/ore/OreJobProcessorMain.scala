@@ -195,9 +195,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
       def readFile(file: String) =
         Await.result(
           StreamConverters
-            .fromInputStream(
-              () => this.getClass.getClassLoader.getResourceAsStream(file)
-            )
+            .fromInputStream(() => this.getClass.getClassLoader.getResourceAsStream(file))
             .fold(ByteString.empty)(_ ++ _)
             .map(_.utf8String)
             .runWith(Sink.head),

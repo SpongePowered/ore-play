@@ -136,9 +136,7 @@ object AkkaSSOApi {
   ): F[AkkaSSOApi[F]] = {
     def futureToF[A](future: => Future[A]) = {
       import system.dispatcher
-      F.async[A] { callback =>
-        future.onComplete(t => callback(t.toEither))
-      }
+      F.async[A](callback => future.onComplete(t => callback(t.toEither)))
     }
 
     val cachedIsAvailable = cacher.cache(reset)(

@@ -3,7 +3,6 @@ package controllers.project
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
 import java.util.Base64
-import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -48,8 +47,7 @@ import zio.{IO, Task, UIO, ZIO}
 /**
   * Controller for handling Project related actions.
   */
-@Singleton
-class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory)(
+class Projects(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory)(
     implicit oreComponents: OreControllerComponents,
     fileIO: FileIO[ZIO[Blocking, Throwable, *]],
     messagesApi: MessagesApi,
@@ -112,8 +110,8 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     import cats.instances.vector._
     for {
       all <- user.organizations.allFromParent
-      canCreate <- all.toVector.parTraverse(
-        org => user.permissionsIn(org).map(_.has(Permission.CreateProject)).tupleLeft(org.id.value)
+      canCreate <- all.toVector.parTraverse(org =>
+        user.permissionsIn(org).map(_.has(Permission.CreateProject)).tupleLeft(org.id.value)
       )
     } yield {
       // Filter by can Create Project
@@ -162,8 +160,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @return View of project
     */
   def showDiscussion(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).asyncF {
-    implicit request =>
-      this.stats.projectViewed(UIO.succeed(Ok(views.discuss(request.data, request.scoped))))
+    implicit request => this.stats.projectViewed(UIO.succeed(Ok(views.discuss(request.data, request.scoped))))
   }
 
   /**
@@ -730,8 +727,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     */
   def showFlags(author: String, slug: String): Action[AnyContent] =
     Authenticated.andThen(PermissionAction(Permission.ModNotesAndFlags)).andThen(ProjectAction(author, slug)) {
-      implicit request =>
-        Ok(views.admin.flags(request.data))
+      implicit request => Ok(views.admin.flags(request.data))
     }
 
   /**
@@ -745,8 +741,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       getProject(author, slug).flatMap { project =>
         import cats.instances.vector._
         project.decodeNotes.toVector.parTraverse(note => ModelView.now(User).get(note.user).value.tupleLeft(note)).map {
-          notes =>
-            Ok(views.admin.notes(project, Model.unwrapNested(notes)))
+          notes => Ok(views.admin.notes(project, Model.unwrapNested(notes)))
         }
       }
     }

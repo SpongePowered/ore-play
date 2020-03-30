@@ -1,7 +1,5 @@
 package controllers.project
 
-import javax.inject.{Inject, Singleton}
-
 import play.api.mvc.{Action, AnyContent}
 
 import controllers.{OreBaseController, OreControllerComponents}
@@ -22,8 +20,7 @@ import zio.{IO, Task}
 /**
   * Controller for handling Channel related actions.
   */
-@Singleton
-class Channels @Inject()(forms: OreForms)(
+class Channels(forms: OreForms)(
     implicit oreComponents: OreControllerComponents
 ) extends OreBaseController {
 

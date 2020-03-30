@@ -5,7 +5,6 @@ import java.nio.file.{Files, StandardCopyOption}
 import java.time.temporal.ChronoUnit
 import java.time.OffsetDateTime
 import java.util.UUID
-import javax.inject.{Inject, Singleton}
 
 import scala.annotation.unused
 
@@ -51,8 +50,7 @@ import zio.{IO, Task, UIO, ZIO}
 /**
   * Controller for handling Version related actions.
   */
-@Singleton
-class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory)(
+class Versions(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory)(
     implicit oreComponents: OreControllerComponents,
     messagesApi: MessagesApi,
     env: OreEnv,
@@ -721,9 +719,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             warn.downloadId.?.isEmpty
           }
           .toZIO
-          .flatMap { warn =>
-            if (warn.hasExpired) service.delete(warn) *> IO.fail(()) else IO.succeed(warn)
-          }
+          .flatMap(warn => if (warn.hasExpired) service.delete(warn) *> IO.fail(()) else IO.succeed(warn))
           .flatMap { warn =>
             // warning confirmed and redirect to download
             for {

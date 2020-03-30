@@ -2,7 +2,6 @@ package ore.models.user
 
 import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.concurrent.TimeUnit
-import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -19,8 +18,7 @@ import zio.clock.Clock
 import zio.duration.Duration
 import zio.{Schedule, UIO, ZIO}
 
-@Singleton
-class UserTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
+class UserTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit ec: ExecutionContext,
     service: ModelService[UIO]
 ) {

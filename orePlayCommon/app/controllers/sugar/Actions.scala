@@ -156,9 +156,7 @@ trait Actions extends Calls with ActionHelpers { self =>
     def authenticatedAs(user: Model[User], maxAge: Int = -1): UIO[Result] = {
       val session = users.createSession(user)
       val age     = if (maxAge == -1) None else Some(maxAge)
-      session.map { s =>
-        result.withCookies(bakery.bake(AuthTokenName, s.token, age))
-      }
+      session.map(s => result.withCookies(bakery.bake(AuthTokenName, s.token, age)))
     }
 
     /**

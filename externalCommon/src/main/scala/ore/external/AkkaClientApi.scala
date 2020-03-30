@@ -65,9 +65,7 @@ abstract class AkkaClientApi[F[_], E[_], ErrorType](
 
   private def futureToF[A](future: => Future[A]) = {
     import system.dispatcher
-    F.async[A] { callback =>
-      future.onComplete(t => callback(t.toEither))
-    }
+    F.async[A](callback => future.onComplete(t => callback(t.toEither)))
   }
 
   protected def makeRequest(request: HttpRequest): F[HttpResponse] = {

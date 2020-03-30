@@ -1,7 +1,5 @@
 package ore
 
-import javax.inject.{Inject, Singleton}
-
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
@@ -18,8 +16,7 @@ import ore.util.StringUtils._
   *
   * @param config Base configuration file
   */
-@Singleton
-final class OreConfig @Inject()(config: Configuration) {
+final class OreConfig(config: Configuration) {
 
   // Sub-configs
   val root: Configuration = this.config

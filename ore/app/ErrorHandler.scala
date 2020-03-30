@@ -1,4 +1,4 @@
-import javax.inject._
+import javax.inject.Provider
 
 import scala.concurrent._
 
@@ -15,13 +15,13 @@ import ore.OreConfig
 import ErrorHandler.OreHttpErrorHandler
 
 /** A custom server error handler */
-class ErrorHandler @Inject()(
+class ErrorHandler(
     httpHandler: OreHttpErrorHandler,
     jsonHandler: JsonHttpErrorHandler
 ) extends HtmlOrJsonHttpErrorHandler(httpHandler, jsonHandler)
 object ErrorHandler {
 
-  class OreHttpErrorHandler @Inject()(
+  class OreHttpErrorHandler(
       env: Environment,
       conf: Configuration,
       sourceMapper: OptionalSourceMapper,

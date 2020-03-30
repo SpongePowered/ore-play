@@ -241,8 +241,10 @@ object ProjectBase {
               .void,
             F.unit
           )
-        rv       <- proj.recommendedVersion(ModelView.now(Version)).sequence.subflatMap(identity).value
-        projects <- service.runDBIO(proj.versions(ModelView.raw(Version)).sortBy(_.createdAt.desc).result) // TODO optimize: only query one version
+        rv <- proj.recommendedVersion(ModelView.now(Version)).sequence.subflatMap(identity).value
+        projects <- service.runDBIO(
+          proj.versions(ModelView.raw(Version)).sortBy(_.createdAt.desc).result
+        ) // TODO optimize: only query one version
         res <- {
           if (rv.contains(version))
             service.update(proj)(

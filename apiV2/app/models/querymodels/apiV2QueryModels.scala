@@ -341,8 +341,8 @@ object APIV2ProjectStatsQuery {
   def asProtocol(stats: Seq[APIV2ProjectStatsQuery]): Map[String, APIV2.ProjectStatsDay] =
     //We use a TreeMap to keep stuff sorted. Technically it shouldn't make a difference for JSON, but it's easier to work with when debugging.
     stats
-      .groupMapReduce(_.day.toString)(d => APIV2.ProjectStatsDay(d.downloads, d.views.toLong))(
-        (v1, v2) => APIV2.ProjectStatsDay(v1.downloads + v2.downloads, v1.views + v2.views)
+      .groupMapReduce(_.day.toString)(d => APIV2.ProjectStatsDay(d.downloads, d.views.toLong))((v1, v2) =>
+        APIV2.ProjectStatsDay(v1.downloads + v2.downloads, v1.views + v2.views)
       )
       .to(TreeMap)
 }
@@ -356,8 +356,8 @@ object APIV2VersionStatsQuery {
   def asProtocol(stats: Seq[APIV2VersionStatsQuery]): Map[String, APIV2.VersionStatsDay] =
     //We use a TreeMap to keep stuff sorted. Technically it shouldn't make a difference for JSON, but it's easier to work with when debugging.
     stats
-      .groupMapReduce(_.day.toString)(d => APIV2.VersionStatsDay(d.downloads.toLong))(
-        (v1, v2) => APIV2.VersionStatsDay(v1.downloads + v2.downloads)
+      .groupMapReduce(_.day.toString)(d => APIV2.VersionStatsDay(d.downloads.toLong))((v1, v2) =>
+        APIV2.VersionStatsDay(v1.downloads + v2.downloads)
       )
       .to(TreeMap)
 }

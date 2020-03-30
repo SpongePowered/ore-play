@@ -3,7 +3,6 @@ package ore.models.project.io
 import scala.language.higherKinds
 
 import java.nio.file.Path
-import javax.inject.Inject
 
 import ore.OreEnv
 import ore.models.project.Project
@@ -121,7 +120,7 @@ trait ProjectFiles[+F[_]] {
 }
 object ProjectFiles {
 
-  class LocalProjectFiles[F[_]] @Inject()(val env: OreEnv)(implicit fileIO: FileIO[F], F: Bracket[F, Throwable])
+  class LocalProjectFiles[F[_]](val env: OreEnv)(implicit fileIO: FileIO[F], F: Bracket[F, Throwable])
       extends ProjectFiles[F] {
 
     override def getProjectDir(owner: String, name: String): Path = getUserDir(owner).resolve(name)

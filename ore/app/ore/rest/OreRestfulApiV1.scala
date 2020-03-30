@@ -1,7 +1,6 @@
 package ore.rest
 
 import java.lang.Math._
-import javax.inject.{Inject, Singleton}
 
 import scala.annotation.unused
 
@@ -103,9 +102,7 @@ trait OreRestfulApiV1 extends OreWrites {
     val versionIds = projects.map(_._2.id.value)
 
     for {
-      chans <- service.runDBIO(queryProjectChannels(projectIds).result).map { chans =>
-        chans.groupBy(_.projectId)
-      }
+      chans <- service.runDBIO(queryProjectChannels(projectIds).result).map(chans => chans.groupBy(_.projectId))
       vTags <- service.runDBIO(queryVersionTags(versionIds).result).map { p =>
         p.groupBy(_._1).view.mapValues(_.map(_._2))
       }
@@ -311,16 +308,15 @@ trait OreRestfulApiV1 extends OreWrites {
         val seq      = pages.filter(_.parentId == parentId)
         val pageById = pages.map(p => (p.id.value, p)).toMap
         toJson(
-          seq.map(
-            page =>
-              obj(
-                "createdAt" -> page.createdAt.value,
-                "id"        -> page.id.value,
-                "name"      -> page.name,
-                "parentId"  -> page.parentId,
-                "slug"      -> page.slug,
-                "fullSlug"  -> page.fullSlug(page.parentId.flatMap(pageById.get).map(_.obj))
-              )
+          seq.map(page =>
+            obj(
+              "createdAt" -> page.createdAt.value,
+              "id"        -> page.id.value,
+              "name"      -> page.name,
+              "parentId"  -> page.parentId,
+              "slug"      -> page.slug,
+              "fullSlug"  -> page.fullSlug(page.parentId.flatMap(pageById.get).map(_.obj))
+            )
           )
         )
       }
@@ -411,8 +407,8 @@ trait OreRestfulApiV1 extends OreWrites {
     OptionT(projectBase.withPluginId(pluginId)).flatMap { project =>
       project
         .versions(ModelView.now(Version))
-        .find(
-          v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === (Visibility.Public: Visibility)
+        .find(v =>
+          v.versionString.toLowerCase === version.toLowerCase && v.visibility === (Visibility.Public: Visibility)
         )
         .semiflatMap { v =>
           service.runDBIO(v.tags(ModelView.raw(VersionTag)).result).map { tags =>
@@ -431,5 +427,4 @@ trait OreRestfulApiV1 extends OreWrites {
   def getTagColor(tagId: Int): Option[JsValue] = TagColor.withValueOpt(tagId).map(toJson(_)(tagColorWrites))
 }
 
-@Singleton
-class OreRestfulServerV1 @Inject()(val service: ModelService[UIO], val config: OreConfig) extends OreRestfulApiV1
+class OreRestfulServerV1 @Inject() (val service: ModelService[UIO], val config: OreConfig) extends OreRestfulApiV1

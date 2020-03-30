@@ -3,7 +3,6 @@ package ore.models.user
 import scala.language.implicitConversions
 
 import java.time.OffsetDateTime
-import javax.inject.Inject
 
 import ore.OreConfig
 import ore.db.{DbRef, ObjId}
@@ -12,7 +11,7 @@ import ore.db.{DbRef, ObjId}
   * Represents a "fake" User object for bypassing the standard authentication
   * method in a development environment.
   */
-final class FakeUser @Inject()(config: OreConfig) {
+final class FakeUser(config: OreConfig) {
 
   private lazy val conf = config.app.fakeUser
 

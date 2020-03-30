@@ -1,7 +1,5 @@
 package db.impl.service
 
-import javax.inject.{Inject, Singleton}
-
 import play.api.db.slick.DatabaseConfigProvider
 
 import ore.db.impl.OrePostgresDriver.api._
@@ -20,8 +18,7 @@ import zio.{Task, ZIO}
   *
   * @param db DatabaseConfig
   */
-@Singleton
-class OreModelService @Inject()(
+class OreModelService(
     db: DatabaseConfigProvider,
     transactor: Transactor[OreModelService.F]
 ) extends ModelService[OreModelService.F] {

@@ -1,7 +1,5 @@
 package controllers
 
-import javax.inject.{Inject, Singleton}
-
 import scala.annotation.unused
 
 import play.api.i18n.MessagesApi
@@ -34,8 +32,7 @@ import zio.{IO, Task, UIO, ZIO}
 /**
   * Controller for general user actions.
   */
-@Singleton
-class Users @Inject()(
+class Users(
     fakeUser: FakeUser,
     forms: OreForms,
     mailer: Mailer,

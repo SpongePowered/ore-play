@@ -2,8 +2,6 @@ package controllers
 
 import scala.language.higherKinds
 
-import javax.inject.Inject
-
 import scala.concurrent.ExecutionContext
 
 import play.api.http.FileMimeTypes
@@ -38,7 +36,7 @@ trait OreControllerEffects[F[_]] {
   def organizations: OrganizationBase[F]
 }
 
-case class DefaultOreControllerComponents @Inject()(
+case class DefaultOreControllerComponents(
     uioEffects: OreControllerEffects[UIO],
     bakery: Bakery,
     config: OreConfig,
@@ -53,7 +51,7 @@ case class DefaultOreControllerComponents @Inject()(
     assetsFinder: AssetsFinder
 ) extends OreControllerComponents
 
-case class DefaultOreControllerEffects[F[_]] @Inject()(
+case class DefaultOreControllerEffects[F[_]](
     service: ModelService[F],
     sso: SSOApi[F],
     users: UserBase[F],

@@ -4,7 +4,6 @@ import java.nio.file.Path
 import java.time.format.DateTimeParseException
 import java.time.{LocalDate, OffsetDateTime}
 import java.util.UUID
-import javax.inject.{Inject, Singleton}
 
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -49,8 +48,7 @@ import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}
 
-@Singleton
-class ApiV2Controller @Inject()(
+class ApiV2Controller(
     factory: ProjectFactory,
     val errorHandler: HttpErrorHandler,
     fakeUser: FakeUser,
@@ -78,8 +76,8 @@ class ApiV2Controller @Inject()(
       parsedAuth = Authorization.parseFromValueString(stringAuth).leftMap { es =>
         NonEmptyList
           .fromList(es)
-          .fold(Right(unAuth(ApiError("Could not parse authorization header"))))(
-            es2 => Right(unAuth(ApiErrors(es2.map(_.summary))))
+          .fold(Right(unAuth(ApiError("Could not parse authorization header"))))(es2 =>
+            Right(unAuth(ApiErrors(es2.map(_.summary))))
           )
       }
       auth <- ZIO.fromEither(parsedAuth)
@@ -270,8 +268,7 @@ class ApiV2Controller @Inject()(
 
   def authenticate(): Action[ApiSessionProperties] =
     Action.asyncF(defaultBody(parseCirce.decodeJson[ApiSessionProperties], ApiSessionProperties(None, None))) {
-      implicit request =>
-        if (request.body._fake.getOrElse(false)) authenticateDev else authenticateKeyPublic
+      implicit request => if (request.body._fake.getOrElse(false)) authenticateDev else authenticateKeyPublic
     }
 
   def deleteSession(): Action[AnyContent] = ApiAction(Permission.None, APIScope.GlobalScope).asyncF {
@@ -685,7 +682,8 @@ class ApiV2Controller @Inject()(
             .map { v =>
               v.copy(
                 createForumPost = data.createForumPost.getOrElse(project.settings.forumSync),
-                channelName = data.tags.getOrElse(Map.empty).view.mapValues(_.first).getOrElse("Channel", v.channelName),
+                channelName =
+                  data.tags.getOrElse(Map.empty).view.mapValues(_.first).getOrElse("Channel", v.channelName),
                 description = data.description
               )
             }

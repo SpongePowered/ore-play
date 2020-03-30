@@ -1,7 +1,6 @@
 package controllers
 
 import java.time.OffsetDateTime
-import javax.inject.{Inject, Singleton}
 
 import play.api.mvc.{Action, AnyContent}
 
@@ -34,8 +33,7 @@ import zio.interop.catz._
 /**
   * Controller for handling Review related actions.
   */
-@Singleton
-final class Reviews @Inject()(forms: OreForms)(
+final class Reviews(forms: OreForms)(
     implicit oreComponents: OreControllerComponents,
     renderer: MarkdownRenderer
 ) extends OreBaseController {

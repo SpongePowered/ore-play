@@ -1,7 +1,6 @@
 package controllers
 
 import java.util.{Base64, UUID}
-import javax.inject.{Inject, Singleton}
 
 import play.api.i18n.Messages
 import play.api.libs.json._
@@ -38,8 +37,7 @@ import zio.{Task, UIO, ZIO}
 /**
   * Ore API (v1)
   */
-@Singleton
-final class ApiV1Controller @Inject()(
+final class ApiV1Controller(
     api: OreRestfulApiV1,
     status: StatusZ,
     forms: OreForms,
@@ -175,9 +173,7 @@ final class ApiV1Controller @Inject()(
       val project     = projectData.project
 
       forms.VersionDeploy
-        .bindEitherT[ZIO[Blocking, Nothing, *]](
-          hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson))
-        )
+        .bindEitherT[ZIO[Blocking, Nothing, *]](hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
         .flatMap { formData =>
           OptionT(formData.channel.value: ZIO[Blocking, Nothing, Option[Model[Channel]]])
             .toRight(BadRequest(Json.obj("errors" -> "Invalid channel")))
@@ -207,9 +203,8 @@ final class ApiV1Controller @Inject()(
               .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(apiKeyExists => apiKeyExists._1)
               .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists._2)
               .semiflatMap(_ => project.user[Task].orDie)
-              .semiflatMap(
-                user =>
-                  user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(_.user[Task].orDie).getOrElse(user)
+              .semiflatMap(user =>
+                user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(_.user[Task].orDie).getOrElse(user)
               )
               .flatMap { owner =>
                 val pluginUpload = this.factory

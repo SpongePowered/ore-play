@@ -2,7 +2,6 @@ package ore.models.project
 
 import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.concurrent.TimeUnit
-import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -20,8 +19,7 @@ import zio.{Schedule, UIO, ZIO, duration}
 /**
   * Task that is responsible for publishing New projects
   */
-@Singleton
-class ProjectTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
+class ProjectTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit ec: ExecutionContext,
     service: ModelService[UIO]
 ) {

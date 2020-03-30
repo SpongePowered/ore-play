@@ -1,7 +1,5 @@
 package ore.models.project.factory
 
-import javax.inject.{Inject, Singleton}
-
 import scala.util.matching.Regex
 
 import play.api.cache.SyncCacheApi
@@ -374,8 +372,7 @@ trait ProjectFactory {
 
 }
 
-@Singleton
-class OreProjectFactory @Inject()(
+class OreProjectFactory(
     val service: ModelService[UIO],
     val config: OreConfig,
     val cacheApi: SyncCacheApi,

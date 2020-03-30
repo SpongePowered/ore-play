@@ -110,9 +110,7 @@ trait Mailer extends Runnable {
 
 }
 
-@Singleton
-final class SpongeMailer @Inject()(config: OreConfig, actorSystem: ActorSystem)(implicit ec: ExecutionContext)
-    extends Mailer {
+final class SpongeMailer(config: OreConfig, actorSystem: ActorSystem)(implicit ec: ExecutionContext) extends Mailer {
 
   private val conf = config.mail
 

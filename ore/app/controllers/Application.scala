@@ -5,7 +5,6 @@ import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
 import java.time.{LocalDate, OffsetDateTime}
 import java.util.Date
-import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.duration._
 import scala.util.Try
@@ -49,8 +48,7 @@ import zio.{IO, Task, UIO, ZIO}
 /**
   * Main entry point for application.
   */
-@Singleton
-final class Application @Inject()(forms: OreForms)(
+final class Application(forms: OreForms)(
     implicit oreComponents: OreControllerComponents,
     renderer: MarkdownRenderer
 ) extends OreBaseController {
@@ -73,18 +71,14 @@ final class Application @Inject()(forms: OreForms)(
     *
     * @return External link page
     */
-  def linkOut(remoteUrl: String): Action[AnyContent] = OreAction { implicit request =>
-    Ok(views.linkout(remoteUrl))
-  }
+  def linkOut(remoteUrl: String): Action[AnyContent] = OreAction(implicit request => Ok(views.linkout(remoteUrl)))
 
   /**
     * Display the home page.
     *
     * @return Home page
     */
-  def showHome(): Action[AnyContent] = OreAction { implicit request =>
-    Ok(views.home())
-  }
+  def showHome(): Action[AnyContent] = OreAction(implicit request => Ok(views.home()))
 
   /**
     * Shows the moderation queue for unreviewed versions.
@@ -142,9 +136,7 @@ final class Application @Inject()(forms: OreForms)(
       (
         service.runDbCon(AppQueries.getUnhealtyProjects(config.ore.projects.staleAge).to[Vector]),
         service.runDbCon(AppQueries.erroredJobs.to[Vector]),
-        projects.missingFile.flatMap { versions =>
-          versions.toVector.traverse(v => v.project[Task].orDie.tupleLeft(v))
-        }
+        projects.missingFile.flatMap(versions => versions.toVector.traverse(v => v.project[Task].orDie.tupleLeft(v)))
       ).parMapN { (unhealtyProjects, erroredJobs, missingFileProjects) =>
         val noTopicProjects = unhealtyProjects.filter(p => p.topicId.isEmpty || p.postId.isEmpty)
         val staleProjects = unhealtyProjects
@@ -400,14 +392,10 @@ final class Application @Inject()(forms: OreForms)(
       (
         service.runDbCon(AppQueries.getVisibilityNeedsApproval.to[Vector]),
         service.runDbCon(AppQueries.getVisibilityWaitingProject.to[Vector])
-      ).mapN { (needsApproval, waitingProject) =>
-        Ok(views.users.admin.visibility(needsApproval, waitingProject))
-      }
+      ).mapN((needsApproval, waitingProject) => Ok(views.users.admin.visibility(needsApproval, waitingProject)))
     }
 
-  def swagger(): Action[AnyContent] = OreAction { implicit request =>
-    Ok(views.swagger())
-  }
+  def swagger(): Action[AnyContent] = OreAction(implicit request => Ok(views.swagger()))
 
   def sitemapIndex(): Action[AnyContent] = Action.asyncF { implicit request =>
     service.runDbCon(AppQueries.sitemapIndexUsers.to[Vector]).map { users =>

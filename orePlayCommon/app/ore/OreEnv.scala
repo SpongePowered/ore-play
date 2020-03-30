@@ -8,7 +8,7 @@ import play.api.Environment
 /**
   * Helper class for getting commonly used Paths.
   */
-final class OreEnv @Inject()(val env: Environment, config: OreConfig) {
+final class OreEnv(val env: Environment, config: OreConfig) {
 
   lazy val root: Path    = this.env.rootPath.toPath
   lazy val public: Path  = this.root.resolve("public")

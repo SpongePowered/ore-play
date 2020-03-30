@@ -1,14 +1,12 @@
 package filters
 
-import javax.inject.Inject
-
 import scala.concurrent.ExecutionContext
 
 import play.api.mvc._
 
 import com.typesafe.scalalogging.Logger
 
-class LoggingFilter @Inject()(implicit ec: ExecutionContext) extends EssentialFilter {
+class LoggingFilter(implicit ec: ExecutionContext) extends EssentialFilter {
 
   val timingsLogger = Logger("Timings")
 

@@ -70,7 +70,8 @@ object StatTrackerQueries extends WebDoobieOreProtocol {
       if (includeVersionId) {
         case None    => bfr"version_id,"
         case Some(s) => bfr"${Fragment.const(s)}.version_id,"
-      } else _ => bfr""
+      }
+      else _ => bfr""
     val conflictColumn = if (includeVersionId) bfr"version_id" else bfr"project_id"
 
     val statColumnFrag = Fragment.const(statColumn)
