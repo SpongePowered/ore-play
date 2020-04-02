@@ -67,7 +67,7 @@
                                     </div>
                                 </div>
                                 <div class="col-xs-4">
-                                    <div class="btn-group" style="display: flex; justify-content: space-between">
+                                    <div class="btn-group d-flex d-flex-space-between">
                                         <router-link :to="{name: 'version', params: {project, permissions, 'version': version.name}}" v-slot="{ href, navigate }">
                                             <a :href="href" @click="navigate" class="btn btn-default mb-0"><font-awesome-icon :icon="['fas', 'info-circle']" /> Changelog</a>
                                         </router-link>

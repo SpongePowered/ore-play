@@ -450,3 +450,9 @@ select.form-control, input.form-control {
 * .tags:first-child .tag {
   margin-left: 0;
 }
+.d-flex {
+  display: flex;
+}
+.d-flex-space-between {
+  justify-content: space-between;
+}
