@@ -106,6 +106,12 @@
                 &:first-child, &:last-child {
                     border-radius: 0;
                 }
+
+                &:hover {
+                    border-color: #f7cf0d;
+                    background: #f7cf0d;
+                    color: #685603;
+                }
             }
 
             &.active {

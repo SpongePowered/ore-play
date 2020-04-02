@@ -67,11 +67,11 @@
                                     </div>
                                 </div>
                                 <div class="col-xs-4">
-                                    <div class="btn-group" role="button">
+                                    <div class="btn-group" style="display: flex; justify-content: space-between">
                                         <router-link :to="{name: 'version', params: {project, permissions, 'version': version.name}}" v-slot="{ href, navigate }">
-                                            <a :href="href" @click="navigate" class="btn btn-primary"><font-awesome-icon :icon="['fas', 'info-circle']" /> Changelog</a>
+                                            <a :href="href" @click="navigate" class="btn btn-default mb-0"><font-awesome-icon :icon="['fas', 'info-circle']" /> Changelog</a>
                                         </router-link>
-                                        <a :href="routes.Versions.download(project.namespace.owner, project.namespace.slug, version.name, null).absoluteURL()" class="btn btn-primary"><font-awesome-icon :icon="['fas', 'download']" /> Download</a>
+                                        <a :href="routes.Versions.download(project.namespace.owner, project.namespace.slug, version.name, null).absoluteURL()" class="btn btn-primary mb-0"><font-awesome-icon :icon="['fas', 'download']" /> Download</a>
                                     </div>
                                 </div>
                             </div>

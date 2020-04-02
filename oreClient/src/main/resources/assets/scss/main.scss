@@ -441,6 +441,12 @@ select.form-control, input.form-control {
 .mr-1 {
   margin-right: 0.5rem;
 }
+.ml-0 {
+  margin-left: 0;
+}
 .text-center {
   text-align: center;
+}
+* .tags:first-child .tag {
+  margin-left: 0;
 }
