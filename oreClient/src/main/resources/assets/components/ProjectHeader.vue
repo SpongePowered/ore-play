@@ -52,15 +52,29 @@
 
                     <template v-if="project.visibility !== 'softDelete'">
                         <template v-if="!isMember && currentUser">
-                            <button @click="toggleStarred" class="btn btn-default btn-star">
-                                <font-awesome-icon :icon="starredIcon" />
-                                <span :class="{starred: project.user_actions.starred }">{{ project.stats.stars }}</span>
-                            </button>
+                            <div class="btn-group" role="group" aria-label="Stars">
+                                <button @click="toggleStarred" class="btn btn-default btn-star">
+                                    <font-awesome-icon :icon="starredIcon" />
+                                    <span :class="{starred: project.user_actions.starred }">
+                                        {{ project.user_actions.starred ? 'Unstar' : 'Star' }}
+                                    </span>
+                                </button>
+                                <a :href="routes.project.Projects.showStargazers(project.namespace.owner, project.namespace.slug, null).absoluteURL()" class="btn btn-default">
+                                    {{ formatStats(project.stats.stars) }}
+                                </a>
+                            </div>
 
-                            <button @click="toggleWatching" class="btn btn-default btn-watch">
-                                <font-awesome-icon :icon="watchingIcon" />
-                                <span :class="{watching: project.user_actions.watching}">{{ project.stats.watchers }}</span>
-                            </button>
+                            <div class="btn-group" role="group" aria-label="Watchers">
+                                <button @click="toggleWatching" class="btn btn-default btn-watch">
+                                    <font-awesome-icon :icon="watchingIcon" />
+                                    <span :class="{watching: project.user_actions.watching}">
+                                        {{ project.user_actions.watching ? 'Unwatch' : 'Watch' }}
+                                    </span>
+                                </button>
+                                <a :href="routes.project.Projects.showWatchers(project.namespace.owner, project.namespace.slug, null).absoluteURL()" class="btn btn-default">
+                                    {{ formatStats(project.stats.watchers) }}
+                                </a>
+                            </div>
                         </template>
                         <template v-else>
                             <span class="minor stat-static">
@@ -368,6 +382,9 @@
                     console.log(xhr)
                     //TODO: Handle error
                 });
+            },
+            formatStats(number) {
+                return numberWithCommas(number);
             }
         }
     }

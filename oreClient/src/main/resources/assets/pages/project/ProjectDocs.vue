@@ -17,12 +17,6 @@
                 <p>Category: {{ parseCategory(project.category) }}</p>
                 <p>Published on {{ parseDate(project.created_at) }}</p>
                 <p>{{ formatStats(project.stats.views) }} views</p>
-                <p>{{ formatStats(project.stats.stars) }} <a
-                        :href="routes.Projects.showStargazers(project.namespace.owner, project.namespace.slug, null).absoluteURL()">stars</a>
-                </p>
-                <p>{{ formatStats(project.stats.watchers) }} <a
-                        :href="routes.Projects.showWatchers(project.namespace.owner, project.namespace.slug, null).absoluteURL()">watchers</a>
-                </p>
                 <p>{{ formatStats(project.stats.downloads) }} total downloads</p>
                 <p v-if="project.settings.license.name !== null">
                     <span>Licensed under </span>
