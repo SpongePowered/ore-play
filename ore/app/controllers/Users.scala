@@ -15,7 +15,7 @@ import ore.data.Prompt
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.query.UserQueries
-import ore.db.impl.schema.{ApiKeyTable, PageTable, ProjectTable, UserTable, VersionTable}
+import ore.db.impl.schema.{ApiKeyTable, PageTable, ProjectTable, SecurityLogEventTable, UserTable, VersionTable}
 import ore.db.{DbRef, Model}
 import ore.models.user.notification.{InviteFilter, NotificationFilter}
 import ore.models.user.{FakeUser, _}
@@ -26,6 +26,8 @@ import util.syntax._
 import views.{html => views}
 
 import cats.syntax.all._
+import com.github.tminglei.slickpg.InetString
+import io.circe.Json
 import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}
 
@@ -85,7 +87,17 @@ class Users(
           fromSponge = sponge.toUser
           // Complete authentication
           user <- users.getOrCreate(sponge.username, fromSponge, _ => IO.unit)
-          _    <- user.globalRoles.deleteAllFromParent
+          _ <- service.insert(
+            SecurityLogEvent(
+              user.id,
+              InetString(request.remoteAddress),
+              request.headers.get("User-Agent"),
+              ???,
+              SecurityLogEvent.EventType.Login,
+              None
+            )
+          )
+          _ <- user.globalRoles.deleteAllFromParent
           _ <- sponge.newGlobalRoles.fold(IO.unit) { roles =>
             ZIO.foreachPar_(roles.map(_.toDbRole.id))(user.globalRoles.addAssoc(_))
           }
@@ -307,8 +319,8 @@ class Users(
     }
   }
 
-  def editApiKeys(username: String): Action[AnyContent] =
-    Authenticated.asyncF { implicit request =>
+  def editApiKeys(username: String, sso: Option[String], sig: Option[String]): Action[AnyContent] =
+    VerifiedAction(username, sso, sig).asyncF { implicit request =>
       if (request.user.name == username) {
         for {
           t1 <- (
@@ -339,6 +351,23 @@ class Users(
           )
         }
       } else IO.fail(Forbidden)
+    }
+
+  def showSecurityLog(user: String, sso: Option[String], sig: Option[String]): Action[AnyContent] =
+    VerifiedAction(user, sso, sig).asyncF { implicit request =>
+      for {
+        t1 <- (
+          getOrga(user).option,
+          UserData.of(request, request.user)
+        ).parTupled
+        (orga, userData) = t1
+        t2 <- (
+          OrganizationData.of[Task](orga).value.orDie,
+          ScopedOrganizationData.of(request.currentUser, orga).value
+        ).parTupled
+        (orgaData, scopedOrgaData) = t2
+        events <- service.runDBIO(TableQuery[SecurityLogEventTable].filter(_.userId === request.user.id.value).result)
+      } yield Ok(views.users.securityLog(userData, (orgaData, scopedOrgaData).tupled, events))
     }
 
   import controllers.project.{routes => projectRoutes}

@@ -12,11 +12,14 @@ import db.impl.query.APIV2Queries
 import models.protocols.APIV2
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.ApiKeyTable
+import ore.models.user.SecurityLogEvent
 import ore.permission.{NamedPermission, Permission}
 
 import cats.data.NonEmptyList
 import cats.syntax.all._
-import io.circe.Codec
+import com.github.tminglei.slickpg.InetString
+import io.circe.{Codec, Json}
+import io.circe.syntax._
 import io.circe.derivation.annotations.SnakeCaseJsonCodec
 import zio.interop.catz._
 import zio.{IO, ZIO}
@@ -54,9 +57,35 @@ class Keys(
                 TableQuery[ApiKeyTable].filter(t => t.name === name && t.ownerId === ownerId).exists.result
 
               val ifTaken = IO.fail(Conflict(ApiError("Name already taken")))
-              val ifFree = service
-                .runDbCon(APIV2Queries.createApiKey(name, ownerId, tokenIdentifier, token, perm).run)
-                .map(_ => Ok(CreatedApiKey(s"$tokenIdentifier.$token", perm.toNamedSeq)))
+
+              val ifFree = for {
+                _ <- service.runDbCon(APIV2Queries.createApiKey(name, ownerId, tokenIdentifier, token, perm).run)
+                _ <- service.insert(
+                  SecurityLogEvent(
+                    ownerId,
+                    InetString(request.remoteAddress),
+                    request.headers.get("User-Agent"),
+                    ???,
+                    SecurityLogEvent.EventType.CreateApiKey,
+                    Some(
+                      Json.obj(
+                        "new_key" -> Json.obj(
+                          "name" := name,
+                          "permissions" := perms.map(_.entryName),
+                          "identifier" := tokenIdentifier
+                        ),
+                        "used_key" := request.apiInfo.key.map { creator =>
+                          Json.obj(
+                            "name" := creator.name,
+                            "permissions" := creator.namedRawPermissions.map(_.entryName),
+                            "identifier" := creator.tokenIdentifier
+                          )
+                        }
+                      )
+                    )
+                  )
+                )
+              } yield Ok(CreatedApiKey(s"$tokenIdentifier.$token", perm.toNamedSeq))
 
               (service.runDBIO(nameTaken): IO[Result, Boolean]).ifM(ifTaken, ifFree)
             }
@@ -72,6 +101,31 @@ class Keys(
           .fromOption(request.user)
           .asError(BadRequest(ApiError("Public keys can't be used to delete")))
         rowsAffected <- service.runDbCon(APIV2Queries.deleteApiKey(name, user.id.value).run)
+        _ <- ZIO.when(rowsAffected != 0)(
+          service.insert(
+            SecurityLogEvent(
+              request.user.get.id.value,
+              InetString(request.remoteAddress),
+              request.headers.get("User-Agent"),
+              ???,
+              SecurityLogEvent.EventType.DeleteApiKey,
+              Some(
+                Json.obj(
+                  "deleted_key" -> Json.obj(
+                    "name" := name
+                  ),
+                  "used_key" := request.apiInfo.key.map { creator =>
+                    Json.obj(
+                      "name" := creator.name,
+                      "permissions" := creator.namedRawPermissions.map(_.entryName),
+                      "identifier" := creator.tokenIdentifier
+                    )
+                  }
+                )
+              )
+            )
+          )
+        )
       } yield if (rowsAffected == 0) NotFound else NoContent
     }
 }

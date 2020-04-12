@@ -1,0 +1,24 @@
+@import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
+@import ore.models.user.SecurityLogEvent
+
+@import controllers.sugar.Requests.OreRequest
+@import ore.OreConfig
+@import ore.db.Model
+@import util.StringFormatterUtils
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], events: Seq[Model[SecurityLogEvent]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, assetsFinder: AssetsFinder)
+
+@users.view(u, o) {
+
+  <ul class="list-group">
+      @for(event <- events) {
+        <li class="list-group-item">
+          Action: @event.eventType.value
+          Date: @StringFormatterUtils.prettifyDateAndTime(event.createdAt.value)
+          IP address: @event.ipAddress.value
+          User agent: @event.userAgent.getOrElse("<None>")
+          Location: @event.location.getOrElse("Unknown")
+          Extra data: @event.extraData.fold("")(_.spaces4))
+        </li>
+      }
+  </ul>
+}
