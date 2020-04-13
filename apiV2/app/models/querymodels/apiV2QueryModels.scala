@@ -43,6 +43,8 @@ case class APIV2QueryProject(
     description: Option[String],
     lastUpdated: OffsetDateTime,
     visibility: Visibility,
+    topicId: Option[Int],
+    postId: Option[Int],
     userStarred: Boolean,
     userWatching: Boolean,
     keywords: List[String],
@@ -104,7 +106,13 @@ case class APIV2QueryProject(
           APIV2.ProjectLicense(licenseName, licenseUrl),
           forumSync
         ),
-        iconUrl
+        iconUrl,
+        APIV2.ProjectExternal(
+          APIV2.ProjectExternalDiscourse(
+            topicId,
+            postId
+          )
+        )
       )
     }
   }

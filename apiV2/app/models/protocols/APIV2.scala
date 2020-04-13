@@ -54,7 +54,17 @@ object APIV2 {
       visibility: Visibility,
       userActions: UserActions,
       settings: ProjectSettings,
-      iconUrl: String
+      iconUrl: String,
+      external: ProjectExternal
+  )
+
+  @SnakeCaseJsonCodec case class ProjectExternal(
+      discourse: ProjectExternalDiscourse
+  )
+
+  @SnakeCaseJsonCodec case class ProjectExternalDiscourse(
+      topicId: Option[Int],
+      postId: Option[Int]
   )
 
   @SnakeCaseJsonCodec case class CompactProject(

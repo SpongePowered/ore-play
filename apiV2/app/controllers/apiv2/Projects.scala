@@ -181,7 +181,13 @@ class Projects(
                 ),
                 project.settings.forumSync
               ),
-              _root_.controllers.project.routes.Projects.showIcon(project.ownerName, project.slug).absoluteURL()
+              _root_.controllers.project.routes.Projects.showIcon(project.ownerName, project.slug).absoluteURL(),
+              APIV2.ProjectExternal(
+                APIV2.ProjectExternalDiscourse(
+                  None,
+                  None
+                )
+              )
             )
           )
         }
