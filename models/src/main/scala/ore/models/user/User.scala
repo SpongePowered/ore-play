@@ -123,7 +123,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       }
     }
 
-    def permissionsIn[A: HasScope, F[_]](a: A)(implicit service: ModelService[F]): F[Permission] =
+    def permissionsIn[A: HasScope, F[_]: Functor](a: A)(implicit service: ModelService[F]): F[Permission] =
       permissionsIn(a.scope)
 
     /**
@@ -131,7 +131,13 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       *
       * @return Highest level of trust
       */
-    def permissionsIn[F[_]](scope: Scope = GlobalScope)(implicit service: ModelService[F]): F[Permission] = {
+    def permissionsIn[F[_]: Functor](scope: Scope = GlobalScope)(implicit service: ModelService[F]): F[Permission] = {
+      val alwaysHasPermissions = Permission(
+        Permission.ViewPublicInfo,
+        Permission.EditOwnUserSettings,
+        Permission.EditApiKeys
+      )
+
       val conIO = scope match {
         case GlobalScope             => UserQueries.globalPermission(self.id.value).unique
         case ProjectScope(projectId) => UserQueries.projectPermission(self.id.value, projectId).unique
@@ -139,7 +145,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
           UserQueries.organizationPermission(self.id.value, organizationId).unique
       }
 
-      service.runDbCon(conIO)
+      service.runDbCon(conIO).map(_ ++ alwaysHasPermissions)
     }
 
     /**

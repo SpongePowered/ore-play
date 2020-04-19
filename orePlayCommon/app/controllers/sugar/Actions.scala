@@ -109,7 +109,7 @@ trait Actions extends Calls with ActionHelpers { self =>
 
         zioToFuture(
           for {
-            perms <- request.user.permissionsIn(request)
+            perms <- request.user.permissionsIn[R[A], UIO](request)
             hasPerm = perms.has(p)
             _       = log(success = hasPerm, request)
             res <- (
@@ -349,7 +349,7 @@ trait Actions extends Calls with ActionHelpers { self =>
         user <- ZIO.fromOption(optUser)
 
         check1 = canEditAndNeedChangeOrApproval(project, user)
-        check2 = user.permissionsIn(GlobalScope).map(_.has(Permission.SeeHidden))
+        check2 = user.permissionsIn[UIO](GlobalScope).map(_.has(Permission.SeeHidden))
 
         canSeeProject <- check1.raceWith(check2)(
           { case (l, f) => tryOther(l, f) },
@@ -362,9 +362,9 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   private def canEditAndNeedChangeOrApproval(project: Model[Project], user: Model[User]) =
     project.visibility match {
-      case Visibility.New => user.permissionsIn(project).map(_.has(Permission.CreateVersion))
+      case Visibility.New => user.permissionsIn[Model[Project], UIO](project).map(_.has(Permission.CreateVersion))
       case Visibility.NeedsApproval | Visibility.NeedsApproval =>
-        user.permissionsIn(project).map(_.has(Permission.EditProjectSettings))
+        user.permissionsIn[Model[Project], UIO](project).map(_.has(Permission.EditProjectSettings))
       case _ => UIO.succeed(false)
     }
 

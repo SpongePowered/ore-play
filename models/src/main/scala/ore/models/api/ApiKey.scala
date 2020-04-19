@@ -29,7 +29,7 @@ case class ApiKey(
       case OrganizationScope(orgId) => UserQueries.organizationPermission(ownerId, orgId)
     }
 
-    service.runDbCon(query.unique).map(userPerms => Permission.fromLong(userPerms & rawKeyPermissions))
+    service.runDbCon(query.unique).map(userPerms => userPerms ++ rawKeyPermissions)
   }
 
   def isSubKey(perms: Permission): Boolean = rawKeyPermissions.has(perms)

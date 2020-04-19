@@ -75,8 +75,9 @@ class Projects(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
   def showCreator(): Action[AnyContent] = UserLock().asyncF { implicit request =>
     import cats.instances.vector._
     for {
-      orgas      <- request.user.organizations.allFromParent
-      createOrga <- orgas.toVector.parTraverse(request.user.permissionsIn(_).map(_.has(Permission.CreateProject)))
+      orgas <- request.user.organizations.allFromParent
+      createOrga <- orgas.toVector
+        .parTraverse(request.user.permissionsIn[Model[Organization], UIO](_).map(_.has(Permission.CreateProject)))
     } yield {
       val createdOrgas = orgas.zip(createOrga).collect {
         case (orga, true) => orga
@@ -111,7 +112,7 @@ class Projects(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
     for {
       all <- user.organizations.allFromParent
       canCreate <- all.toVector.parTraverse(org =>
-        user.permissionsIn(org).map(_.has(Permission.CreateProject)).tupleLeft(org.id.value)
+        user.permissionsIn[Model[Organization], UIO](org).map(_.has(Permission.CreateProject)).tupleLeft(org.id.value)
       )
     } yield {
       // Filter by can Create Project
