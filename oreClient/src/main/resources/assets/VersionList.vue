@@ -87,7 +87,7 @@
         },
         created() {
             this.update();
-            apiV2Request("permissions", "GET", window.PLUGIN_ID).then((response) => {
+            apiV2Request("permissions", "GET", {pluginId: window.PLUGIN_ID}).then((response) => {
                this.canUpload = response.permissions.includes("create_version")
             });
             this.$watch(vm => vm.page, () => {
