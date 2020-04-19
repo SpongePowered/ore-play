@@ -38,7 +38,11 @@ object Requests {
 
     def permissionIn[B: HasScope, F[_]](b: B)(implicit service: ModelService[F], F: Applicative[F]): F[Permission] =
       if (b.scope == GlobalScope) F.pure(apiInfo.globalPerms)
-      else apiInfo.key.fold(F.pure(globalPermissions))(_.permissionsIn(b))
+      else
+        apiInfo.key
+          .map(_.permissionsIn(b))
+          .orElse(apiInfo.user.map(_.permissionsIn(b)))
+          .getOrElse(F.pure(globalPermissions))
 
     override def logMessage(s: String): String = {
       user.foreach(mdcPutUser)
