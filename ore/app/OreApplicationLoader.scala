@@ -3,6 +3,7 @@ import scala.language.higherKinds
 import java.sql.Connection
 import javax.inject.Provider
 
+import scala.annotation.unused
 import scala.concurrent.duration.FiniteDuration
 
 import play.api.cache.caffeine.CaffeineCacheComponents
@@ -63,7 +64,7 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{CancelableFuture, Runtime, Schedule, Task, UIO, ZIO, ZEnv}
+import zio.{CancelableFuture, Runtime, Schedule, Task, UIO, ZEnv, ZIO}
 
 class OreApplicationLoader extends ApplicationLoader {
 
@@ -269,11 +270,11 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val channelsProvider: Provider[Channels]                 = () => channels
   lazy val reviewsProvider: Provider[Reviews]                   = () => reviews
 
-  def waitTilEvolutionsDone(action: UIO[Unit]): CancelableFuture[Unit] = {
+  def waitTilEvolutionsDone(action: UIO[Unit]): Unit = {
     val isDone    = ZIO.effectTotal(applicationEvolutions.upToDate)
     val waitCheck = Schedule.doUntilM[Unit](_ => isDone) && Schedule.fixed(zio.duration.Duration.fromNanos(100))
 
-    runtime.unsafeRunToFuture(ZIO.unit.repeat(waitCheck).andThen(action))
+    runtime.unsafeRunSync(ZIO.unit.repeat(waitCheck).andThen(action))
   }
 
   waitTilEvolutionsDone(ZIO.effectTotal {
@@ -284,10 +285,7 @@ class OreComponents(context: ApplicationLoader.Context)
 
   def eager[A](module: A): Unit = use(module)
 
-  def use[A](value: A): Unit = {
-    identity(value)
-    ()
-  }
+  def use[A](@unused value: A): Unit = ()
 
   def applicationResource[A](resource: Resource[Task, A]): A = {
     val (a, finalize) = runtime.unsafeRunSync(resource.allocated).toEither.toTry.get
