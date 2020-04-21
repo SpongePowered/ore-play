@@ -1,0 +1,39 @@
+name: Scalafmt Check
+
+on:
+  push:
+    paths:
+      - '**.scala'
+      - '**.sc'
+      - '**.sbt'
+  pull_request:
+    paths:
+      - '**.scala'
+      - '**.sc'
+      - '**.sbt'
+
+jobs:
+  check:
+
+    runs-on: ubuntu-latest
+
+    env:
+      VERSION: 2.4.2
+      INSTALL_LOCATION: usr/local/bin/scalafmt-native
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache Scalafmt native image
+        id: cache
+        uses: actions/cache@v1
+        with:
+          path: ${{ env.INSTALL_LOCATION }}
+          key: ${{ runner.os }}-scalafmt-native-image-${{ hashFiles('usr/local/bin/scalafmt-native') }}
+
+      - name: Download Scalafmt-native
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: curl https://raw.githubusercontent.com/scalameta/scalafmt/master/bin/install-scalafmt-native.sh | bash -s -- $VERSION $INSTALL_LOCATION
+
+      - name: Check formatted
+        run: scalafmt-native --check --non-interactive
