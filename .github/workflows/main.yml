@@ -60,6 +60,8 @@ jobs:
           restore-keys: ${{ runner.os }}-sbt
 
       - name: Initialize postgres extensions
+        env:
+          PGPASSWORD: postgres
         run: |
           psql -c "CREATE EXTENSION pgcrypto;"
           psql -c "CREATE EXTENSION hstore;"
