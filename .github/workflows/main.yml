@@ -60,11 +60,9 @@ jobs:
           restore-keys: ${{ runner.os }}-sbt
 
       - name: Initialize postgres extensions
-        env:
-          PGPASSWORD: postgres
         run: |
-          psql -c "CREATE EXTENSION pgcrypto;"
-          psql -c "CREATE EXTENSION hstore;"
+          sudo -u postgres psql -c "CREATE EXTENSION pgcrypto;"
+          sudo -u postgres psql -c "CREATE EXTENSION hstore;"
 
       - name: Run compile
         run: sbt "oreAll/compile;ore/test"

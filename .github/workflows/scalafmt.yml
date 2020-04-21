@@ -19,7 +19,7 @@ jobs:
 
     env:
       VERSION: 2.4.2
-      INSTALL_LOCATION: ~/.tmp/scalafmt-native
+      INSTALL_LOCATION: ~/scalafmt-native
 
     steps:
       - uses: actions/checkout@v2
@@ -36,4 +36,4 @@ jobs:
         run: curl https://raw.githubusercontent.com/scalameta/scalafmt/master/bin/install-scalafmt-native.sh | bash -s -- $VERSION $INSTALL_LOCATION
 
       - name: Check formatted
-        run: ~/.tmp/scalafmt-native --check --non-interactive
+        run: ./~/scalafmt-native --check --non-interactive
