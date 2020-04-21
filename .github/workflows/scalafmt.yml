@@ -36,4 +36,4 @@ jobs:
         run: curl https://raw.githubusercontent.com/scalameta/scalafmt/master/bin/install-scalafmt-native.sh | bash -s -- $VERSION $INSTALL_LOCATION
 
       - name: Check formatted
-        run: ./scalafmt-native --check --non-interactive
+        run: scalafmt-native --check --non-interactive
