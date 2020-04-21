@@ -192,6 +192,11 @@ lazy val ore = project
     WebKeys.exportedMappings in Assets := Seq()
   )
 
+lazy val oreScala =
+  project
+    .in(file("oreScala"))
+    .aggregate(db, externalCommon, discourse, auth, models, orePlayCommon, apiV2, ore, jobs)
+
 lazy val oreAll =
   project
     .in(file("."))

@@ -66,5 +66,11 @@ jobs:
           psql -h localhost -p 5432 -U postgres -c "CREATE EXTENSION pgcrypto;"
           psql -h localhost -p 5432 -U postgres -c "CREATE EXTENSION hstore;"
 
+      - name: Copy config files
+        run: |
+          cp ore/conf/application.conf.template ore/conf/application.conf
+          cp jobs/src/main/resources/application.conf.template jobs/src/main/resources/application.conf
+          cp oreClient/src/main/assets/config.json5.template oreClient/src/main/assets/config.json5
+
       - name: Run compile
-        run: sbt "oreAll/compile;ore/test"
+        run: sbt "oreScala/compile;ore/test"
