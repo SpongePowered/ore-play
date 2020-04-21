@@ -17,7 +17,10 @@ export class API {
                     contentType: isFormData ? false : 'application/json',
                     data: isBodyRequest && !isFormData ? JSON.stringify(data) : data,
                     processData: !(isFormData || isBodyRequest),
-                    headers: {'Authorization': 'OreApi session=' + session}
+                    headers: {
+                        'Authorization': 'OreApi session=' + session,
+                        'Csrf-Token': csrf
+                    }
                 }).done((data) => {
                     resolve(data);
                 }).fail((xhr) => {

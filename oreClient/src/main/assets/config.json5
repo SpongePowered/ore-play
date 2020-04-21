@@ -15,5 +15,8 @@
     api: {
       avatarUrl: "https://auth.spongepowered.org/avatar/{0}?size=120x120"
     }
+  },
+  discourse: {
+    baseUrl: "http://discourse.stage.spongemc.org"
   }
 }

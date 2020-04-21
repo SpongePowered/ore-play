@@ -62,7 +62,7 @@
 </template>
 
 <script>
-    import VersionList from "./VersionList";
+    import VersionList from "../../components/VersionList";
     import MemberList from "../../components/MemberList";
     import {Stability, Platform, Category} from "../../enums";
     import { mapState } from 'vuex'

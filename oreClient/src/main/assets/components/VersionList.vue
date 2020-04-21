@@ -62,7 +62,7 @@
                                         <div class="col-xs-12">
                                             <font-awesome-icon :icon="['fas', 'download']" fixed-width></font-awesome-icon>
                                             <span class="text-bold">Downloads: </span>
-                                            {{ formatStats(version.stats.downloads) }} Downloads
+                                            {{ formatStats(version.stats.downloads) }}
                                         </div>
                                     </div>
                                 </div>
@@ -86,10 +86,10 @@
 </template>
 
 <script>
-    import Tag from "../../components/Tag";
-    import Pagination from "../../components/Pagination";
-    import {Visibility, Stability, ReleaseType, Platform} from "../../enums";
-    import {API} from "../../api";
+    import Tag from "./Tag";
+    import Pagination from "./Pagination";
+    import {Visibility, Stability, ReleaseType, Platform} from "../enums";
+    import {API} from "../api";
     import NProgress from "nprogress"
     import { mapState } from 'vuex'
 

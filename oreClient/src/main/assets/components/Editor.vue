@@ -76,6 +76,7 @@
     import markdownItTaskLists from "markdown-it-task-lists"
 
     const md = markdownIt({
+        html: true,
         linkify: true,
         typographer: true
     }).use(markdownItAnchor).use(markdownItWikilinks({relativeBaseURL: location.pathname + "/pages/", uriSuffix: ''})).use(markdownItTaskLists);
