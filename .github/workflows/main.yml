@@ -61,8 +61,8 @@ jobs:
 
       - name: Initialize postgres extensions
         run: |
-          sudo -u postgres psql -c "CREATE EXTENSION pgcrypto;"
-          sudo -u postgres psql -c "CREATE EXTENSION hstore;"
+          psql -h localhost -p 5432 -U postgres -W postgres -c "CREATE EXTENSION pgcrypto;"
+          psql -h localhost -p 5432 -U postgres -W postgres -c "CREATE EXTENSION hstore;"
 
       - name: Run compile
         run: sbt "oreAll/compile;ore/test"
