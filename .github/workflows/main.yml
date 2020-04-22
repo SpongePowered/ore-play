@@ -73,4 +73,4 @@ jobs:
           cp oreClient/src/main/assets/config.json5.template oreClient/src/main/assets/config.json5
 
       - name: Run compile
-        run: sbt "oreScala/compile;ore/test"
+        run: sbt "oreAll/compile;ore/test"
