@@ -87,7 +87,7 @@
         watch: {
             project(val, oldVal) {
                 if(!oldVal || val.plugin_id !== oldVal.plugin_id) {
-                    this.updateData(val);
+                    this.updateData(val.external.discourse.topic_id);
                 }
             }
         },
