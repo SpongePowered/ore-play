@@ -1,16 +1,16 @@
 name: Scalafmt Check
 
-on: [push, pull_request]
-#  push:
-#    paths:
-#      - '**.scala'
-#      - '**.sc'
-#      - '**.sbt'
-#  pull_request:
-#    paths:
-#      - '**.scala'
-#      - '**.sc'
-#      - '**.sbt'
+on:
+  push:
+    paths:
+      - '**.scala'
+      - '**.sc'
+      - '**.sbt'
+  pull_request:
+    paths:
+      - '**.scala'
+      - '**.sc'
+      - '**.sbt'
 
 jobs:
   check:
