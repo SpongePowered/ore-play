@@ -23,12 +23,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Cache Scalafmt native image
-        id: cache
-        uses: actions/cache@v1
-        with:
-          path: scalafmt-native
-          key: ${{ runner.os }}-scalafmt-native-image-${{ hashFiles(scalafmt-native) }}
+      #- name: Cache Scalafmt native image
+      #  id: cache
+      #  uses: actions/cache@v1
+      #  with:
+      #    path: scalafmt-native
+      #    key: ${{ runner.os }}-scalafmt-native-image-${{ hashFiles('scalafmt-native') }}
 
       - name: Download Scalafmt-native
         if: steps.cache.outputs.cache-hit != 'true'
