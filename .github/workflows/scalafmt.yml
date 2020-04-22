@@ -23,8 +23,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Download Scalafmt-native
-        run: curl https://raw.githubusercontent.com/scalameta/scalafmt/master/bin/install-scalafmt-native.sh | bash -s -- $VERSION $GITHUB_WORKSPACE/scalafmt-native
+      #- name: Download Scalafmt-native
+      #  run: curl https://raw.githubusercontent.com/scalameta/scalafmt/master/bin/install-scalafmt-native.sh | bash -s -- $VERSION $GITHUB_WORKSPACE/scalafmt-native
 
       - name: Check formatted
-        run: ./scalafmt-native --check --non-interactive
+        run: ./scalafmt --check --non-interactive
