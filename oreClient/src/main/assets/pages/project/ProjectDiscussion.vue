@@ -93,7 +93,6 @@
         },
         created() {
             if(this.project) {
-                NProgress.start();
                 this.updateData(this.project.external.discourse.topic_id);
             }
         }
