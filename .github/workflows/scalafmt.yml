@@ -27,8 +27,8 @@ jobs:
         id: cache
         uses: actions/cache@v1
         with:
-          path: ${{ env.GITHUB_WORKSPACE }}/scalafmt-native
-          key: ${{ runner.os }}-scalafmt-native-image-${{ hashFiles(env.GITHUB_WORKSPACE/scalafmt-native) }}
+          path: scalafmt-native
+          key: ${{ runner.os }}-scalafmt-native-image-${{ hashFiles(scalafmt-native) }}
 
       - name: Download Scalafmt-native
         if: steps.cache.outputs.cache-hit != 'true'
