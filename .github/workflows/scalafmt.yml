@@ -19,7 +19,6 @@ jobs:
 
     env:
       VERSION: 2.4.2
-      INSTALL_LOCATION: ${{ env.GITHUB_WORKSPACE }}/scalafmt-native
 
     steps:
       - uses: actions/checkout@v2
@@ -28,12 +27,12 @@ jobs:
         id: cache
         uses: actions/cache@v1
         with:
-          path: ${{ env.INSTALL_LOCATION }}
-          key: ${{ runner.os }}-scalafmt-native-image-${{ hashFiles(env.INSTALL_LOCATION) }}
+          path: ${{ env.GITHUB_WORKSPACE }}/scalafmt-native
+          key: ${{ runner.os }}-scalafmt-native-image-${{ hashFiles(env.GITHUB_WORKSPACE/scalafmt-native) }}
 
       - name: Download Scalafmt-native
         if: steps.cache.outputs.cache-hit != 'true'
-        run: curl https://raw.githubusercontent.com/scalameta/scalafmt/master/bin/install-scalafmt-native.sh | bash -s -- $VERSION $INSTALL_LOCATION
+        run: curl https://raw.githubusercontent.com/scalameta/scalafmt/master/bin/install-scalafmt-native.sh | bash -s -- $VERSION ${{ env.GITHUB_WORKSPACE }}/scalafmt-native
 
       - name: Check formatted
         run: ./scalafmt-native --check --non-interactive
