@@ -118,7 +118,7 @@
                                                 @click="resetPutPage">Close
                                         </button>
                                         <button v-if="!newPage" type="button" class="btn btn-danger" @click="deletePage">Delete</button>
-                                        <button :disabled="requestPage.name.includes('/')" type="button" class="btn btn-primary" @click="updateCreatePage">Continue</button>
+                                        <button :disabled="!requestPage.name || requestPage.name.includes('/')" type="button" class="btn btn-primary" @click="updateCreatePage">Continue</button>
                                     </div>
                                 </div>
                             </div>
