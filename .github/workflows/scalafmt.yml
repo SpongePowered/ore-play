@@ -19,7 +19,7 @@ jobs:
 
     env:
       VERSION: 2.4.2
-      INSTALL_LOCATION: ${[ env.GITHUB_WORKSPACE }}/scalafmt-native
+      INSTALL_LOCATION: ${{ env.GITHUB_WORKSPACE }}/scalafmt-native
 
     steps:
       - uses: actions/checkout@v2
