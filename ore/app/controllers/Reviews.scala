@@ -28,7 +28,6 @@ import io.circe.Json
 import slick.lifted.{Rep, TableQuery}
 import zio.interop.catz._
 import zio.{UIO, ZIO}
-import zio.interop.catz._
 
 /**
   * Controller for handling Review related actions.

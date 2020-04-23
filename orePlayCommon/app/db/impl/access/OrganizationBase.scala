@@ -7,7 +7,6 @@ import ore.auth.SpongeAuthApi
 import ore.data.user.notification.NotificationType
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{OrganizationTable, UserTable}
 import ore.db.{DbRef, Model, ModelService, ObjId}
 import ore.models.organization.Organization
 import ore.models.user.role.OrganizationUserRole
@@ -22,7 +21,6 @@ import cats.effect.Sync
 import cats.syntax.all._
 import cats.tagless.autoFunctorK
 import com.typesafe.scalalogging
-import slick.lifted.TableQuery
 
 @autoFunctorK
 trait OrganizationBase[+F[_]] {

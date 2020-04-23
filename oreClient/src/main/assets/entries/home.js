@@ -1,7 +1,7 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Vuex from 'vuex'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome'
 
 import TopPage from "../pages/TopPage";
 import Home from "../pages/Home";
@@ -12,7 +12,6 @@ import ProjectVersions from "../pages/project/ProjectVersions";
 import Project from "../pages/project/Project";
 import VersionPage from "../pages/project/VersionPage";
 import NewVersion from "../pages/project/NewVersion";
-import UserProfile from "../pages/UserProfile";
 
 import topStore from "../stores/top"
 import projectModule from "../stores/project"

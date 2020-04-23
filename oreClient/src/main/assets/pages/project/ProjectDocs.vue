@@ -144,7 +144,7 @@
     import PageList from "../../components/PageList";
     import isEqual from 'lodash/isEqual'
     import NProgress from "nprogress";
-    import { mapState } from 'vuex'
+    import {mapState} from 'vuex'
 
     export default {
         components: {

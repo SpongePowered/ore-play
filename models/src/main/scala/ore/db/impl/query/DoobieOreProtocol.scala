@@ -28,7 +28,6 @@ import com.typesafe.scalalogging
 import doobie._
 import doobie.`enum`.JdbcType.{Char, Date, LongVarChar, Time, Timestamp, TimestampWithTimezone, VarChar}
 import doobie.enum.JdbcType
-import doobie.implicits._
 import doobie.postgres.implicits._
 import doobie.util.meta.Meta
 import doobie.util.param.Param.Elem
@@ -308,6 +307,7 @@ object DoobieOreProtocol extends DoobieOreProtocol
 
 class BetterSqlInterpolator(private val sc: StringContext) extends AnyVal {
   import BetterSqlInterpolator.SingleFragment
+
   import cats.instances.list._
   import cats.syntax.all._
 

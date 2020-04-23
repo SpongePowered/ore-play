@@ -402,11 +402,11 @@
     import CSRFField from "../../components/CSRFField";
     import MemberList from "../../components/MemberList";
     import Icon from "../../components/Icon";
-    import {avatarUrl as avatarUrlUtils, clearFromDefaults, cleanEmptyObject, nullIfEmpty} from "../../utils"
+    import {avatarUrl as avatarUrlUtils, cleanEmptyObject, clearFromDefaults, nullIfEmpty} from "../../utils"
     import {Category} from "../../enums";
     import {API} from "../../api";
     import config from "../../config.json5"
-    import { mapState } from 'vuex'
+    import {mapState} from 'vuex'
 
     export default {
         components: {

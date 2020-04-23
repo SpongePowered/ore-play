@@ -1,11 +1,13 @@
-import java.time.LocalDateTime
-
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import sbt.Logger
-import scala.math.max
 import java.io.File
 import java.nio.file.Path
+import java.time.LocalDateTime
+
+import scala.math.max
+
+import play.api.libs.functional.syntax._
+import play.api.libs.json._
+
+import sbt.Logger
 
 object Stats {
 

@@ -2,11 +2,10 @@ package db.impl.access
 
 import scala.language.higherKinds
 
-import db.impl.query.SharedQueries
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{PageTable, ProjectTable, VersionTable}
+import ore.db.impl.schema.{ProjectTable, VersionTable}
 import ore.db.{DbRef, Model, ModelService}
 import ore.member.Joinable
 import ore.models.Job
@@ -15,18 +14,12 @@ import ore.models.project.io.ProjectFiles
 import ore.models.user.User
 import ore.util.StringUtils._
 import ore.util.{FileUtils, OreMDC}
+import util.FileIO
 import util.syntax._
-import util.{FileIO, TaskUtils}
 
-import cats.Parallel
-import cats.effect.syntax.all._
-import cats.instances.option._
 import cats.instances.vector._
 import cats.syntax.all._
 import cats.tagless.autoFunctorK
-import com.google.common.base.Preconditions._
-import com.typesafe.scalalogging.LoggerTakingImplicit
-import zio.Task
 
 @autoFunctorK
 trait ProjectBase[+F[_]] {

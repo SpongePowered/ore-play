@@ -2,17 +2,16 @@ package controllers.sugar
 
 import scala.language.{higherKinds, implicitConversions}
 
-import scala.annotation.unused
 import scala.concurrent.Future
 
-import play.api.data.{Form, FormError}
+import play.api.data.Form
 import play.api.mvc.Results.Redirect
 import play.api.mvc._
 
 import controllers.sugar.Requests.OreRequest
 
 import cats.Monad
-import cats.data.{EitherT, OptionT}
+import cats.data.EitherT
 import com.google.common.base.Preconditions.checkArgument
 import zio.blocking.Blocking
 import zio.clock.Clock

@@ -10,7 +10,7 @@ import play.api.db.evolutions.Evolutions
 
 import ore.db.impl.query.DoobieOreProtocol
 
-import cats.effect.{Effect, Blocker}
+import cats.effect.{Blocker, Effect}
 import doobie.Transactor
 import doobie.scalatest.Checker
 import org.scalatest.{BeforeAndAfterAll, FunSuite, Matchers}

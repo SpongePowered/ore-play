@@ -248,7 +248,7 @@
     import CSRFField from "../../components/CSRFField";
     import {Platform} from "../../enums";
     import config from "../../config.json5"
-    import { mapState } from 'vuex'
+    import {mapState} from 'vuex'
     import NProgress from "nprogress";
 
     export default {

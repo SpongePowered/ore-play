@@ -4,11 +4,10 @@ import scala.collection.immutable
 import scala.util.matching.Regex
 
 import ore.data.Platform.NoVersionPolicy
-import ore.models.project.TagColor
 
 import cats.data.Writer
-import cats.syntax.all._
 import cats.instances.option._
+import cats.syntax.all._
 import enumeratum.values._
 
 /**

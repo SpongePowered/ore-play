@@ -1,7 +1,7 @@
 package controllers.sugar
 
-import java.time.temporal.ChronoUnit
 import java.time.OffsetDateTime
+import java.time.temporal.ChronoUnit
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -29,10 +29,10 @@ import util.syntax._
 
 import cats.syntax.all._
 import com.typesafe.scalalogging
+import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.interop.catz._
-import zio._
 
 /**
   * A set of actions used by Ore.

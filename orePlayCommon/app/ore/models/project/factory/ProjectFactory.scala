@@ -10,13 +10,12 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.VersionTable
 import ore.db.{DbRef, Model, ModelService}
 import ore.member.MembershipDossier
-import ore.models.{Job, JobInfo}
+import ore.models.Job
 import ore.models.project._
 import ore.models.project.io._
 import ore.models.user.role.ProjectUserRole
 import ore.models.user.{Notification, User}
 import ore.permission.role.Role
-import ore.util.OreMDC
 import ore.util.StringUtils._
 import ore.{OreConfig, OreEnv}
 import util.FileIO
@@ -24,7 +23,6 @@ import util.syntax._
 
 import cats.data.NonEmptyList
 import cats.syntax.all._
-import com.typesafe.scalalogging
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}

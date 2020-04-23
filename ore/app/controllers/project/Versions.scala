@@ -2,8 +2,8 @@ package controllers.project
 
 import java.nio.file.Files._
 import java.nio.file.{Files, StandardCopyOption}
-import java.time.temporal.ChronoUnit
 import java.time.OffsetDateTime
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 import scala.annotation.unused
@@ -15,25 +15,20 @@ import play.filters.csrf.CSRF
 
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
 import controllers.{OreBaseController, OreControllerComponents}
-import form.OreForms
 import ore.data.DownloadType
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectTable, UserTable, VersionTable}
 import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
-import ore.models.{Job, JobInfo}
 import ore.models.admin.VersionVisibilityChange
 import ore.models.project._
-import ore.models.project.factory.ProjectFactory
-import ore.models.project.io.{PluginFile, PluginUpload}
-import ore.models.user.{LoggedActionType, LoggedActionVersion, User}
+import ore.models.project.io.PluginFile
+import ore.models.user.User
 import ore.permission.Permission
 import ore.rest.ApiV1ProjectsTable
 import ore.util.OreMDC
-import ore.util.StringUtils._
 import ore.{OreEnv, StatTracker}
-import util.UserActionLogger
 import util.syntax._
 import views.html.projects.{versions => views}
 

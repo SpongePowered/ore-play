@@ -13,7 +13,6 @@ import ore.db.impl.common._
 import ore.db.impl.schema._
 import ore.db.impl.{DefaultModelCompanion, OrePostgresDriver}
 import ore.member.{Joinable, MembershipDossier}
-import ore.models.Job
 import ore.models.admin.ProjectVisibilityChange
 import ore.models.api.ProjectApiKey
 import ore.models.project.Project.ProjectSettings
@@ -29,8 +28,7 @@ import cats.{Functor, Monad, MonadError, Parallel}
 import io.circe.Json
 import io.circe.generic.JsonCodec
 import io.circe.syntax._
-import slick.lifted
-import slick.lifted.{Rep, TableQuery}
+import slick.lifted.TableQuery
 
 /**
   * Represents an Ore package.

@@ -6,10 +6,8 @@ import play.api.mvc.{Action, AnyContent}
 
 import controllers.OreControllerComponents
 import controllers.apiv2.helpers.{APIScope, APIScopeType}
-import models.protocols.APIV2
 import ore.permission.{NamedPermission, Permission}
 
-import io.circe._
 import io.circe.derivation.annotations.SnakeCaseJsonCodec
 
 class Permissions(
@@ -62,7 +60,7 @@ class Permissions(
     has(permissions, pluginId, organizationName)((seq, perm) => seq.exists(perm.has(_)))
 }
 object Permissions {
-  import APIV2.namedPermissionCodec
+  import models.protocols.APIV2.namedPermissionCodec
 
   @SnakeCaseJsonCodec case class KeyPermissions(
       `type`: APIScopeType,

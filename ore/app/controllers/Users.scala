@@ -8,21 +8,20 @@ import play.api.mvc._
 import db.impl.access.UserBase.UserOrdering
 import db.impl.query.UserPagesQueries
 import form.OreForms
-import mail.{EmailFactory, Mailer}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 import ore.auth.URLWithNonce
 import ore.data.Prompt
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.query.UserQueries
-import ore.db.impl.schema.{ApiKeyTable, PageTable, ProjectTable, UserTable, VersionTable}
+import ore.db.impl.schema._
 import ore.db.{DbRef, Model}
 import ore.models.user.notification.{InviteFilter, NotificationFilter}
 import ore.models.user.{FakeUser, _}
 import ore.permission.Permission
 import ore.permission.role.Role
-import util.{Sitemap, UserActionLogger}
 import util.syntax._
+import util.{Sitemap, UserActionLogger}
 import views.{html => views}
 
 import cats.syntax.all._

@@ -88,10 +88,10 @@
 <script>
     import Tag from "./Tag";
     import Pagination from "./Pagination";
-    import {Visibility, Stability, ReleaseType, Platform} from "../enums";
+    import {Platform, ReleaseType, Stability, Visibility} from "../enums";
     import {API} from "../api";
     import NProgress from "nprogress"
-    import { mapState } from 'vuex'
+    import {mapState} from 'vuex'
 
     export default {
         components: {

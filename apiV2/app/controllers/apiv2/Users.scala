@@ -20,8 +20,8 @@ import enumeratum.values.{StringEnum, StringEnumEntry}
 import io.circe._
 import io.circe.derivation.annotations.SnakeCaseJsonCodec
 import io.circe.syntax._
-import zio.interop.catz._
 import zio.ZIO
+import zio.interop.catz._
 
 class Users(
     val errorHandler: HttpErrorHandler,

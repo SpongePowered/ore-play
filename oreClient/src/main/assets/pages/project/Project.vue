@@ -7,7 +7,6 @@
 
 <script>
     import ProjectHeader from "./../../components/ProjectHeader";
-    import {API} from "../../api";
 
     export default {
         components: {

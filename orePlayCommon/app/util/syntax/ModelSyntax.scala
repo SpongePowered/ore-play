@@ -6,23 +6,20 @@ import java.nio.file.Path
 
 import play.api.i18n.Lang
 import play.api.mvc.RequestHeader
-import play.twirl.api.Html
 
 import ore.OreConfig
 import ore.auth.AuthUser
 import ore.db.access.ModelView
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.{DbRef, Model, ModelService, ObjId}
-import ore.markdown.MarkdownRenderer
+import ore.db.{Model, ModelService, ObjId}
 import ore.models.organization.Organization
 import ore.models.project.io.ProjectFiles
 import ore.models.project.{Page, Project}
 import ore.models.user.User
 import ore.permission.role.Role
 
+import cats.Functor
 import cats.data.OptionT
 import cats.syntax.all._
-import cats.{Functor, Monad}
 
 trait ModelSyntax {
 

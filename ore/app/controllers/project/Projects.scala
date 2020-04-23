@@ -8,7 +8,6 @@ import scala.annotation.unused
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
-import play.api.i18n.MessagesApi
 import play.api.libs.Files.TemporaryFile
 import play.api.mvc._
 
@@ -24,24 +23,16 @@ import ore.db.impl.schema.UserTable
 import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
 import ore.member.MembershipDossier
-import ore.models.{Job, JobInfo}
-import ore.models.api.ProjectApiKey
-import ore.models.organization.Organization
 import ore.models.project._
-import ore.models.project.factory.ProjectFactory
 import ore.models.user._
 import ore.models.user.role.ProjectUserRole
 import ore.permission._
-import ore.util.OreMDC
-import ore.util.StringUtils._
 import _root_.util.syntax._
-import util.{FileIO, UserActionLogger}
+import util.UserActionLogger
 import views.html.{projects => views}
 
 import cats.instances.option._
 import cats.syntax.all._
-import com.typesafe.scalalogging
-import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}
 

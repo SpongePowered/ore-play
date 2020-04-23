@@ -1,8 +1,6 @@
 package ore.util
 
-import java.nio.file.{Files, Path}
 import java.security.MessageDigest
-import java.text.MessageFormat
 
 import ore.db.impl.OrePostgresDriver.api._
 

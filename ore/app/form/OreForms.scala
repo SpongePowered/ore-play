@@ -1,29 +1,22 @@
 package form
 
-import java.net.{MalformedURLException, URL}
-
 import scala.util.Try
 
 import play.api.data.Forms._
 import play.api.data.format.Formatter
-import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
-import play.api.data.{FieldMapping, Form, FormError, Mapping}
+import play.api.data.{FieldMapping, Form, FormError}
 
 import controllers.sugar.Requests.ProjectRequest
-import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
+import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
 import ore.OreConfig
-import ore.data.project.Category
 import ore.db.access.ModelView
-import ore.db.{DbRef, Model, ModelService}
+import ore.db.{Model, ModelService}
 import ore.models.api.ProjectApiKey
-import ore.models.organization.Organization
-import ore.models.project.factory.ProjectFactory
 import ore.models.project.Page
 import util.syntax._
 
 import cats.data.OptionT
-import org.spongepowered.plugin.meta.PluginMetadata
 import zio.UIO
 
 /**
