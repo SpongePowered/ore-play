@@ -493,15 +493,10 @@ object APIV2Queries extends DoobieOreProtocol {
   def updateVersion(pluginId: String, versionName: String, edits: Versions.DbEditableVersion): Update0 = {
     val versionColumns = Versions.DbEditableVersionF[Column](
       Column.arg("stability"),
-      Column.opt("release_type"),
-      Versions.VersionedPlatformF[Column](
-        Column.arg("platforms"),
-        Column.arg("platform_versions"),
-        Column.arg("platform_coarse_versions")
-      )
+      Column.opt("release_type")
     )
 
-    (updateTable("projects", versionColumns, edits) ++ fr"WHERE plugin_id = $pluginId AND version_string = $versionName").update
+    (updateTable("project_versions", versionColumns, edits) ++ fr" FROM projects p WHERE project_id = p.id AND plugin_id = $pluginId AND version_string = $versionName").update
   }
 
   def userSearchFrag(
