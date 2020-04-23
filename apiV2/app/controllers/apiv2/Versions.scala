@@ -13,7 +13,7 @@ import play.api.libs.Files
 import play.api.mvc.{Action, AnyContent, MultipartFormData, Result}
 
 import controllers.OreControllerComponents
-import controllers.apiv2.helpers.{APIScope, ApiError, ApiErrors, Pagination, UserError, UserErrors}
+import controllers.apiv2.helpers.{APIScope, ApiError, ApiErrors, EditVisibility, Pagination, UserError, UserErrors}
 import controllers.sugar.Requests.ApiRequest
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
@@ -395,6 +395,70 @@ class Versions(
 
           Created(apiVersion.asProtocol)
         }
+    }
+
+  def hardDeleteVersion(pluginId: String, version: String) =
+    ApiAction(Permission.HardDeleteVersion, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+      projects
+        .withPluginId(pluginId)
+        .someOrFail(NotFound)
+        .mproduct { p =>
+          ModelView
+            .now(Version)
+            .find(v => v.projectId === p.id.value && v.versionString === version)
+            .value
+            .someOrFail(NotFound)
+        }
+        .flatMap {
+          case (project, version) =>
+            val log = UserActionLogger
+              .logApi(
+                request,
+                LoggedActionType.VersionDeleted,
+                version.id,
+                "",
+                ""
+              )(LoggedActionVersion(_, Some(project.id)))
+              .unit
+
+            log *> projects.deleteVersion(version).as(NoContent)
+        }
+    }
+
+  def setVersionVisibility(pluginId: String, version: String): Action[EditVisibility] =
+    ApiAction(Permission.None, APIScope.ProjectScope(pluginId)).asyncF(parseCirce.decodeJson[EditVisibility]) {
+      implicit request =>
+        projects
+          .withPluginId(pluginId)
+          .someOrFail(NotFound)
+          .mproduct { p =>
+            ModelView
+              .now(Version)
+              .find(v => v.projectId === p.id.value && v.versionString === version)
+              .value
+              .someOrFail(NotFound)
+          }
+          .flatMap {
+            case (project, version) =>
+              request.body.process(
+                version,
+                request.user.get.id,
+                request.scopePermission,
+                Permission.DeleteVersion,
+                service.insert(Job.UpdateDiscourseVersionPost.newJob(version.id).toJob).unit,
+                projects.deleteVersion(_: Model[Version]).unit,
+                (newV, oldV) =>
+                  UserActionLogger
+                    .logApi(
+                      request,
+                      LoggedActionType.VersionDeleted,
+                      version.id,
+                      newV,
+                      oldV
+                    )(LoggedActionVersion(_, Some(project.id)))
+                    .unit
+              )
+          }
     }
 }
 object Versions {

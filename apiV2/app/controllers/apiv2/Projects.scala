@@ -377,45 +377,25 @@ class Projects(
   def setProjectVisibility(pluginId: String): Action[EditVisibility] =
     ApiAction(Permission.None, APIScope.ProjectScope(pluginId)).asyncF(parseCirce.decodeJson[EditVisibility]) {
       implicit request =>
-        val newVisibility = request.body.visibility
-        val changerId     = request.user.get.id
-
         projects.withPluginId(pluginId).someOrFail(NotFound).flatMap { project =>
-          val forumVisbility =
-            if (Visibility.isPublic(newVisibility) != Visibility.isPublic(project.visibility))
-              service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob).unit
-            else IO.unit
-
-          if (request.scopePermission.has(Permission.Reviewer)) {
-            ZIO.succeed(true)
-          }
-
-          val nonReviewerChecks = newVisibility match {
-            case Visibility.NeedsApproval =>
-              val cond = project.visibility == Visibility.NeedsChanges &&
-                request.scopePermission.has(Permission.EditProjectSettings)
-              if (cond) ZIO.unit
-              else ZIO.fail(Forbidden)
-            case Visibility.SoftDelete =>
-              if (request.scopePermission.has(Permission.DeleteProject)) ZIO.unit else ZIO.fail(Forbidden)
-            case v => ZIO.fail(BadRequest(Json.obj("error" := s"Project can't be changed to $v")))
-          }
-
-          val permChecks = if (request.scopePermission.has(Permission.Reviewer)) ZIO.unit else nonReviewerChecks
-
-          val projectAction =
-            if (project.visibility == Visibility.New) doHardDeleteProject(project)
-            else project.setVisibility(newVisibility, request.body.comment, changerId)
-
-          val log = UserActionLogger.logApi(
-            request,
-            LoggedActionType.ProjectVisibilityChange,
-            project.id,
-            newVisibility.nameKey,
-            Visibility.NeedsChanges.nameKey
-          )(LoggedActionProject.apply)
-
-          permChecks *> (forumVisbility <&> projectAction) *> log.as(NoContent)
+          request.body.process(
+            project,
+            request.user.get.id,
+            request.scopePermission,
+            Permission.DeleteProject,
+            service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob).unit,
+            doHardDeleteProject,
+            (newV, oldV) =>
+              UserActionLogger
+                .logApi(
+                  request,
+                  LoggedActionType.ProjectVisibilityChange,
+                  project.id,
+                  newV,
+                  oldV
+                )(LoggedActionProject.apply)
+                .unit
+          )
         }
     }
 
@@ -553,11 +533,6 @@ object Projects {
 
     def asFactoryTemplate: ProjectTemplate = ProjectTemplate(name, pluginId, category, description)
   }
-
-  @SnakeCaseJsonCodec case class EditVisibility(
-      visibility: Visibility,
-      comment: String
-  )
 
   @SnakeCaseJsonCodec case class ProjectMemberUpdate(
       user: String,

@@ -1,23 +1,21 @@
 <template>
-    <div>
-        <div class="btn-group">
-            <button class="btn btn-sm btn-alert btn-hide-dropdown dropdown-toggle" type="button" id="visibility-actions"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
-                    style="color: black">
-                <font-awesome-icon :icon="['fas', spinIcon ? 'spinner' : 'eye']" :spin="spinIcon"/>
-                Visibility actions
-                <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="visibility-actions">
-                <li v-for="visibility in visibilities.values">
-                    <a href="#" @click="handleVisibilityClick(visibility)" class="btn-visibility-change">
-                        {{ visibilityMessage(visibility.name) }}
-                        <font-awesome-icon v-if="currentVisibility === visibility.name" :icon="['fas', 'check']"
-                                           style="color: black" aria-hidden="true"/>
-                    </a>
-                </li>
-            </ul>
-        </div>
+    <div class="btn-group">
+        <button class="btn btn-sm btn-alert btn-hide-dropdown dropdown-toggle" type="button" id="visibility-actions"
+                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                style="color: black">
+            <font-awesome-icon :icon="['fas', spinIcon ? 'spinner' : 'eye']" :spin="spinIcon"/>
+            Visibility actions
+            <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="visibility-actions">
+            <li v-for="visibility in visibilities.values">
+                <a href="#" @click="handleVisibilityClick(visibility)" class="btn-visibility-change">
+                    {{ visibilityMessage(visibility.name) }}
+                    <font-awesome-icon v-if="currentVisibility === visibility.name" :icon="['fas', 'check']"
+                                       style="color: black" aria-hidden="true"/>
+                </a>
+            </li>
+        </ul>
 
         <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog"
              aria-labelledby="modal-visibility-comment">
@@ -60,7 +58,8 @@
                 type: String,
                 required: true
             },
-            emitLocation: String
+            emitLocation: String,
+            callback: Function
         },
         data() {
             return {
@@ -115,6 +114,10 @@
                             type: this.emitLocation,
                             visibility: visibility.name
                         })
+                    };
+
+                    if(this.callback) {
+                        this.callback(visibility.name);
                     }
                 })
             }

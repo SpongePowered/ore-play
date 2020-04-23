@@ -6,7 +6,12 @@
                 <!-- Title -->
                 <div class="clearfix">
                     <h1 class="pull-left">{{ versionObj.name }}</h1>
-                    <!-- <span class="channel channel-head" style="background-color: @v.c.color.hex;">@v.c.name</span> -->
+                    <span class="channel channel-head" :style="{'background-color': stability.fromId(versionObj.tags.stability).color}">
+                        {{ stability.fromId(versionObj.tags.stability).title }}
+                    </span>
+                    <span v-if="versionObj.tags.release_type" class="channel channel-head" :style="{'background-color': releaseType.fromId(versionObj.tags.release_type).color}">
+                        {{ releaseType.fromId(versionObj.tags.release_type).title }}
+                    </span>
                 </div>
 
                 <!-- User info -->
@@ -43,12 +48,12 @@
                                 <font-awesome-icon :icon="['fas', 'play']" /> Start review
                             </a>
 
-                            <a v-if="versionObj.visibility === 'softDelete'" class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
-                               title="This version has already been deleted">
-                                <font-awesome-icon :icon="['fas', 'trash']" /> Delete
-                            </a>
-                            <template v-else-if="permissions.includes('delete_version')">
-                                <a v-if="publicVersions === 1" class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
+                            <template v-if="permissions.includes('delete_version')">
+                                <a v-if="versionObj.visibility === 'softDelete'" class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
+                                   title="This version has already been deleted">
+                                    <font-awesome-icon :icon="['fas', 'trash']" /> Delete
+                                </a>
+                                <a v-else-if="publicVersions === 1" class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                    title="Every project must have at least one version">
                                     <font-awesome-icon :icon="['fas', 'trash']" /> Delete
                                 </a>
@@ -72,6 +77,10 @@
                                     <li><a href="#" class="copy-url" :data-clipboard-text="config.app.baseUrl + routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null).absoluteURL()">Copy URL</a></li>
                                 </ul>
                             </div>
+
+                            <template v-if="permissions.includes('see_hidden')">
+                                <btn-hide :current-visibility="versionObj.visibility" :endpoint="'projects/' + project.plugin_id + '/versions/' + versionObj.name + '/visibility'" :callback="visibility => versionObj.visibility = visibility"></btn-hide>
+                            </template>
 
                             <div v-if="permissions.includes('view_logs')" class="dropdown dropdown-menu-right" style="display: inline-block">
                                 <button class="btn btn-alert dropdown-toggle" type="button" id="admin-version-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
@@ -134,10 +143,9 @@
 
 
                         <li class="list-group-item" v-for="depend in dependencyObs.filter(d => !platforms.isPlatformDependency(d))">
-                            <!-- TODO: Use vue link -->
-                            <a v-if="depend.project" :href="routes.project.Projects.show(depend.project.namespace.owner, depend.project.namespace.slug, '').absoluteURL()">
+                            <router-link v-if="depend.project" :to="{name: 'project_home', params: { pluginId: depend.project.plugin_id, fetchedProject: depend.project, ...depend.project.namespace}}">
                                 <strong>{{ depend.project.name }}</strong>
-                            </a>
+                            </router-link>
                             <div v-else class="minor">
                                 {{ depend.pluginId }}
                                 <font-awesome-icon :icon="['fas', 'question-circle']"
@@ -156,81 +164,72 @@
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Cancel" @click="modalComment = ''">
                             <span aria-hidden="true">&times;</span>
                         </button>
                         <h4 class="modal-title" id="label-delete">Delete version</h4>
                     </div>
-                    <form method="post" action="TODO">
-                        <div class="modal-body">
-                            Are you sure you want to delete this version? This action cannot be undone. Please explain why you want to delete it.
-                            <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
+                    <div class="modal-body">
+                        Are you sure you want to delete this version? This action cannot be undone. You will not be able to reuse this version string later.
+                        Please explain why you want to delete it.
+                        <textarea v-model="modalComment" name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="form-inline">
+                            <button type="button" class="btn btn-default" data-dismiss="modal" @click="modalComment = ''">
+                                Close
+                            </button>
+                            <input type="submit" name="delete" value="Delete" class="btn btn-danger" @click="setVisibility('softDelete')">
                         </div>
-                        <div class="modal-footer">
-                            <div class="form-inline">
-                                <CSRFField></CSRFField>
-                                <button type="button" class="btn btn-default" data-dismiss="modal">
-                                    Close
-                                </button>
-                                <input type="submit" name="delete" value="Delete" class="btn btn-danger">
-                            </div>
-                        </div>
-
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div v-if="permissions.includes('reviewer') && versionObj.visibility === 'softDelete'" class="modal fade" id="modal-restore" tabindex="-1" role="dialog" aria-labelledby="label-delete">
+        <div v-if="permissions.includes('reviewer') && versionObj.visibility === 'softDelete'" class="modal fade" id="modal-restore" tabindex="-1" role="dialog" aria-labelledby="label-restore">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Cancel" @click="modalComment = ''">
                             <span aria-hidden="true">&times;</span>
                         </button>
-                        <h4 class="modal-title" id="label-delete">Restore deleted</h4>
+                        <h4 class="modal-title" id="label-restore">Restore deleted</h4>
                     </div>
-                    <form method="post" action="TODO">
-                        <div class="modal-body">
-                            <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
+                    <div class="modal-body">
+                        <textarea v-model="modalComment" name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="form-inline">
+                            <button type="button" class="btn btn-default" data-dismiss="modal" @click="modalComment = ''">
+                                Close
+                            </button>
+                            <input type="submit" name="delete" value="Restore deleted" class="btn btn-success" @click="setVisibility('public')">
                         </div>
-                        <div class="modal-footer">
-                            <div class="form-inline">
-                                <CSRFField></CSRFField>
-                                <button type="button" class="btn btn-default" data-dismiss="modal">
-                                    Close
-                                </button>
-                                <input type="submit" name="delete" value="Restore deleted" class="btn btn-success">
-                            </div>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div v-if="permissions.includes('reviewer') && permissions.includes('hard_delete_version')" class="modal fade" id="modal-harddelete" tabindex="-1" role="dialog" aria-labelledby="label-delete">
+        <div v-if="permissions.includes('reviewer') && permissions.includes('hard_delete_version')" class="modal fade" id="modal-harddelete" tabindex="-1" role="dialog" aria-labelledby="label-harddelete">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Cancel" @click="modalComment = ''">
                             <span aria-hidden="true">&times;</span>
                         </button>
-                        <h4 class="modal-title" id="label-delete">Hard delete</h4>
+                        <h4 class="modal-title" id="label-harddelete">Hard delete</h4>
                     </div>
-                    <form method="post" action="TODO">
-                        <div class="modal-body">
-                            <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
+                    <div class="modal-body">
+                        <textarea v-model="modalComment" name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="form-inline">
+                            <button type="button" class="btn btn-default" data-dismiss="modal" @click="modalComment = ''">
+                                Close
+                            </button>
+                            <input type="submit" name="delete" value="Hard delete" class="btn btn-danger" @click="hardDeleteVersion">
                         </div>
-                        <div class="modal-footer">
-                            <div class="form-inline">
-                                <CSRFField></CSRFField>
-                                <button type="button" class="btn btn-default" data-dismiss="modal">
-                                    Close
-                                </button>
-                                <input type="submit" name="delete" value="Hard delete" class="btn btn-danger">
-                            </div>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -246,21 +245,24 @@
     import Editor from "../../components/Editor";
     import {API} from "../../api";
     import CSRFField from "../../components/CSRFField";
-    import {Platform} from "../../enums";
+    import {Platform, ReleaseType, Stability} from "../../enums";
     import config from "../../config.json5"
     import { mapState } from 'vuex'
     import NProgress from "nprogress";
+    import BtnHide from "../../components/BtnHide";
 
     export default {
         components: {
             CSRFField,
             Editor,
+            BtnHide
         },
         data() {
             return {
                 versionObj: null,
                 versionDescription: null,
-                dependencyObs: []
+                dependencyObs: [],
+                modalComment: ''
             }
         },
         props: {
@@ -285,6 +287,12 @@
             },
             platforms() {
                 return Platform
+            },
+            stability() {
+                return Stability
+            },
+            releaseType() {
+                return ReleaseType
             },
             ...mapState('project', [
                 'project',
@@ -380,6 +388,24 @@
                     changelog: newDescription
                 }).then(res => {
                     this.versionDescription = newDescription;
+                })
+            },
+            setVisibility(visibility) {
+                API.request('projects/' + this.project.plugin_id + '/versions/' + this.versionObj.name + '/visibility', 'POST', {
+                    visibility: visibility,
+                    comment: this.modalComment
+                }).then(res => {
+                    $('#modal-restore').modal('hide');
+                    $('#modal-delete').modal('hide');
+
+                    this.versionObj.visibility = visibility;
+                })
+            },
+            hardDeleteVersion() {
+                API.request('projects/' + this.project.plugin_id + '/versions/' + this.versionObj.name, 'DELETE').then(res => {
+                    $('#modal-harddelete').modal('hide');
+
+                    this.$router.push({name: 'versions'})
                 })
             }
         }
