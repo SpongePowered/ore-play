@@ -32,13 +32,13 @@ import zio.{IO, UIO, ZIO}
   )(implicit jsonWrite: Writeable[Json], hide: Hideable[UIO, A]): ZIO[Any, Result, Result] = {
     import play.api.mvc.Results._
     val forumVisbility =
-      if (Visibility.isPublic(visibility) != Visibility.isPublic(toChange.visibility))
+      if (Visibility.isPublic(visibility) != Visibility.isPublic(toChange.hVisibility))
         insertDiscourseUpdateJob
       else IO.unit
 
     val nonReviewerChecks = visibility match {
       case Visibility.NeedsApproval =>
-        val cond = toChange.visibility == Visibility.NeedsChanges &&
+        val cond = toChange.hVisibility == Visibility.NeedsChanges &&
           scopePerms.has(Permission.EditProjectSettings)
         if (cond) ZIO.unit
         else ZIO.fail(Forbidden)
@@ -50,10 +50,10 @@ import zio.{IO, UIO, ZIO}
     val permChecks = if (scopePerms.has(Permission.Reviewer)) ZIO.unit else nonReviewerChecks
 
     val projectAction =
-      if (toChange.visibility == Visibility.New) doHardDelete(toChange)
+      if (toChange.hVisibility == Visibility.New) doHardDelete(toChange)
       else toChange.setVisibility(visibility, comment, changer)
 
-    val log = createLog(visibility.nameKey, toChange.visibility.nameKey)
+    val log = createLog(visibility.nameKey, toChange.hVisibility.nameKey)
 
     permChecks *> (forumVisbility <&> projectAction) *> log.as(NoContent)
   }

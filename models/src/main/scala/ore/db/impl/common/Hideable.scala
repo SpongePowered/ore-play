@@ -67,7 +67,7 @@ object Hideable {
 
   class ModelOps[M](private val m: Model[M]) extends AnyVal {
 
-    def visibility[F[_]](implicit hide: Hideable[F, M]): Visibility = hide.visibility(m)
+    def hVisibility[F[_]](implicit hide: Hideable[F, M]): Visibility = hide.visibility(m)
 
     def isDeleted[F[_]](implicit hide: Hideable[F, M]): Boolean = hide.isDeleted(m)
 
