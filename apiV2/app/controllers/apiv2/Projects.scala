@@ -53,9 +53,6 @@ class Projects(
 ) extends AbstractApiV2Controller(lifecycle) {
   import Projects._
 
-  private val Logger    = scalalogging.Logger("ApiV2Projects")
-  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
-
   def listProjects(
       q: Option[String],
       categories: Seq[Category],
@@ -131,10 +128,6 @@ class Projects(
         implicit val lang: Lang = user.langOrDefault
 
         for {
-          _ <- ZIO
-            .fromOption(factory.hasUserUploadError(user))
-            .flip
-            .mapError(e => BadRequest(UserError(messagesApi(e))))
           canUpload <- {
             if (settings.ownerName == user.name) ZIO.succeed((user.id.value, true))
             else

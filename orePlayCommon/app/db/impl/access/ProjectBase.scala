@@ -96,8 +96,6 @@ trait ProjectBase[+F[_]] {
     * @param project Project to delete
     */
   def delete(project: Model[Project])(implicit mdc: OreMDC): F[Int]
-
-  def queryProjectPages(project: Model[Project]): F[Seq[(Model[Page], Seq[Model[Page]])]]
 }
 
 object ProjectBase {
@@ -267,22 +265,6 @@ object ProjectBase {
 
       val eff = project.topicId.fold(F.unit)(addForumJob)
       eff *> service.delete(project) <* fileEff
-    }
-
-    def queryProjectPages(project: Model[Project]): F[Seq[(Model[Page], Seq[Model[Page]])]] = {
-      val tablePage = TableQuery[PageTable]
-      val pagesQuery = for {
-        (pp, p) <- tablePage.joinLeft(tablePage).on(_.id === _.parentId)
-        if pp.projectId === project.id.value && pp.parentId.isEmpty
-      } yield (pp, p)
-
-      service.runDBIO(pagesQuery.result).map(_.groupBy(_._1)).map { grouped => // group by parent page
-        // Sort by key then lists too
-        grouped.toSeq.sortBy(_._1.name).map {
-          case (pp, p) =>
-            (pp, p.flatMap(_._2).sortBy(_.name))
-        }
-      }
     }
   }
 

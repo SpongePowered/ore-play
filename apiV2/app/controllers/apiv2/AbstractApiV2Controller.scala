@@ -162,7 +162,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
       perms    <- request.permissionIn(scope)
     } yield (apiScope, perms)
 
-  def permApiAction(perms: Permission, scope: APIScope): ActionFilter[ApiRequest] = new ActionFilter[ApiRequest] {
+  def permApiAction(perms: Permission): ActionFilter[ApiRequest] = new ActionFilter[ApiRequest] {
     override protected def executionContext: ExecutionContext = ec
 
     override protected def filter[A](request: ApiRequest[A]): Future[Option[Result]] =
@@ -192,7 +192,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
     }
 
   def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
-    Action.andThen(apiAction(scope)).andThen(permApiAction(perms, scope))
+    Action.andThen(apiAction(scope)).andThen(permApiAction(perms))
 
   def CachingApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
     ApiAction(perms, scope).andThen(cachingAction)

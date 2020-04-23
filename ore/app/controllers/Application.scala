@@ -66,7 +66,6 @@ final class Application(forms: OreForms)(
         controllers.project.routes.javascript.Projects.showWatchers,
         controllers.project.routes.javascript.Projects.setWatching,
         controllers.project.routes.javascript.Projects.flag,
-        controllers.project.routes.javascript.Projects.removeMember,
         controllers.project.routes.javascript.Versions.download,
         controllers.routes.javascript.Users.showProjects,
         controllers.routes.javascript.Users.logIn,

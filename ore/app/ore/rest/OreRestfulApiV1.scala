@@ -2,6 +2,8 @@ package ore.rest
 
 import java.lang.Math._
 
+import scala.annotation.unused
+
 import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
@@ -376,7 +378,7 @@ trait OreRestfulApiV1 extends OreWrites {
     */
   def getTags(
       pluginId: String,
-      version: String
+      @unused version: String
   )(implicit projectBase: ProjectBase[UIO]): OptionT[UIO, JsValue] =
     OptionT(projectBase.withPluginId(pluginId)).map(_ => JsArray.empty)
 

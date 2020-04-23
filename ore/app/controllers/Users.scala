@@ -34,9 +34,7 @@ import zio.{IO, Task, UIO, ZIO}
   */
 class Users(
     fakeUser: FakeUser,
-    forms: OreForms,
-    mailer: Mailer,
-    emails: EmailFactory
+    forms: OreForms
 )(
     implicit oreComponents: OreControllerComponents,
     messagesApi: MessagesApi
@@ -189,27 +187,6 @@ class Users(
         _ <- service.update(user)(_.copy(tagline = Some(tagline)))
       } yield Redirect(ShowUser(user))
     }
-
-  /**
-    * Sets the "locked" status of a User.
-    *
-    * @param username User to set status of
-    * @param locked   True if user is locked
-    * @return         Redirection to user page
-    */
-  def setLocked(username: String, locked: Boolean, sso: Option[String], sig: Option[String]): Action[AnyContent] = {
-    VerifiedAction(username, sso, sig).asyncF { implicit request =>
-      val user = request.user
-
-      if (!locked) {
-        this.mailer.push(this.emails.create(user, this.emails.AccountUnlocked))
-      }
-
-      service
-        .update(user)(_.copy(isLocked = locked))
-        .as(Redirect(ShowUser(username)))
-    }
-  }
 
   /**
     * Shows a list of [[ore.models.user.User]]s that have created a

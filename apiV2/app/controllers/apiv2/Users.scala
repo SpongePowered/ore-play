@@ -39,7 +39,7 @@ class Users(
       sortDescending: Boolean,
       limit: Option[Long],
       offset: Long
-  ): Action[AnyContent] = ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { r =>
+  ): Action[AnyContent] = ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
     val realLimit  = limitOrDefault(limit, config.ore.users.authorPageSize)
     val realOffset = offsetOrZero(offset)
 

@@ -249,8 +249,8 @@ trait DoobieOreProtocol {
   implicit val userModelRead: Read[Model[User]] =
     Read[ObjId[User] :: ObjOffsetDateTime :: Option[String] :: String :: Option[String] :: Option[String] :: Option[
       OffsetDateTime
-    ] :: List[Prompt] :: Boolean :: Option[Locale] :: HNil].map {
-      case id :: createdAt :: fullName :: name :: email :: tagline :: joinDate :: readPrompts :: isLocked :: lang :: HNil =>
+    ] :: List[Prompt] :: Option[Locale] :: HNil].map {
+      case id :: createdAt :: fullName :: name :: email :: tagline :: joinDate :: readPrompts :: lang :: HNil =>
         Model(
           id,
           createdAt,
@@ -262,7 +262,6 @@ trait DoobieOreProtocol {
             tagline,
             joinDate,
             readPrompts,
-            isLocked,
             lang
           )
         )
@@ -271,12 +270,10 @@ trait DoobieOreProtocol {
   implicit val userModelOptRead: Read[Option[Model[User]]] =
     Read[Option[ObjId[User]] :: Option[ObjOffsetDateTime] :: Option[String] :: Option[String] :: Option[String] :: Option[
       String
-    ] :: Option[OffsetDateTime] :: Option[List[Prompt]] :: Option[Boolean] :: Option[
+    ] :: Option[OffsetDateTime] :: Option[List[Prompt]] :: Option[
       Locale
     ] :: HNil].map {
-      case Some(id) :: Some(createdAt) :: fullName :: Some(name) :: email :: tagline :: joinDate :: Some(readPrompts) :: Some(
-            isLocked
-          ) :: lang :: HNil =>
+      case Some(id) :: Some(createdAt) :: fullName :: Some(name) :: email :: tagline :: joinDate :: Some(readPrompts) :: lang :: HNil =>
         Some(
           Model(
             id,
@@ -289,7 +286,6 @@ trait DoobieOreProtocol {
               tagline,
               joinDate,
               readPrompts,
-              isLocked,
               lang
             )
           )

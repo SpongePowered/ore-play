@@ -47,9 +47,6 @@ trait ProjectFactory {
   implicit protected def config: OreConfig
   implicit protected def env: OreEnv
 
-  private val Logger    = scalalogging.Logger("Projects")
-  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
-
   /**
     * Processes incoming [[PluginUpload]] data, verifies it, and loads a new
     * [[PluginFile]] for further processing.
@@ -121,7 +118,6 @@ trait ProjectFactory {
       implicit messages: Messages
   ): ZIO[Blocking, String, PluginFileWithData] =
     for {
-      _ <- ZIO.fromOption(hasUserUploadError(uploader)).flip
       plugin <- processPluginUpload(uploadData, uploader)
         .ensure("error.version.invalidPluginId")(_.data.id.contains(project.pluginId))
         .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
@@ -133,17 +129,6 @@ trait ProjectFactory {
         else ZIO.unit
       }
     } yield plugin
-
-  /**
-    * Returns the error ID to display to the User, if any, if they cannot
-    * upload files.
-    *
-    * @return Upload error if any
-    */
-  def hasUserUploadError(user: User): Option[String] =
-    Seq(
-      user.isLocked -> "error.user.locked"
-    ).find(_._1).map(_._2)
 
   /**
     * Starts the construction process of a [[Project]].

@@ -79,7 +79,6 @@ object MembershipDossier {
   abstract class AbstractMembershipDossier[F[_], M, RoleType0 <: UserRoleModel[RoleType0], RoleTypeTable0 <: RoleTable[
     RoleType0
   ]](
-      M: ModelCompanion[M],
       RoleType: ModelCompanion.Aux[RoleType0, RoleTypeTable0]
   )(implicit service: ModelService[F], F: Monad[F])
       extends MembershipDossier[F, M] {
@@ -111,7 +110,6 @@ object MembershipDossier {
       F: Monad[F]
   ): MembershipDossier.Aux[F, Project, ProjectUserRole, ProjectRoleTable] =
     new AbstractMembershipDossier[F, Project, ProjectUserRole, ProjectRoleTable](
-      Project,
       ProjectUserRole
     ) {
 
@@ -129,7 +127,6 @@ object MembershipDossier {
       OrganizationUserRole,
       OrganizationRoleTable,
     ](
-      Organization,
       OrganizationUserRole
     ) {
 

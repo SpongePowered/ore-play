@@ -19,7 +19,6 @@ import zio.{Schedule, RIO, Task, UIO, ZIO, duration}
 
 class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit ec: ExecutionContext,
-    projects: ProjectBase[Task],
     service: ModelService[Task]
 ) {
 

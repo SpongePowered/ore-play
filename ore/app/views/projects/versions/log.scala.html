@@ -11,8 +11,6 @@
 
 @(project: Project, version: Version, visibilityChanges: Seq[(Model[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
-@versionRoutes = @{controllers.project.routes.Versions}
-
 @layout.base(messages("version.log.logger.title", project.namespace)) {
 	<div class="row">
 		<div class="col-md-12">

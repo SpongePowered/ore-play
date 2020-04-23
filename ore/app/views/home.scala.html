@@ -2,18 +2,9 @@
 The main entry point of Ore. This page displays a list of Projects that can be
 sorted according to different criteria.
 *@
-@import scala.util.Random
-
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
 @()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, assetsFinder: AssetsFinder)
-
-@randomSponsor = @{
-    val logos = config.sponge.sponsors
-
-    val index = new Random().nextInt(logos.size)
-    logos(index)
-}
 
 @scripts = {
     <script src="@assetsFinder.path("lib/ore-client/home.js")"></script>
