@@ -18,26 +18,28 @@ import controllers.sugar.Requests.ApiRequest
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
 import models.querymodels.{APIV2QueryVersion, APIV2VersionStatsQuery}
-import ore.data.Platform
+import ore.data.{Platform, VersionedPlatform}
 import ore.db.Model
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectTable, VersionTable}
 import ore.models.Job
 import ore.models.project.Version.Stability
+import ore.models.project._
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.{PluginFileWithData, PluginUpload}
-import ore.models.project._
 import ore.models.user.{LoggedActionType, LoggedActionVersion, User}
 import ore.permission.Permission
 import util.syntax._
 import util.{PatchDecoder, UserActionLogger}
 
-import cats.data._
-import cats.syntax.all._
 import _root_.io.circe._
 import _root_.io.circe.derivation.annotations.SnakeCaseJsonCodec
 import _root_.io.circe.syntax._
+import cats.Applicative
+import cats.data.{Const => _, _}
+import cats.syntax.all._
+import doobie.free.connection.ConnectionIO
 import squeal.category._
 import squeal.category.syntax.all._
 import squeal.category.macros.Derive
@@ -130,7 +132,7 @@ class Versions(
       import cats.instances.option._
 
       def parsePlatforms(platforms: List[SimplePlatform]) = {
-        platforms
+        platforms.distinct
           .traverse {
             case SimplePlatform(platformName, platformVersion) =>
               Platform
@@ -144,7 +146,7 @@ class Versions(
                 platform
                   .produceVersionWarning(version)
                   .as(
-                    (
+                    VersionedPlatform(
                       platform.name,
                       version,
                       version.map(platform.coarseVersionOf)
@@ -154,54 +156,72 @@ class Versions(
             }
           }
           .nested
-          .map(_.unzip3)
           .value
       }
 
       //We take the platform as flat in the API, but want it columnar.
       //We also want to verify the version and platform name, and get a coarse version
-      val res: ValidatedNel[String, Writer[List[String], DbEditableVersion]] = EditableVersionF.patchDecoder
-        .traverseKC(
-          λ[PatchDecoder ~>: Compose2[Decoder.AccumulatingResult, Option, *]](_.decode(root))
-        )
-        .leftMap(_.map(_.show))
-        .andThen { a =>
-          a.platforms
-            .traverse(parsePlatforms)
-            .map(_.sequence)
-            .tupleLeft(a)
-        }
-        .map {
-          case (a, w) =>
-            w.map { optPlatforms =>
-              DbEditableVersionF[Option](
-                a.stability,
-                a.releaseType,
-                VersionedPlatformF[Option](
-                  optPlatforms.map(_._1),
-                  optPlatforms.map(_._2),
-                  optPlatforms.map(_._3)
+      val res: ValidatedNel[String, Writer[List[String], (DbEditableVersion, Option[List[VersionedPlatform]])]] =
+        EditableVersionF.patchDecoder
+          .traverseKC(
+            λ[PatchDecoder ~>: Compose2[Decoder.AccumulatingResult, Option, *]](_.decode(root))
+          )
+          .leftMap(_.map(_.show))
+          .andThen { a =>
+            a.platforms
+              .traverse(parsePlatforms)
+              .map(_.sequence)
+              .tupleLeft(a)
+          }
+          .map {
+            case (a, w) =>
+              w.map { optPlatforms =>
+                val version = DbEditableVersionF[Option](
+                  a.stability,
+                  a.releaseType
                 )
-              )
-            }
-        }
+
+                version -> optPlatforms
+              }
+          }
 
       res match {
-        case Validated.Valid(WriterT((warnings, a))) =>
-          service
-            .runDbCon(
-              //We need two queries as we use the generic update function
-              APIV2Queries.updateVersion(pluginId, name, a).run *> APIV2Queries
-                .singleVersionQuery(
-                  pluginId,
-                  name,
-                  request.globalPermissions.has(Permission.SeeHidden),
-                  request.user.map(_.id)
-                )
-                .unique
-            )
-            .map(Ok(_))
+        case Validated.Valid(WriterT((warnings, (version, platforms)))) =>
+          val versionIdQuery = for {
+            p <- TableQuery[ProjectTable] if p.pluginId === pluginId
+            v <- TableQuery[VersionTable] if p.id === v.projectId && v.versionString === name
+          } yield v.id
 
+          service.runDBIO(versionIdQuery.result.head).flatMap { versionId =>
+            val handlePlatforms = platforms.fold(ZIO.unit) { platforms =>
+              val deleteAll = service.deleteWhere(VersionPlatform)(_.versionId === versionId)
+              val insertNew = service
+                .bulkInsert(platforms.map(p => VersionPlatform(versionId, p.id, p.version, p.coarseVersion)))
+                .unit
+
+              deleteAll *> insertNew
+            }
+
+            val needEdit =
+              version.foldLeftKC(false)(acc => Lambda[Option ~>: Const[Boolean]#λ](op => acc || op.isDefined))
+            val doEdit =
+              if (!needEdit) Applicative[ConnectionIO].unit
+              else APIV2Queries.updateVersion(pluginId, name, version).run.void
+
+            handlePlatforms *> service
+              .runDbCon(
+                //We need two queries as we use the generic update function
+                doEdit *> APIV2Queries
+                  .singleVersionQuery(
+                    pluginId,
+                    name,
+                    request.globalPermissions.has(Permission.SeeHidden),
+                    request.user.map(_.id)
+                  )
+                  .unique
+              )
+              .map(r => Ok(WithAlerts(r, warnings = warnings)))
+          }
         case Validated.Invalid(e) => ZIO.fail(BadRequest(ApiErrors(e)))
       }
     }
@@ -396,6 +416,70 @@ class Versions(
           Created(apiVersion.asProtocol)
         }
     }
+
+  def hardDeleteVersion(pluginId: String, version: String): Action[AnyContent] =
+    ApiAction(Permission.HardDeleteVersion, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+      projects
+        .withPluginId(pluginId)
+        .someOrFail(NotFound)
+        .mproduct { p =>
+          ModelView
+            .now(Version)
+            .find(v => v.projectId === p.id.value && v.versionString === version)
+            .value
+            .someOrFail(NotFound)
+        }
+        .flatMap {
+          case (project, version) =>
+            val log = UserActionLogger
+              .logApi(
+                request,
+                LoggedActionType.VersionDeleted,
+                version.id,
+                "",
+                ""
+              )(LoggedActionVersion(_, Some(project.id)))
+              .unit
+
+            log *> projects.deleteVersion(version).as(NoContent)
+        }
+    }
+
+  def setVersionVisibility(pluginId: String, version: String): Action[EditVisibility] =
+    ApiAction(Permission.None, APIScope.ProjectScope(pluginId)).asyncF(parseCirce.decodeJson[EditVisibility]) {
+      implicit request =>
+        projects
+          .withPluginId(pluginId)
+          .someOrFail(NotFound)
+          .mproduct { p =>
+            ModelView
+              .now(Version)
+              .find(v => v.projectId === p.id.value && v.versionString === version)
+              .value
+              .someOrFail(NotFound)
+          }
+          .flatMap {
+            case (project, version) =>
+              request.body.process(
+                version,
+                request.user.get.id,
+                request.scopePermission,
+                Permission.DeleteVersion,
+                service.insert(Job.UpdateDiscourseVersionPost.newJob(version.id).toJob).unit,
+                projects.deleteVersion(_: Model[Version]).unit,
+                (newV, oldV) =>
+                  UserActionLogger
+                    .logApi(
+                      request,
+                      LoggedActionType.VersionDeleted,
+                      version.id,
+                      newV,
+                      oldV
+                    )(LoggedActionVersion(_, Some(project.id)))
+                    .unit
+              )
+          }
+    }
 }
 object Versions {
 
@@ -435,21 +519,9 @@ object Versions {
       )
   }
 
-  case class VersionedPlatformF[F[_]](
-      platform: F[List[String]],
-      platformVersion: F[List[Option[String]]],
-      platformCoarseVersion: F[List[Option[String]]]
-  )
-  object VersionedPlatformF {
-    implicit val F: ApplicativeKC[VersionedPlatformF]
-      with TraverseKC[VersionedPlatformF]
-      with DistributiveKC[VersionedPlatformF] = Derive.allKC[VersionedPlatformF]
-  }
-
   case class DbEditableVersionF[F[_]](
       stability: F[Version.Stability],
-      releaseType: F[Option[Version.ReleaseType]],
-      platforms: VersionedPlatformF[F]
+      releaseType: F[Option[Version.ReleaseType]]
   )
   object DbEditableVersionF {
     implicit val F: ApplicativeKC[DbEditableVersionF]

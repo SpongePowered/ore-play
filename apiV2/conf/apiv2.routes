@@ -572,6 +572,11 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #    `edit_version` permission. Tags are not part of this endpoint.
 #  tags:
 #    - Versions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project whose version you will edit
+#    - name: name
+#      description: The name of the version to edit
 #  requestBody:
 #    required: true
 #    content:
@@ -592,6 +597,59 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 PATCH   /projects/:pluginId/versions/:name                   @controllers.apiv2.Versions.editVersion(pluginId, name)
+
+###
+#  summary: Permanently deletes a version.
+#  description: >-
+#    Permanently deletes a version and everything associated with it.
+#    Requires the `hard_delete_version` permission.
+#  tags:
+#    - Versions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project whose version you will delete
+#    - name: name
+#      description: The name of the version to delete
+#  responses:
+#    204:
+#      description: Deleted
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+DELETE  /projects/:pluginId/versions/:name                   @controllers.apiv2.Versions.hardDeleteVersion(pluginId, name)
+
+###
+#  summary: Sets a version's visibility.
+#  description: >-
+#    Sets a version's visibility. The required permissions vary depending on the wanted visibility.
+#    Having reviewer permission gurantees access to all visibilities no matter the circumstances.
+#    In all other cases these rules apply.
+#    - 'needsApproval' requires 'edit_settings', and that the current visibility is 'needsChanges'.
+#    - 'softDelete' requires 'delete_version'.
+#  tags:
+#    - Versions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project whose version you will edit
+#    - name: name
+#      description: The name of the version to edit
+#  requestBody:
+#    required: true
+#    content:
+#      application/json:
+#        schema:
+#          $ref: '#/components/schemas/controllers.apiv2.helpers.EditVisibility'
+#  responses:
+#    204:
+#      description: Version updated
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+POST    /projects/:pluginId/versions/:name/visibility        @controllers.apiv2.Versions.setVersionVisibility(pluginId, name)
 
 ###
 #  summary: Returns the changelog for a version
