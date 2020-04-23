@@ -49,7 +49,6 @@ object APIV2Queries extends DoobieOreProtocol {
           |       u.tagline,
           |       u.join_date,
           |       u.read_prompts,
-          |       u.is_locked,
           |       u.language,
           |       ak.name,
           |       ak.owner_id,

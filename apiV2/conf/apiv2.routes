@@ -495,7 +495,7 @@ GET     /projects/:pluginId/stats                            @controllers.apiv2.
 #    content:
 #      application/json:
 #        schema:
-#          $ref: '#/components/schemas/controllers.apiv2.Projects.EditVisibility'
+#          $ref: '#/components/schemas/controllers.apiv2.helpers.EditVisibility'
 #  responses:
 #    204:
 #      description: Project updated
