@@ -136,12 +136,10 @@ object Requests {
     * A request that holds a [[Project]].
     *
     * @param data Project data to hold
-    * @param scoped scoped Project data to hold
     * @param request Request to wrap
     */
   sealed class ProjectRequest[A](
       val data: ProjectData,
-      val scoped: ScopedProjectData,
       val headerData: HeaderData,
       val request: Request[A]
   ) extends WrappedRequest[A](request)
@@ -160,15 +158,13 @@ object Requests {
     * A request that holds a Project and a [[AuthRequest]].
     *
     * @param data Project data to hold
-    * @param scoped scoped Project data to hold
     * @param request An [[AuthRequest]]
     */
   final case class AuthedProjectRequest[A](
       override val data: ProjectData,
-      override val scoped: ScopedProjectData,
       override val headerData: HeaderData,
       override val request: AuthRequest[A]
-  ) extends ProjectRequest[A](data, scoped, headerData, request)
+  ) extends ProjectRequest[A](data, headerData, request)
       with ScopedRequest[A]
       with OreRequest[A] {
 

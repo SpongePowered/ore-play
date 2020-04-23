@@ -41,7 +41,6 @@ case class User(
     tagline: Option[String] = None,
     joinDate: Option[OffsetDateTime] = None,
     readPrompts: List[Prompt] = Nil,
-    isLocked: Boolean = false,
     lang: Option[Locale] = None
 ) extends Named
 

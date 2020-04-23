@@ -1,8 +1,8 @@
 package controllers.apiv2
 
 import java.nio.file.Path
-import java.time.{LocalDate, OffsetDateTime}
 import java.time.format.DateTimeParseException
+import java.time.{LocalDate, OffsetDateTime}
 
 import scala.jdk.CollectionConverters._
 
@@ -13,16 +13,7 @@ import play.api.libs.Files
 import play.api.mvc.{Action, AnyContent, MultipartFormData, Result}
 
 import controllers.OreControllerComponents
-import controllers.apiv2.helpers.{
-  APIScope,
-  ApiError,
-  ApiErrors,
-  EditVisibility,
-  Pagination,
-  UserError,
-  UserErrors,
-  WithAlerts
-}
+import controllers.apiv2.helpers._
 import controllers.sugar.Requests.ApiRequest
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
@@ -31,27 +22,27 @@ import ore.data.{Platform, VersionedPlatform}
 import ore.db.Model
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{ProjectTable, VersionPlatformTable, VersionTable}
+import ore.db.impl.schema.{ProjectTable, VersionTable}
 import ore.models.Job
 import ore.models.project.Version.Stability
-import ore.models.project.{Page, Project, ReviewState, Version, VersionPlatform, Visibility}
+import ore.models.project._
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.{PluginFileWithData, PluginUpload}
 import ore.models.user.{LoggedActionType, LoggedActionVersion, User}
 import ore.permission.Permission
-import util.{PatchDecoder, UserActionLogger}
 import util.syntax._
+import util.{PatchDecoder, UserActionLogger}
 
+import _root_.io.circe._
+import _root_.io.circe.derivation.annotations.SnakeCaseJsonCodec
+import _root_.io.circe.syntax._
 import cats.Applicative
-import cats.data.{NonEmptyList, Validated, ValidatedNel, Writer, WriterT}
+import cats.data.{Const => _, _}
 import cats.syntax.all._
 import doobie.free.connection.ConnectionIO
 import squeal.category._
 import squeal.category.syntax.all._
 import squeal.category.macros.Derive
-import io.circe._
-import io.circe.derivation.annotations.SnakeCaseJsonCodec
-import io.circe.syntax._
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.{IO, UIO, ZIO}
@@ -524,7 +515,7 @@ object Versions {
 
     val patchDecoder: EditableVersionF[PatchDecoder] =
       PatchDecoder.fromName(Derive.namesWithProductImplicitsC[EditableVersionF, Decoder])(
-        io.circe.derivation.renaming.snakeCase
+        _root_.io.circe.derivation.renaming.snakeCase
       )
   }
 

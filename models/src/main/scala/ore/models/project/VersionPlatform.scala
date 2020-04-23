@@ -1,8 +1,8 @@
 package ore.models.project
 
-import ore.db.{DbRef, ModelQuery}
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.VersionPlatformTable
+import ore.db.{DbRef, ModelQuery}
 
 import slick.lifted.TableQuery
 

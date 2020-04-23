@@ -1,29 +1,22 @@
 package form
 
-import java.net.{MalformedURLException, URL}
-
 import scala.util.Try
 
 import play.api.data.Forms._
 import play.api.data.format.Formatter
-import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
-import play.api.data.{FieldMapping, Form, FormError, Mapping}
+import play.api.data.{FieldMapping, Form, FormError}
 
 import controllers.sugar.Requests.ProjectRequest
-import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
+import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
 import ore.OreConfig
-import ore.data.project.Category
 import ore.db.access.ModelView
-import ore.db.{DbRef, Model, ModelService}
+import ore.db.{Model, ModelService}
 import ore.models.api.ProjectApiKey
-import ore.models.organization.Organization
-import ore.models.project.factory.ProjectFactory
 import ore.models.project.Page
 import util.syntax._
 
 import cats.data.OptionT
-import org.spongepowered.plugin.meta.PluginMetadata
 import zio.UIO
 
 /**
@@ -32,121 +25,15 @@ import zio.UIO
 //noinspection ConvertibleToMethodValue
 class OreForms(
     implicit config: OreConfig,
-    factory: ProjectFactory,
     service: ModelService[UIO],
     runtime: zio.Runtime[Any]
 ) {
-
-  val url: Mapping[String] = text.verifying("error.url.invalid", text => {
-    if (text.isEmpty)
-      true
-    else {
-      try {
-        new URL(text)
-        true
-      } catch {
-        case _: MalformedURLException =>
-          false
-      }
-    }
-  })
-
-  /**
-    * Submits a member to be removed from a Project.
-    */
-  lazy val ProjectMemberRemove = Form(single("username" -> nonEmptyText))
-
-  /**
-    * Submits changes to a [[ore.models.project.Project]]'s
-    * [[ProjectUserRole]]s.
-    */
-  lazy val ProjectMemberRoles = Form(
-    mapping(
-      "users" -> list(longNumber),
-      "roles" -> list(text)
-    )(ProjectRoleSetBuilder.apply)(ProjectRoleSetBuilder.unapply)
-  )
 
   /**
     * Submits a flag on a project for further review.
     */
   lazy val ProjectFlag = Form(
     mapping("flag-reason" -> number, "comment" -> nonEmptyText)(FlagForm.apply)(FlagForm.unapply)
-  )
-
-  /**
-    * This is a Constraint checker for the ownerId that will search the list allowedIds to see if the number is in it.
-    * @param allowedIds number that are allowed as ownerId
-    * @return Constraint
-    */
-  def ownerIdInList[A](allowedIds: Seq[DbRef[A]]): Constraint[Option[DbRef[A]]] =
-    Constraint("constraints.check") { ownerId =>
-      val errors =
-        if (ownerId.isDefined && !allowedIds.contains(ownerId.get)) Seq(ValidationError("error.plugin"))
-        else Nil
-      if (errors.isEmpty) Valid
-      else Invalid(errors)
-    }
-
-  val category: FieldMapping[Category] = of[Category](new Formatter[Category] {
-    override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], Category] =
-      data
-        .get(key)
-        .flatMap(s => Category.values.find(_.title == s))
-        .toRight(Seq(FormError(key, "error.project.categoryNotFound", Nil)))
-
-    override def unbind(key: String, value: Category): Map[String, String] = Map(key -> value.title)
-  })
-
-  def projectCreate(organisationUserCanUploadTo: Seq[DbRef[Organization]]) = Form(
-    mapping(
-      "name" -> text,
-      "pluginId" -> nonEmptyText(maxLength = 64)
-        .verifying("Not a valid plugin id", PluginMetadata.ID_PATTERN.matcher(_).matches()),
-      "category"    -> category,
-      "description" -> optional(text),
-      "owner"       -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo))
-    )(ProjectCreateForm.apply)(ProjectCreateForm.unapply)
-  )
-
-  /**
-    * Submits settings changes for a Project.
-    */
-  def ProjectSave(organisationUserCanUploadTo: Seq[DbRef[Organization]]) =
-    Form(
-      mapping(
-        "category"     -> text,
-        "homepage"     -> url,
-        "issues"       -> url,
-        "source"       -> url,
-        "support"      -> url,
-        "license-name" -> text,
-        "license-url"  -> url,
-        "description"  -> text,
-        "users"        -> list(longNumber),
-        "roles"        -> list(text),
-        "userUps"      -> list(text),
-        "roleUps"      -> list(text),
-        "update-icon"  -> boolean,
-        "owner"        -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo)),
-        "forum-sync"   -> boolean,
-        "keywords"     -> text
-      )(ProjectSettingsForm.apply)(ProjectSettingsForm.unapply)
-    )
-
-  /**
-    * Submits a name change for a project.
-    */
-  lazy val ProjectRename = Form(single("name" -> text))
-
-  /**
-    * Submits a post reply for a project discussion.
-    */
-  lazy val ProjectReply = Form(
-    mapping(
-      "content" -> text(minLength = Page.minLength, maxLength = Page.maxLength),
-      "poster"  -> optional(nonEmptyText)
-    )(DiscussionReplyForm.apply)(DiscussionReplyForm.unapply)
   )
 
   /**
@@ -158,16 +45,6 @@ class OreForms(
       "users" -> list(longNumber),
       "roles" -> list(text)
     )(OrganizationRoleSetBuilder.apply)(OrganizationRoleSetBuilder.unapply)
-  )
-
-  /**
-    * Submits an avatar update for an [[Organization]].
-    */
-  lazy val OrganizationUpdateAvatar = Form(
-    mapping(
-      "avatar-method" -> nonEmptyText,
-      "avatar-url"    -> optional(url)
-    )(OrganizationAvatarUpdate.apply)(OrganizationAvatarUpdate.unapply)
   )
 
   /**
@@ -188,39 +65,9 @@ class OreForms(
   )
 
   /**
-    * Submits changes on a documentation page.
-    */
-  lazy val PageEdit = Form(
-    mapping(
-      "parent-id" -> optional(longNumber),
-      "name"      -> optional(text),
-      "content" -> optional(
-        text(
-          maxLength = Page.maxLengthPage
-        )
-      )
-    )(PageSaveForm.apply)(PageSaveForm.unapply).verifying(
-      "error.maxLength",
-      pageSaveForm => {
-        val isHome   = pageSaveForm.parentId.isEmpty && pageSaveForm.name.contains(Page.homeName)
-        val pageSize = pageSaveForm.content.getOrElse("").length
-        if (isHome)
-          pageSize <= Page.maxLength
-        else
-          pageSize <= Page.maxLengthPage
-      }
-    )
-  )
-
-  /**
     * Submits a tagline change for a User.
     */
   lazy val UserTagline = Form(single("tagline" -> text))
-
-  /**
-    * Submits a change to a Version's description.
-    */
-  lazy val VersionDescription = Form(single("content" -> text))
 
   def required(key: String): Seq[FormError] = Seq(FormError(key, "error.required", Nil))
 
@@ -261,8 +108,6 @@ class OreForms(
   )
 
   lazy val NoteDescription = Form(single("content" -> text))
-
-  lazy val NeedsChanges = Form(single("comment" -> text))
 
   lazy val SyncSso = Form(
     tuple(

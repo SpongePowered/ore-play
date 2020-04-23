@@ -12,7 +12,7 @@ import ore.auth.CryptoUtils
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.ProjectApiKeyTable
-import ore.db.{DbRef, Model, ModelQuery, ObjId}
+import ore.db.{DbRef, Model, ObjId}
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
 import ore.models.project.factory.ProjectFactory
@@ -50,7 +50,7 @@ final class ApiV1Controller(
   def AuthedProjectActionById(
       pluginId: String
   ): ActionBuilder[AuthedProjectRequest, AnyContent] =
-    UserLock(ShowHome).andThen(authedProjectActionById(pluginId))
+    Authenticated.andThen(authedProjectActionById(pluginId))
 
   private val Logger = scalalogging.Logger("SSO")
 
@@ -224,11 +224,7 @@ final class ApiV1Controller(
               user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(_.user[Task].orDie).getOrElse(user)
             )
             .flatMap { owner =>
-              val pluginUpload = this.factory
-                .hasUserUploadError(owner)
-                .map(err => BadRequest(error("user", err)))
-                .toLeft(PluginUpload.bindFromRequest())
-                .flatMap(_.toRight(BadRequest(error("files", "error.noFile"))))
+              val pluginUpload = PluginUpload.bindFromRequest().toRight(BadRequest(error("files", "error.noFile")))
 
               EitherT.fromEither[ZIO[Blocking, Nothing, *]](pluginUpload).flatMap { data =>
                 EitherT(

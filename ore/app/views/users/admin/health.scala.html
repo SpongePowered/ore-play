@@ -1,9 +1,9 @@
-@import controllers.sugar.Requests.OreRequest
 @import controllers.sugar.Calls
+@import controllers.sugar.Requests.OreRequest
 @import models.querymodels.UnhealtyProject
 @import ore.OreConfig
-@import ore.models.project.{Project, Version}
 @import ore.models.Job
+@import ore.models.project.{Project, Version}
 @(noTopicProjects: Seq[UnhealtyProject],
   staleProjects: Seq[UnhealtyProject],
   notPublicProjects: Seq[UnhealtyProject],
@@ -11,7 +11,6 @@
   erroredJobs: Seq[Job])(implicit request: OreRequest[_], messages: Messages, config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{controllers.project.routes.Projects}
-@versionRoutes = @{controllers.project.routes.Versions}
 
 @layout.base(messages("admin.health.title")) {
 

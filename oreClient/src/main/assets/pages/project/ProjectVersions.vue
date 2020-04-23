@@ -64,8 +64,8 @@
 <script>
     import VersionList from "../../components/VersionList";
     import MemberList from "../../components/MemberList";
-    import {Stability, Platform, Category} from "../../enums";
-    import { mapState } from 'vuex'
+    import {Platform, Stability} from "../../enums";
+    import {mapState} from 'vuex'
 
     export default {
         components: {

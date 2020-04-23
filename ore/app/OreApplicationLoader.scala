@@ -62,7 +62,7 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{CancelableFuture, Runtime, Schedule, Task, UIO, ZIO, ZEnv}
+import zio.{CancelableFuture, Runtime, Schedule, Task, UIO, ZEnv, ZIO}
 
 class OreApplicationLoader extends ApplicationLoader {
 

@@ -8,8 +8,8 @@ import play.api.libs.json.{JsError, JsSuccess, Json}
 import Stats.WebpackStats
 import com.typesafe.sbt.web.SbtWeb
 import com.typesafe.sbt.web.SbtWeb.autoImport._
-import sbt._
 import sbt.Keys._
+import sbt._
 
 //Webpack parts of scalajs-bundler extracted out into it's own plugin
 object WebpackPlugin extends AutoPlugin {

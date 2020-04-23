@@ -10,12 +10,9 @@ import ore.db.impl.query.DoobieOreProtocol
 import ore.db.{DbRef, Model}
 import ore.models.Job
 import ore.models.admin.LoggedActionViewModel
-import ore.models.organization.Organization
 import ore.models.project._
-import ore.models.user.User
 
 import cats.data.NonEmptyList
-import cats.syntax.all._
 import doobie._
 import doobie.implicits._
 import doobie.postgres.implicits._

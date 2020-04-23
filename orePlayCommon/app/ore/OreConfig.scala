@@ -5,7 +5,6 @@ import scala.jdk.CollectionConverters._
 
 import play.api.{ConfigLoader, Configuration}
 
-import ore.data.Color
 import ore.db.DbRef
 import ore.models.user.User
 import ore.util.StringUtils._

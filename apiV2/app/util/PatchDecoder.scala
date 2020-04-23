@@ -2,9 +2,9 @@ package util
 
 import cats.Applicative
 import cats.syntax.all._
+import io.circe.{ACursor, Decoder}
 import squeal.category._
 import squeal.category.syntax.all._
-import io.circe.{ACursor, Decoder}
 
 trait PatchDecoder[A] {
 

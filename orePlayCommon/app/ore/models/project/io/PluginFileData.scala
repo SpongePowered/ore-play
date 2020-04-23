@@ -7,10 +7,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 import ore.data.project.Dependency
-import ore.db.DbRef
-import ore.models.project.Version
 
-import cats.data.{Validated, ValidatedNel}
 import org.spongepowered.plugin.meta.McModInfo
 
 /**

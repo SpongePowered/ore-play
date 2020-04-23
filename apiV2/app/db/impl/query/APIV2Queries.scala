@@ -1,7 +1,6 @@
 package db.impl.query
 
-import java.sql.Timestamp
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDate
 
 import play.api.mvc.RequestHeader
 
@@ -25,18 +24,17 @@ import ore.permission.role.Role
 import cats.Reducible
 import cats.data.NonEmptyList
 import cats.instances.list._
-import cats.kernel.Monoid
 import cats.syntax.all._
-import squeal.category._
-import squeal.category.syntax.all._
 import doobie._
 import doobie.implicits._
 import doobie.postgres.implicits._
+import doobie.postgres.circe.jsonb.implicits._
 import doobie.implicits.javasql._
 import doobie.implicits.javatime.JavaTimeLocalDateMeta
-import doobie.postgres.circe.jsonb.implicits._
 import doobie.util.Put
 import io.circe.DecodingFailure
+import squeal.category._
+import squeal.category.syntax.all._
 import zio.ZIO
 import zio.blocking.Blocking
 
@@ -51,7 +49,6 @@ object APIV2Queries extends DoobieOreProtocol {
           |       u.tagline,
           |       u.join_date,
           |       u.read_prompts,
-          |       u.is_locked,
           |       u.language,
           |       ak.name,
           |       ak.owner_id,
@@ -368,8 +365,8 @@ object APIV2Queries extends DoobieOreProtocol {
       )
     )
 
-    import cats.instances.tuple._
     import cats.instances.option._
+    import cats.instances.tuple._
 
     val (ownerSet, ownerFrom, ownerFilter) = edits.namespace.owner.foldMap { owner =>
       (fr", owner_id = u.id", fr"FROM users u", fr"AND u.name = $owner")

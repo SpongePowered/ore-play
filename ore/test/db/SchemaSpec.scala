@@ -4,14 +4,11 @@ import ore.db.DbRef
 import ore.models.Job
 import ore.models.admin._
 import ore.models.api.ProjectApiKey
-import ore.models.organization.Organization
 import ore.models.project._
-import ore.models.statistic.{ProjectView, VersionDownload}
 import ore.models.user._
 import ore.models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 
 import doobie.implicits._
-import doobie.implicits.javasql._
 import doobie.postgres.implicits._
 import doobie.postgres.circe.jsonb.implicits._
 import org.junit.runner._

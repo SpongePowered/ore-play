@@ -243,7 +243,7 @@
 </template>
 
 <script>
-    import {Permission, FlagReason} from "../enums";
+    import {FlagReason, Permission} from "../enums";
     import CSRFField from "./CSRFField";
 
     import markdownIt from "markdown-it"
@@ -251,7 +251,7 @@
     import markdownItWikilinks from "markdown-it-wikilinks"
     import markdownItTaskLists from "markdown-it-task-lists"
     import {API} from "../api";
-    import { mapState } from 'vuex'
+    import {mapState} from 'vuex'
 
     const md = markdownIt({
         linkify: true,

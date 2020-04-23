@@ -4,7 +4,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.inject.ApplicationLifecycle
 
-import db.impl.access.ProjectBase
 import db.impl.query.StatTrackerQueries
 import ore.OreConfig
 import ore.db.ModelService
@@ -15,11 +14,10 @@ import com.typesafe.scalalogging
 import doobie.`enum`.TransactionIsolation
 import doobie.implicits._
 import zio.clock.Clock
-import zio.{Schedule, RIO, Task, UIO, ZIO, duration}
+import zio._
 
 class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit ec: ExecutionContext,
-    projects: ProjectBase[Task],
     service: ModelService[Task]
 ) {
 

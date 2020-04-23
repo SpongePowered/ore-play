@@ -16,7 +16,7 @@ import ore.util.OreMDC
 import com.typesafe.scalalogging
 import zio.clock.Clock
 import zio.duration.Duration
-import zio.{Schedule, UIO, ZIO}
+import zio.{Schedule, UIO}
 
 class UserTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit ec: ExecutionContext,

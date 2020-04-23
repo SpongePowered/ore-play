@@ -2,8 +2,8 @@ package controllers.project
 
 import java.nio.file.Files._
 import java.nio.file.{Files, StandardCopyOption}
-import java.time.temporal.ChronoUnit
 import java.time.OffsetDateTime
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 import scala.annotation.unused
@@ -15,26 +15,20 @@ import play.filters.csrf.CSRF
 
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
 import controllers.{OreBaseController, OreControllerComponents}
-import form.OreForms
-import models.viewhelper.VersionData
 import ore.data.DownloadType
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectTable, UserTable, VersionTable}
 import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
-import ore.models.{Job, JobInfo}
 import ore.models.admin.VersionVisibilityChange
 import ore.models.project._
-import ore.models.project.factory.ProjectFactory
-import ore.models.project.io.{PluginFile, PluginUpload}
-import ore.models.user.{LoggedActionType, LoggedActionVersion, User}
+import ore.models.project.io.PluginFile
+import ore.models.user.User
 import ore.permission.Permission
 import ore.rest.ApiV1ProjectsTable
 import ore.util.OreMDC
-import ore.util.StringUtils._
 import ore.{OreEnv, StatTracker}
-import util.UserActionLogger
 import util.syntax._
 import views.html.projects.{versions => views}
 
@@ -51,7 +45,7 @@ import zio.{IO, Task, UIO, ZIO}
 /**
   * Controller for handling Version related actions.
   */
-class Versions(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory)(
+class Versions(stats: StatTracker[UIO])(
     implicit oreComponents: OreControllerComponents,
     messagesApi: MessagesApi,
     env: OreEnv,
@@ -62,125 +56,6 @@ class Versions(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
 
   private val Logger    = scalalogging.Logger("Versions")
   private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
-
-  private def VersionEditAction(author: String, slug: String) =
-    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.EditVersion))
-
-  private def VersionUploadAction(author: String, slug: String) =
-    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.CreateVersion))
-
-  /*
-  /**
-   * Sets the specified Version as approved by the moderation staff.
-   *
-   * @param author         Project owner
-   * @param slug           Project slug
-   * @param versionString  Version name
-   * @return               View of version
-   */
-  def approve(author: String, slug: String, versionString: String, partial: Boolean): Action[AnyContent] = {
-    AuthedProjectAction(author, slug, requireUnlock = true)
-      .andThen(ProjectPermissionAction(Permission.Reviewer))
-      .asyncF { implicit request =>
-        val newState = if (partial) ReviewState.PartiallyReviewed else ReviewState.Reviewed
-        for {
-          version <- getVersion(request.data.project, versionString)
-          _ <- service.update(version)(
-            _.copy(
-              reviewState = newState,
-              reviewerId = Some(request.user.id),
-              approvedAt = Some(OffsetDateTime.now())
-            )
-          )
-          _ <- UserActionLogger.log(
-            request.request,
-            LoggedActionType.VersionReviewStateChanged,
-            version.id,
-            newState.toString,
-            version.reviewState.toString
-          )(LoggedActionVersion(_, Some(version.projectId)))
-        } yield Redirect(self.show(author, slug, versionString))
-      }
-  }
-
-  /**
-   * Deletes the specified version and returns to the version page.
-   *
-   * @param author        Owner name
-   * @param slug          Project slug
-   * @param versionString Version name
-   * @return Versions page
-   */
-  def delete(author: String, slug: String, versionString: String): Action[String] = {
-    Authenticated
-      .andThen(PermissionAction[AuthRequest](Permission.HardDeleteVersion))
-      .asyncF(parse.form(forms.NeedsChanges)) { implicit request =>
-        val comment = request.body
-
-        for {
-          version <- getProjectVersion(author, slug, versionString)
-          _ <- UserActionLogger.log(
-            request,
-            LoggedActionType.VersionDeleted,
-            version.id,
-            s"Deleted: $comment",
-            s"${version.visibility}"
-          )(LoggedActionVersion(_, Some(version.projectId)))
-          _ <- projects.deleteVersion(version)
-        } yield Redirect(self.showList(author, slug))
-      }
-  }
-
-  /**
-   * Soft deletes the specified version.
-   *
-   * @param author Project owner
-   * @param slug   Project slug
-   * @return Home page
-   */
-  def softDelete(author: String, slug: String, versionString: String): Action[String] =
-    AuthedProjectAction(author, slug, requireUnlock = true)
-      .andThen(ProjectPermissionAction(Permission.DeleteVersion))
-      .asyncF(parse.form(forms.NeedsChanges)) { implicit request =>
-        val comment = request.body
-
-        for {
-          version <- getVersion(request.project, versionString)
-          _       <- projects.prepareDeleteVersion(version)
-          _       <- version.setVisibility(Visibility.SoftDelete, comment, request.user.id)
-          _ <- UserActionLogger.log(
-            request.request,
-            LoggedActionType.VersionDeleted,
-            version.id,
-            s"SoftDelete: $comment",
-            s"${version.visibility}"
-          )(LoggedActionVersion(_, Some(version.projectId)))
-        } yield Redirect(self.showList(author, slug))
-      }
-
-  /**
-   * Restore the specified version.
-   *
-   * @param author Project owner
-   * @param slug   Project slug
-   * @return Home page
-   */
-  def restore(author: String, slug: String, versionString: String): Action[String] = {
-    Authenticated
-      .andThen(PermissionAction[AuthRequest](Permission.Reviewer))
-      .asyncF(parse.form(forms.NeedsChanges)) { implicit request =>
-        val comment = request.body
-
-        for {
-          version <- getProjectVersion(author, slug, versionString)
-          _       <- version.setVisibility(Visibility.Public, comment, request.user.id)
-          _ <- UserActionLogger.log(request, LoggedActionType.VersionDeleted, version.id, s"Restore: $comment", "")(
-            LoggedActionVersion(_, Some(version.projectId))
-          )
-        } yield Redirect(self.showList(author, slug))
-      }
-  }
-   */
 
   def showLog(author: String, slug: String, versionString: String): Action[AnyContent] = {
     Authenticated

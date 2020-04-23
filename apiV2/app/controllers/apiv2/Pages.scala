@@ -7,9 +7,9 @@ import play.api.mvc.{Action, AnyContent}
 import controllers.OreControllerComponents
 import controllers.apiv2.helpers.{APIScope, ApiError, ApiErrors}
 import db.impl.query.APIV2Queries
-import ore.db.impl.OrePostgresDriver.api._
 import models.protocols.APIV2
 import ore.db.DbRef
+import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.PageTable
 import ore.models.project.{Page, Project}
 import ore.permission.Permission
@@ -17,7 +17,6 @@ import ore.util.StringUtils
 import util.PatchDecoder
 import util.syntax._
 
-import cats.Id
 import cats.data.Validated
 import cats.instances.option._
 import cats.syntax.all._

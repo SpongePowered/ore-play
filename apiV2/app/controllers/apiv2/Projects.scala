@@ -28,21 +28,19 @@ import ore.models.user.role.ProjectUserRole
 import ore.models.user.{LoggedActionProject, LoggedActionType, Notification}
 import ore.permission.Permission
 import ore.util.OreMDC
-import util.{PartialUtils, PatchDecoder, UserActionLogger}
 import util.syntax._
+import util.{PartialUtils, PatchDecoder, UserActionLogger}
 
 import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.syntax.all._
-import com.typesafe.scalalogging
 import io.circe._
 import io.circe.derivation.annotations.SnakeCaseJsonCodec
 import io.circe.syntax._
 import squeal.category._
 import squeal.category.macros.Derive
-import squeal.category.syntax.all._
-import zio.{IO, Task, UIO, ZIO}
 import zio.blocking.Blocking
 import zio.interop.catz._
+import zio.{IO, Task, UIO, ZIO}
 
 class Projects(
     factory: ProjectFactory,
@@ -52,9 +50,6 @@ class Projects(
     implicit oreComponents: OreControllerComponents
 ) extends AbstractApiV2Controller(lifecycle) {
   import Projects._
-
-  private val Logger    = scalalogging.Logger("ApiV2Projects")
-  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   def listProjects(
       q: Option[String],
@@ -131,10 +126,6 @@ class Projects(
         implicit val lang: Lang = user.langOrDefault
 
         for {
-          _ <- ZIO
-            .fromOption(factory.hasUserUploadError(user))
-            .flip
-            .mapError(e => BadRequest(UserError(messagesApi(e))))
           canUpload <- {
             if (settings.ownerName == user.name) ZIO.succeed((user.id.value, true))
             else

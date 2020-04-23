@@ -2,11 +2,9 @@ package db
 
 import java.time.LocalDate
 
-import scala.concurrent.duration._
-
 import play.api.Configuration
 
-import db.impl.query.{AppQueries, SharedQueries}
+import db.impl.query.AppQueries
 import ore.OreConfig
 
 import org.junit.runner.RunWith

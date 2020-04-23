@@ -2,11 +2,10 @@ package db.impl.access
 
 import scala.language.higherKinds
 
-import db.impl.query.SharedQueries
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{PageTable, ProjectTable, VersionTable}
+import ore.db.impl.schema.{ProjectTable, VersionTable}
 import ore.db.{DbRef, Model, ModelService}
 import ore.member.Joinable
 import ore.models.Job
@@ -15,18 +14,12 @@ import ore.models.project.io.ProjectFiles
 import ore.models.user.User
 import ore.util.StringUtils._
 import ore.util.{FileUtils, OreMDC}
+import util.FileIO
 import util.syntax._
-import util.{FileIO, TaskUtils}
 
-import cats.Parallel
-import cats.effect.syntax.all._
-import cats.instances.option._
 import cats.instances.vector._
 import cats.syntax.all._
 import cats.tagless.autoFunctorK
-import com.google.common.base.Preconditions._
-import com.typesafe.scalalogging.LoggerTakingImplicit
-import zio.Task
 
 @autoFunctorK
 trait ProjectBase[+F[_]] {
@@ -96,8 +89,6 @@ trait ProjectBase[+F[_]] {
     * @param project Project to delete
     */
   def delete(project: Model[Project])(implicit mdc: OreMDC): F[Int]
-
-  def queryProjectPages(project: Model[Project]): F[Seq[(Model[Page], Seq[Model[Page]])]]
 }
 
 object ProjectBase {
@@ -267,22 +258,6 @@ object ProjectBase {
 
       val eff = project.topicId.fold(F.unit)(addForumJob)
       eff *> service.delete(project) <* fileEff
-    }
-
-    def queryProjectPages(project: Model[Project]): F[Seq[(Model[Page], Seq[Model[Page]])]] = {
-      val tablePage = TableQuery[PageTable]
-      val pagesQuery = for {
-        (pp, p) <- tablePage.joinLeft(tablePage).on(_.id === _.parentId)
-        if pp.projectId === project.id.value && pp.parentId.isEmpty
-      } yield (pp, p)
-
-      service.runDBIO(pagesQuery.result).map(_.groupBy(_._1)).map { grouped => // group by parent page
-        // Sort by key then lists too
-        grouped.toSeq.sortBy(_._1.name).map {
-          case (pp, p) =>
-            (pp, p.flatMap(_._2).sortBy(_.name))
-        }
-      }
     }
   }
 

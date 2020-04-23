@@ -6,7 +6,6 @@ import java.time.temporal.ChronoUnit
 import java.time.{LocalDate, OffsetDateTime}
 import java.util.Date
 
-import scala.concurrent.duration._
 import scala.util.Try
 
 import play.api.mvc.{Action, ActionBuilder, AnyContent}
@@ -20,13 +19,7 @@ import models.viewhelper.{OrganizationData, UserData}
 import ore.db._
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{
-  LoggedActionOrganizationTable,
-  LoggedActionPageTable,
-  LoggedActionProjectTable,
-  LoggedActionUserTable,
-  LoggedActionVersionTable
-}
+import ore.db.impl.schema._
 import ore.markdown.MarkdownRenderer
 import ore.member.MembershipDossier
 import ore.models.organization.Organization
@@ -35,8 +28,8 @@ import ore.models.user._
 import ore.models.user.role._
 import ore.permission._
 import ore.permission.role.{Role, RoleCategory}
-import util.{Sitemap, UserActionLogger}
 import util.syntax._
+import util.{Sitemap, UserActionLogger}
 import views.{html => views}
 
 import cats.Order

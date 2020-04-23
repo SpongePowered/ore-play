@@ -1,5 +1,5 @@
-@import controllers.sugar.Requests.OreRequest
 @import controllers.sugar.Calls
+@import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
 @import ore.db.Model
 @import ore.markdown.MarkdownRenderer
@@ -10,8 +10,6 @@
 @import util.syntax._
 
 @(project: Project, version: Version, visibilityChanges: Seq[(Model[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
-
-@versionRoutes = @{controllers.project.routes.Versions}
 
 @layout.base(messages("version.log.logger.title", project.namespace)) {
 	<div class="row">

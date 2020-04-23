@@ -1,7 +1,6 @@
 package models.querymodels
 import java.time.OffsetDateTime
 
-import ore.data.Color
 import ore.data.project.ProjectNamespace
 import ore.db.DbRef
 import ore.models.user.User

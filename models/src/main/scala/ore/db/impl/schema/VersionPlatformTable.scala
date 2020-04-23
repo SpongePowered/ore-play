@@ -1,8 +1,8 @@
 package ore.db.impl.schema
 
 import ore.db.DbRef
-import ore.models.project.{Version, VersionPlatform}
 import ore.db.impl.OrePostgresDriver.api._
+import ore.models.project.{Version, VersionPlatform}
 
 class VersionPlatformTable(tag: Tag) extends ModelTable[VersionPlatform](tag, "project_version_platforms") {
 

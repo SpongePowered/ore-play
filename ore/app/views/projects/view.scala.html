@@ -4,13 +4,9 @@ Base template for Project overview.
 
 @import controllers.project.routes._
 @import controllers.sugar.Requests.OreRequest
-@import models.viewhelper.{ProjectData, ScopedProjectData}
+@import models.viewhelper.ProjectData
 @import ore.OreConfig
-@import ore.data.project.FlagReason
-@import ore.markdown.MarkdownRenderer
-@import ore.models.project.Visibility
-@import ore.permission.Permission
-@import views.html.helper.{CSPNonce, CSRF, form}
+@import views.html.helper.CSPNonce
 
 @(p: ProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, assetsFinder: AssetsFinder)
 

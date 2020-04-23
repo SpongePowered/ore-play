@@ -4,8 +4,8 @@ import java.text.MessageFormat
 
 import ore.OreJobsConfig
 import ore.db.access.ModelView
-import ore.db.{Model, ModelService}
 import ore.db.impl.OrePostgresDriver.api._
+import ore.db.{Model, ModelService}
 import ore.models.project.{Page, Project, Version, Visibility}
 import ore.syntax._
 

@@ -10,13 +10,12 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.VersionTable
 import ore.db.{DbRef, Model, ModelService}
 import ore.member.MembershipDossier
-import ore.models.{Job, JobInfo}
+import ore.models.Job
 import ore.models.project._
 import ore.models.project.io._
 import ore.models.user.role.ProjectUserRole
 import ore.models.user.{Notification, User}
 import ore.permission.role.Role
-import ore.util.OreMDC
 import ore.util.StringUtils._
 import ore.{OreConfig, OreEnv}
 import util.FileIO
@@ -24,7 +23,6 @@ import util.syntax._
 
 import cats.data.NonEmptyList
 import cats.syntax.all._
-import com.typesafe.scalalogging
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}
@@ -46,9 +44,6 @@ trait ProjectFactory {
 
   implicit protected def config: OreConfig
   implicit protected def env: OreEnv
-
-  private val Logger    = scalalogging.Logger("Projects")
-  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Processes incoming [[PluginUpload]] data, verifies it, and loads a new
@@ -121,7 +116,6 @@ trait ProjectFactory {
       implicit messages: Messages
   ): ZIO[Blocking, String, PluginFileWithData] =
     for {
-      _ <- ZIO.fromOption(hasUserUploadError(uploader)).flip
       plugin <- processPluginUpload(uploadData, uploader)
         .ensure("error.version.invalidPluginId")(_.data.id.contains(project.pluginId))
         .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
@@ -133,17 +127,6 @@ trait ProjectFactory {
         else ZIO.unit
       }
     } yield plugin
-
-  /**
-    * Returns the error ID to display to the User, if any, if they cannot
-    * upload files.
-    *
-    * @return Upload error if any
-    */
-  def hasUserUploadError(user: User): Option[String] =
-    Seq(
-      user.isLocked -> "error.user.locked"
-    ).find(_._1).map(_._2)
 
   /**
     * Starts the construction process of a [[Project]].

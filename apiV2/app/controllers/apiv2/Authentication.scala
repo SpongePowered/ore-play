@@ -8,7 +8,7 @@ import scala.concurrent.duration.FiniteDuration
 
 import play.api.http.HttpErrorHandler
 import play.api.inject.ApplicationLifecycle
-import play.api.mvc.{Action, AnyContent, BodyParser, Request, Result}
+import play.api.mvc.{Codec => _, _}
 
 import controllers.OreControllerComponents
 import controllers.apiv2.helpers.{APIScope, ApiError}
@@ -20,11 +20,9 @@ import ore.models.user.FakeUser
 import ore.permission.Permission
 
 import akka.http.scaladsl.model.headers.HttpCredentials
-import cats.syntax.all._
 import enumeratum.{Enum, EnumEntry}
 import io.circe._
 import io.circe.derivation.annotations.SnakeCaseJsonCodec
-import zio.interop.catz._
 import zio.{IO, ZIO}
 
 class Authentication(
