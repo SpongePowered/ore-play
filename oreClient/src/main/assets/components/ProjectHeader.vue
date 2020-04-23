@@ -27,7 +27,9 @@
             <div class="col-md-6">
                 <div v-if="project" class="project-header">
                     <div class="project-path">
-                        <a :href="routes.Users.showProjects(project.namespace.owner).absoluteURL()">{{ project.namespace.owner }}</a>
+                        <router-link :to="{name: 'user_projects', params: {user: project.namespace.owner}}">
+                            {{ project.namespace.owner }}
+                        </router-link>
                         /
                         <router-link :to="{name: 'project_home'}" v-slot="{ href, navigate, isExactActive }">
                             <a class="project-name" :href="href" @click="navigate">{{ project.name }}</a>
@@ -306,7 +308,7 @@
             flagReason() {
                 return FlagReason
             },
-            ...mapState('user', {
+            ...mapState('global', {
                 currentUser: 'currentUser'
             }),
             ...mapState('project', ['project', 'permissions', 'members'])

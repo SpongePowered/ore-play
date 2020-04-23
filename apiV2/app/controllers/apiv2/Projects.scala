@@ -289,68 +289,22 @@ class Projects(
         }
       }
 
-  def projectMembersAction(pluginId: String, limit: Option[Long], offset: Long)(
-      implicit r: ApiRequest[_]
-  ): ZIO[Any, Nothing, Result] = {
-    service
-      .runDbCon(
-        APIV2Queries
-          .projectMembers(pluginId, limitOrDefault(limit, 25), offsetOrZero(offset))
-          .to[Vector]
-      )
-      .map { xs =>
-        val users =
-          if (r.scopePermission.has(Permission.ManageProjectMembers)) xs
-          else xs.filter(_.role.isAccepted)
-
-        Ok(users.asJson)
-      }
-  }
-
   def showMembers(pluginId: String, limit: Option[Long], offset: Long): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF(implicit r =>
-      projectMembersAction(pluginId, limit, offset)
-    )
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit r =>
+      Members.membersAction(APIV2Queries.projectMembers(pluginId, _, _), limit, offset)
+    }
 
-  def updateMembers(pluginId: String): Action[List[Projects.ProjectMemberUpdate]] =
+  def updateMembers(pluginId: String): Action[List[Members.MemberUpdate]] =
     ApiAction(Permission.ManageProjectMembers, APIScope.ProjectScope(pluginId))
-      .asyncF(parseCirce.decodeJson[List[Projects.ProjectMemberUpdate]]) { implicit r =>
-        for {
-          project <- projects.withPluginId(pluginId).someOrFail(NotFound)
-          resolvedUsers <- ZIO.foreach(r.body) { m =>
-            users.withName(m.user)(OreMDC.NoMDC).tupleLeft(m.role).value.someOrFail(NotFound)
-          }
-          currentMembers <- project.memberships[Task, ProjectUserRole, ProjectRoleTable].members(project).orDie
-          resolvedUsersMap  = resolvedUsers.map(t => t._2.id.value -> t._1).toMap
-          currentMembersMap = currentMembers.map(t => t.userId -> t).toMap
-          newUsers          = resolvedUsersMap.view.filterKeys(!currentMembersMap.contains(_)).toMap
-          usersToUpdate = currentMembersMap.collect {
-            case (user, oldRole) if resolvedUsersMap.get(user).exists(newRole => oldRole.role != newRole) =>
-              (user, (oldRole, resolvedUsersMap(user)))
-          }
-          usersToDelete = currentMembersMap.view.filterKeys(!resolvedUsersMap.contains(_)).toMap
-          _ <- if (usersToUpdate.contains(project.ownerId)) ZIO.fail(BadRequest(ApiError("Can't update owner")))
-          else ZIO.unit
-          _ <- if (usersToDelete.contains(project.ownerId)) ZIO.fail(BadRequest(ApiError("Can't delete owner")))
-          else ZIO.unit
-          _ <- service.bulkInsert(newUsers.map(t => ProjectUserRole(t._1, project.id, t._2)).toSeq)
-          _ <- ZIO.foreach(usersToUpdate.values)(t => service.update(t._1)(_.copy(role = t._2)))
-          _ <- service.deleteWhere(ProjectUserRole)(_.id.inSetBind(usersToDelete.values.map(_.id.value)))
-          _ <- {
-            val notifications = newUsers.map {
-              case (userId, role) =>
-                Notification(
-                  userId = userId,
-                  originId = Some(project.ownerId),
-                  notificationType = NotificationType.ProjectInvite,
-                  messageArgs = NonEmptyList.of("notification.project.invite", role.title, project.name)
-                )
-            }
-
-            service.bulkInsert(notifications.toSeq)
-          }
-          res <- projectMembersAction(pluginId, None, 0)
-        } yield res
+      .asyncF(parseCirce.decodeJson[List[Members.MemberUpdate]]) { implicit r =>
+        Members.updateMembers[Project, ProjectUserRole, ProjectRoleTable](
+          getOwner = projects.withPluginId(pluginId).someOrFail(NotFound),
+          getMembersQuery = APIV2Queries.projectMembers(pluginId, _, _),
+          createRole = ProjectUserRole(_, _, _),
+          roleCompanion = ProjectUserRole,
+          notificationType = NotificationType.ProjectInvite,
+          notificationLocalization = "notification.project.invite"
+        )
       }
 
   def showProjectStats(pluginId: String, fromDateString: String, toDateString: String): Action[AnyContent] =
@@ -533,9 +487,4 @@ object Projects {
 
     def asFactoryTemplate: ProjectTemplate = ProjectTemplate(name, pluginId, category, description)
   }
-
-  @SnakeCaseJsonCodec case class ProjectMemberUpdate(
-      user: String,
-      role: ore.permission.role.Role
-  )
 }

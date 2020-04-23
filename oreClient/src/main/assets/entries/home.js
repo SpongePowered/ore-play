@@ -12,11 +12,13 @@ import ProjectVersions from "../pages/project/ProjectVersions";
 import Project from "../pages/project/Project";
 import VersionPage from "../pages/project/VersionPage";
 import NewVersion from "../pages/project/NewVersion";
-import UserProfile from "../pages/UserProfile";
+import User from "../pages/user/User";
 
 import topStore from "../stores/top"
 import projectModule from "../stores/project"
+import globalModule from "../stores/global"
 import userModule from "../stores/user"
+import UserProjects from "../pages/user/UserProjects";
 
 Vue.use(VueRouter);
 Vue.use(Vuex);
@@ -26,11 +28,12 @@ const store = new Vuex.Store({
     ...topStore,
     modules: {
         project: projectModule,
+        global: globalModule,
         user: userModule
     }
 });
 
-store.dispatch('user/loadUser');
+store.dispatch('global/loadUser');
 
 const router = new VueRouter({
     base: '/',
@@ -41,14 +44,18 @@ const router = new VueRouter({
             name: 'home',
             component: Home
         },
-        /*
         {
             path: '/:user',
-            name: 'user',
-            component: UserProfile,
-            props: true
+            component: User,
+            props: true,
+            children: [
+                {
+                    path: '',
+                    name: 'user_projects',
+                    component: UserProjects
+                }
+            ]
         },
-         */
         {
             path: '/:owner/:slug/',
             name: 'project',

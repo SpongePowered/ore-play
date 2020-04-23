@@ -135,31 +135,7 @@ class Users(
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String): Action[AnyContent] = OreAction.asyncF { implicit request =>
-    for {
-      u <- users
-        .withName(username)
-        .toZIOWithError(notFound)
-      // TODO include orga projects?
-      t1 <- (
-        getOrga(username).option,
-        UserData.of(request, u)
-      ).parTupled
-      (orga, userData) = t1
-      t2 <- (
-        OrganizationData.of[Task](orga).value.orDie,
-        ScopedOrganizationData.of(request.currentUser, orga).value
-      ).parTupled
-      (orgaData, scopedOrgaData) = t2
-    } yield {
-      Ok(
-        views.users.projects(
-          userData,
-          orgaData.flatMap(a => scopedOrgaData.map(b => (a, b)))
-        )
-      )
-    }
-  }
+  def showProjects(username: String): Action[AnyContent] = OreAction(implicit request => Ok(views.home()))
 
   /**
     * Submits a change to the specified user's tagline.

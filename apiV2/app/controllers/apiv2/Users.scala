@@ -9,6 +9,7 @@ import controllers.apiv2.Users.{PaginatedCompactProjectResult, PaginatedUserResu
 import controllers.apiv2.helpers.{APIScope, ApiError, Pagination}
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
+import models.viewhelper.HeaderData
 import ore.db.DbRef
 import ore.models.project.ProjectSortingStrategy
 import ore.models.user.User
@@ -163,6 +164,26 @@ class Users(
           )
         )
       }
+  }
+
+  def getMemberships(user: String): Action[AnyContent] =
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
+      service.runDbCon(APIV2Queries.getMemberships(user).to[Vector]).map(r => Ok(r.asJson))
+    }
+
+  def showHeaderData(): Action[AnyContent] = ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { r =>
+    HeaderData.of(r).map { headerData =>
+      Ok(
+        Json.obj(
+          "hasNotice" := headerData.hasNotice,
+          "hasUnreadNotifications" := headerData.hasUnreadNotifications,
+          "unresolvedFlags" := headerData.unresolvedFlags,
+          "hasProjectApprovals" := headerData.hasProjectApprovals,
+          "hasReviewQueue" := headerData.hasReviewQueue,
+          "readPrompts" := r.user.get.readPrompts.map(_.value)
+        )
+      )
+    }
   }
 }
 object Users {

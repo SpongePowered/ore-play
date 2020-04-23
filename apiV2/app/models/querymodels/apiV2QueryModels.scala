@@ -243,13 +243,13 @@ case class APIV2QueryCompactProject(
     }
 }
 
-case class APIV2QueryProjectMember(
+case class APIV2QueryMember(
     user: String,
     role: Role,
     isAccepted: Boolean
 ) {
 
-  def asProtocol: APIV2.ProjectMember = APIV2.ProjectMember(
+  def asProtocol: APIV2.Member = APIV2.Member(
     user,
     APIV2.Role(
       role,
@@ -329,6 +329,58 @@ case class APIV2QueryUser(
         isAccepted = true
       )
     }
+  )
+}
+
+case class APIV2QueryOrganization(
+    owner: String,
+    createdAt: OffsetDateTime,
+    name: String,
+    tagline: Option[String],
+    joinDate: Option[OffsetDateTime],
+    projectCount: Long,
+    roles: List[Role]
+) {
+
+  def asProtocol: APIV2.Organization = APIV2.Organization(
+    owner,
+    APIV2.User(
+      createdAt,
+      name,
+      tagline,
+      joinDate,
+      projectCount,
+      roles.map { role =>
+        APIV2.Role(
+          role,
+          role.title,
+          role.color.hex,
+          role.permissions.toNamedSeq.toList,
+          isAccepted = true
+        )
+      }
+    )
+  )
+}
+
+case class APIV2QueryMembership(
+    scope: String,
+    organization: Option[String],
+    pluginId: Option[String],
+    ownerName: Option[String],
+    slug: Option[String],
+    role: Role,
+    isAccepted: Boolean
+) {
+
+  def asProtocol: APIV2.Membership = APIV2.Membership(
+    scope,
+    organization.map(APIV2.MembershipOrganization.apply),
+    pluginId
+      .zip(ownerName.zip(slug).map((APIV2.ProjectNamespace.apply _).tupled))
+      .map((APIV2.MembershipProject.apply _).tupled),
+    role,
+    isAccepted
   )
 }
 

@@ -24,16 +24,23 @@
             }
         },
         created() {
-            if (!this.pluginId && (!this.owner || !this.slug)) {
-                throw "Neither pluginId or namespace for project defined"
+            this.distpatchUpdate();
+        },
+        watch: {
+            $route() {
+                this.distpatchUpdate();
             }
+        },
+        methods: {
+            distpatchUpdate() {
 
-            if (!this.fetchedProject) {
-                let dispatchProject = this.pluginId ? this.pluginId : {owner: this.owner, slug: this.slug}
-                this.$store.dispatch('project/setActiveProject', dispatchProject);
-            }
-            else {
-                this.$store.dispatch('project/setActiveProjectFromFetched', this.fetchedProject);
+                if(this.fetchedProject && this.fetchedProject.namespace.owner === this.owner && this.fetchedProject.namespace.slug === this.slug) {
+                    this.$store.dispatch('project/setActiveProjectFromFetched', this.fetchedProject);
+                }
+                else {
+                    let dispatchProject = this.pluginId ? this.pluginId : {owner: this.owner, slug: this.slug}
+                    this.$store.dispatch('project/setActiveProject', dispatchProject);
+                }
             }
         }
     }

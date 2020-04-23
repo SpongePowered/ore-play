@@ -693,3 +693,21 @@ export class Role {
         };
     }
 }
+
+export class Prompt {
+    static get values() {
+        return [this.ChangeAvatar]
+    }
+
+    static get ChangeAvatar() {
+        return {
+            id: 0,
+            title: 'Change your avatar!',
+            message: 'Welcome to your new organization! Start by changing your avatar by clicking on it.'
+        }
+    }
+
+    static fromId(id) {
+        return this.values.filter(prompt => prompt.id === id)[0];
+    }
+}

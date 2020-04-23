@@ -256,6 +256,7 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val apiV2Users: apiv2.Users                                     = wire[apiv2.Users]
   lazy val apiV2Versions: apiv2.Versions                               = wire[apiv2.Versions]
   lazy val apiV2Pages: apiv2.Pages                                     = wire[apiv2.Pages]
+  lazy val apiV2Organizations: apiv2.Organizations                     = wire[apiv2.Organizations]
   lazy val versions: Versions                                          = wire[Versions]
   lazy val users: Users                                                = wire[Users]
   lazy val projects: Projects                                          = wire[Projects]
@@ -270,6 +271,7 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val apiV2UsersProvider: Provider[apiv2.Users]                   = () => apiV2Users
   lazy val apiV2VersionsProvider: Provider[apiv2.Versions]             = () => apiV2Versions
   lazy val apiV2PagesProvider: Provider[apiv2.Pages]                   = () => apiV2Pages
+  lazy val apiV2OrganizationsProvider: Provider[apiv2.Organizations]   = () => apiV2Organizations
   lazy val versionsProvider: Provider[Versions]                        = () => versions
   lazy val usersProvider: Provider[Users]                              = () => users
   lazy val projectsProvider: Provider[Projects]                        = () => projects

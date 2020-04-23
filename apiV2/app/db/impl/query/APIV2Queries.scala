@@ -378,7 +378,7 @@ object APIV2Queries extends DoobieOreProtocol {
     (updateTable("projects", projectColumns, edits) ++ ownerSet ++ ownerFrom ++ fr" WHERE plugin_id = $pluginId" ++ ownerFilter).update
   }
 
-  def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2.ProjectMember] =
+  def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2.Member] =
     sql"""|SELECT u.name, r.name, upr.is_accepted
           |  FROM projects p
           |         JOIN user_project_roles upr ON p.id = upr.project_id
@@ -386,7 +386,18 @@ object APIV2Queries extends DoobieOreProtocol {
           |         JOIN roles r ON upr.role_type = r.name
           |  WHERE p.plugin_id = $pluginId
           |  ORDER BY r.permission & ~B'1'::BIT(64) DESC LIMIT $limit OFFSET $offset""".stripMargin
-      .query[APIV2QueryProjectMember]
+      .query[APIV2QueryMember]
+      .map(_.asProtocol)
+
+  def orgaMembers(organization: String, limit: Long, offset: Long): Query0[APIV2.Member] =
+    sql"""|SELECT u.name, r.name, uor.is_accepted
+          |  FROM organizations o
+          |         JOIN user_organization_roles uor ON o.id = uor.organization_id
+          |         JOIN users u ON uor.user_id = u.id
+          |         JOIN roles r ON uor.role_type = r.name
+          |  WHERE o.name = $organization
+          |  ORDER BY r.permission & ~B'1'::BIT(64) DESC LIMIT $limit OFFSET $offset""".stripMargin
+      .query[APIV2QueryMember]
       .map(_.asProtocol)
 
   def versionSelectFrag(
@@ -582,6 +593,37 @@ object APIV2Queries extends DoobieOreProtocol {
           |             LEFT JOIN projects p ON p.id = pma.id
           |    WHERE u.name = $name
           |    GROUP BY u.id""".stripMargin.query[APIV2QueryUser].map(_.asProtocol)
+
+  def organizationQuery(name: String): Query0[APIV2.Organization] =
+    sql"""|SELECT ou.name,
+          |       u.created_at,
+          |       u.name,
+          |       u.tagline,
+          |       u.join_date,
+          |       count(DISTINCT p.plugin_id),
+          |       array_remove(array_agg(DISTINCT r.name), NULL)
+          |    FROM organizations o
+          |             JOIN users u ON o.user_id = u.id
+          |             JOIN users ou ON o.owner_id = ou.id
+          |             LEFT JOIN user_global_roles ugr ON u.id = ugr.user_id
+          |             LEFT JOIN roles r ON ugr.role_id = r.id
+          |             LEFT JOIN project_members_all pma ON u.id = pma.user_id
+          |             LEFT JOIN projects p ON p.id = pma.id
+          |    WHERE u.name = $name
+          |    GROUP BY ou.id, u.id""".stripMargin.query[APIV2QueryOrganization].map(_.asProtocol)
+
+  def getMemberships(user: String) =
+    sql"""|SELECT 'organization', o.name, NULL, NULL, NULL, uor.role_type, uor.is_accepted
+          |    FROM user_organization_roles uor
+          |             JOIN users u ON uor.user_id = u.id
+          |             JOIN organizations o ON uor.organization_id = o.id
+          |    WHERE u.name = $user
+          |UNION
+          |SELECT 'project', NULL, p.plugin_id, p.owner_name, p.slug, upr.role_type, upr.is_accepted
+          |    FROM user_project_roles upr
+          |             JOIN users u ON upr.user_id = u.id
+          |             JOIN projects p ON upr.project_id = p.id
+          |    WHERE u.name = $user""".stripMargin.query[APIV2QueryMembership].map(_.asProtocol)
 
   private def actionFrag(
       table: Fragment,

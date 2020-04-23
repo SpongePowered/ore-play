@@ -1,0 +1,152 @@
+<template>
+    <div class="row">
+        <div class="col-md-8">
+            <ProjectList v-if="user" :owner="user.name" :offset="(page - 1) * limit" :limit="limit"
+                         @prevPage="page--" @nextPage="page++" @jumpToPage="page = $event"
+                         :use-vue-router="true"></ProjectList>
+        </div>
+        <div class="col-md-4">
+            <div v-if="orga && canEditOrgMembers" class="panel-user-info panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Project Manager</h3>
+                </div>
+                <table class="table panel-body">
+                    <tbody>
+                    <tr v-for="membership in membershipProjects">
+                        <td>
+                            <router-link
+                                    :to="{name: 'project_home', params: {pluginid: membership.project.pluginId, ...membership.project.namespace}}">
+                                {{ membership.project.namespace.owner }}/{{ membership.project.namespace.slug }}
+                            </router-link>
+                            <span class="minor">{{ roles.byId(membership.role).title }}</span>
+                        </td>
+                        <td>
+                            <template v-if="user && membership.role !== roles.ProjectOwner.name">
+                                <button v-if="membership.is_accepted"
+                                        class="btn btn-sm btn-danger pull-right btn-invite" data-invite-id="@role.id"
+                                        :data-invite-behalf="user.name" data-invite-accepted="decline">Leave
+                                </button>
+                                <button v-else class="btn btn-sm btn-info pull-right btn-invite"
+                                        data-invite-id="@role.id"
+                                        :data-invite-behalf="user.name" data-invite-accepted="accept">Join
+                                </button>
+                            </template>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <template v-if="!orga">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"> Organizations</h3>
+                    </div>
+                    <table v-if="user" class="table panel-body">
+                        <tbody>
+                        <tr v-if="!membershipOrgs.length">
+                            <td><i class="minor"><i class="fas fa-star"></i> {{ user.name }} is not part of any
+                                organizations. :(</i></td>
+                        </tr>
+                        <tr v-else v-for="membership in membershipOrgs">
+                            <td>
+                                <icon :src="avatarUrl(membership.organization.name)" :name="membership.organization.name"
+                                      extra-classes="user-avatar-xxs"></icon>
+                                <router-link :to="{name: 'user_projects', params: {user: membership.organization.name}}">
+                                    {{ membership.organization.name }}
+                                </router-link>
+                                <div class="pull-right">
+                                    {{ roles.byId(membership.role).title }}
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="panel-footer">
+                        <div class="clearfix"></div>
+                    </div>
+                </div>
+
+                <div class="panel-user-info panel panel-default" data-action="starred">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"><i class="fas fa-star"></i> Stars</h3>
+                    </div>
+                    <table class="table panel-body">
+                        <tbody>
+                        </tbody>
+                    </table>
+
+                    <div class="panel-footer">
+                        <div class="pull-right">
+                            <a class="prev" href="#" style="display: none;">&laquo;</a>
+                            <a class="next" href="#">&raquo;</a>
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                </div>
+
+                <div class="panel-user-info panel panel-default" data-action="watching">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"><i class="fas fa-eye"></i> Watching</h3>
+                    </div>
+                    <table class="table panel-body">
+                        <tbody>
+                        </tbody>
+                    </table>
+
+                    <div class="panel-footer">
+                        <div class="pull-right">
+                            <a class="prev" href="#" style="display: none;">&laquo;</a>
+                            <a class="next" href="#">&raquo;</a>
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                </div>
+            </template>
+            <div v-else>
+                <member-list v-if="user"
+                             role-category="organization"
+                             :members="orgaMembers"
+                             :permissions="orgaPermissions" editable
+                             new-role="Organization_Support"
+                             :endpoint="'users/' + user.name + '/members'"
+                             commit-location="user/updateMembers"/>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+    import ProjectList from "./../../components/ProjectList";
+    import {mapState} from 'vuex';
+    import Icon from "../../components/Icon";
+    import {avatarUrl} from "../../utils";
+    import MemberList from "../../components/MemberList";
+    import {Role} from "../../enums";
+
+    export default {
+        components: {
+            MemberList,
+            ProjectList,
+            Icon
+        },
+        data: function () {
+            return {
+                page: 1,
+                limit: 5
+            }
+        },
+        computed: {
+            roles() {
+                return Role
+            },
+            canEditOrgMembers() {
+                return this.orgaPermissions.includes('manage_organization_members')
+            },
+            ...mapState('user', ['user', 'orga', 'orgaPermissions', 'membershipOrgs', 'membershipProjects', 'orgaMembers'])
+        },
+        methods: {
+            avatarUrl
+        }
+    }
+</script>

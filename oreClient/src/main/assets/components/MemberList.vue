@@ -58,9 +58,9 @@
                 <template v-for="member in updatedMembers">
                     <li class="list-group-item">
                         <icon :name="member.user" :src="avatarUrl(member.user)" extra-classes="user-avatar-xs"></icon>
-                        <a class="username" :href="routes.Users.showProjects(member.user).absoluteURL()">
+                        <router-link class="username" :to="{name: 'user_projects', params: {user: member.user}}">
                             {{ member.user }}
-                        </a>
+                        </router-link>
 
                         <template
                                 v-if="editable && permissions.includes('manage_subject_members') && member.role.isAssignable">
@@ -90,7 +90,6 @@
 
 <script>
     import {avatarUrl} from "../utils";
-    import CSRFField from "./CSRFField";
     import Icon from "./Icon"
     import UserSearch from "./UserSearch"
     import RoleSelect from "./RoleSelect"
@@ -99,7 +98,6 @@
 
     export default {
         components: {
-            CSRFField,
             Icon,
             UserSearch,
             RoleSelect
@@ -149,9 +147,6 @@
             }
         },
         computed: {
-            routes: function () {
-                return jsRoutes.controllers;
-            },
             roles() {
                 return Role;
             }

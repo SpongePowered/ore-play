@@ -49,11 +49,11 @@ const mutations = {
 }
 const actions = {
     setActiveProjectFromFetched(context, project) {
+        let projectsDiffer = !context.state.project || context.state.project.plugin_id !== project.plugin_id;
         context.commit({
             type: 'updateProject',
             project
         });
-        let projectsDiffer = context.state.project.plugin_id !== project.plugin_id;
 
         if (projectsDiffer || !context.state.permissions.length) {
             API.request("permissions", "GET", {'pluginId': project.plugin_id}).then((response) => {
