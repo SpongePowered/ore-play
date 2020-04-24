@@ -4,7 +4,7 @@
         <h3 class="popover-title">{{ prompt.title }}</h3>
         <div class="popover-content">
             <p>{{ prompt.message }}</p>
-            <button class="btn-got-it btn btn-success btn-sm" @click="acknowledgePrompt">
+            <button class="btn btn-success btn-sm" @click="acknowledgePrompt">
                 Got it!
             </button>
         </div>

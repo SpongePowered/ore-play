@@ -6,6 +6,9 @@
     projects: {
       maxDescLen: 120,
       maxNameLen: 25
+    },
+    users: {
+      maxTaglineLen: 100
     }
   },
   sponge: {

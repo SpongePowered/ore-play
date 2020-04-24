@@ -66,6 +66,7 @@ final class Application(forms: OreForms)(
         controllers.routes.javascript.Users.showAuthors,
         controllers.routes.javascript.Users.showStaff,
         controllers.routes.javascript.Users.showNotifications,
+        controllers.routes.javascript.Users.saveTagline,
         controllers.routes.javascript.Application.showLog,
         controllers.routes.javascript.Application.linkOut,
         controllers.routes.javascript.Application.showActivities,

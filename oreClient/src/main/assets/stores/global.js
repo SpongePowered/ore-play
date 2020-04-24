@@ -14,6 +14,9 @@ const mutations =  {
     },
     setHeaderData(state, payload) {
         state.headerData = payload.headerData;
+    },
+    setTagline(state, payload) {
+        state.currentUser.tagline = payload.tagline;
     }
 }
 const actions = {

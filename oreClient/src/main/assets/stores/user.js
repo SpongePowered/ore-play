@@ -35,6 +35,9 @@ const mutations = {
     updateMembers(state, payload) {
         state.orgaMembers = payload.members;
     },
+    setTagline(state, payload) {
+        state.user.tagline = payload.tagline;
+    }
 }
 
 const actions = {

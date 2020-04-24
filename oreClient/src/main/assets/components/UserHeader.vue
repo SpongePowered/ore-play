@@ -66,7 +66,8 @@
             </ul>
 
             <div v-if="user" class="user-info">
-                <i class="minor">{{ user.project_count }}&nbsp;{{ user.project_count === 1 ? 'project' : 'projects' }}</i><br/>
+                <i class="minor">{{ user.project_count }}&nbsp;{{ user.project_count === 1 ? 'project' : 'projects'
+                    }}</i><br/>
                 <i class="minor">
                     A member since {{ user.join_date ? prettifyDate(user.join_date) : prettifyDate(user.created_at) }}
                 </i><br/>
@@ -75,6 +76,39 @@
                 </a>
             </div>
 
+            <div class="modal fade" id="modal-tagline" tabindex="-1" role="dialog" aria-labelledby="label-tagline">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal"
+                                    aria-label="Close" @click="resetTagline">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h4 class="modal-title">Edit tagline</h4>
+                        </div>
+
+                        <div class="modal-body">
+                            <div class="setting setting-no-border">
+                                <div class="setting-description">
+                                    <h4>Tagline</h4>
+                                    <p>Add a short tagline to let people know what you're about!</p>
+                                </div>
+                                <input class="form-control" type="text"
+                                       v-model="editTagline"
+                                       id="tagline"
+                                       name="tagline" :maxlength="config.ore.users.maxTaglineLen"/>
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button @click.prevent="resetTagline" type="button" class="btn btn-default"
+                                    data-dismiss="modal">Close
+                            </button>
+                            <button @click.prevent="updateTagline" type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -91,6 +125,11 @@
 
     export default {
         components: {Icon, Prompt},
+        data() {
+            return {
+                editTagline: this.currentUser ? this.currentUser.tagline ? this.currentUser.tagline : '' : ''
+            }
+        },
         computed: {
             roles() {
                 return Role
@@ -113,11 +152,50 @@
             ...mapState('global', ['currentUser', 'permissions', 'headerData']),
             ...mapState('user', ['user', 'orga', 'orgaPermissions']),
         },
+        watch: {
+            user(val, oldVal) {
+                if(!oldVal || val.name !== oldVal.name) {
+                    this.resetTagline();
+                }
+            }
+        },
         methods: {
             prettifyDate(rawDate) {
                 return moment(rawDate).format("MMM DD[,] YYYY");
             },
-            avatarUrl
+            avatarUrl,
+            resetTagline() {
+                this.editTagline = this.user.tagline ? this.user.tagline : ''
+            },
+            updateTagline() {
+                let taglineUrl = jsRoutes.controllers.Users.saveTagline(this.user.name).absoluteURL();
+                let data = new FormData();
+                data.append('tagline', this.editTagline);
+                data.append('csrfToken', window.csrf);
+
+                fetch(taglineUrl, {
+                    credentials: "same-origin",
+                    method: 'post',
+                    body: data
+                }).then(res => {
+                    if(res.ok) {
+                        this.$store.commit({
+                            type: 'user/setTagline',
+                            tagline: this.editTagline
+                        });
+                        if(this.user.name === this.currentUser.name) {
+                            this.$store.commit({
+                                type: 'global/setTagline',
+                                tagline: this.editTagline
+                            })
+                        }
+                        $('#modal-tagline').modal('hide');
+                    }
+                    else {
+                        // TODO
+                    }
+                })
+            }
         }
     }
 </script>

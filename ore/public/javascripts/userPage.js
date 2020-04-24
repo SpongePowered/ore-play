@@ -27,15 +27,6 @@ function formAsync(form, route, onSuccess) {
 
 function setupAvatarForm() {
 
-    $('.btn-got-it').click(function () {
-        var prompt = $(this).closest('.prompt');
-        $.ajax({
-            type: 'post',
-            url: 'prompts/read/' + prompt.data('prompt-id')
-        });
-        prompt.fadeOut('fast');
-    });
-
     $('.organization-avatar').hover(function () {
         $('.edit-avatar').fadeIn('fast');
     }, function (e) {
