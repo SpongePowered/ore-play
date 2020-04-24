@@ -67,41 +67,8 @@
                     </div>
                 </div>
 
-                <div class="panel-user-info panel panel-default" data-action="starred">
-                    <div class="panel-heading">
-                        <h3 class="panel-title"><i class="fas fa-star"></i> Stars</h3>
-                    </div>
-                    <table class="table panel-body">
-                        <tbody>
-                        </tbody>
-                    </table>
-
-                    <div class="panel-footer">
-                        <div class="pull-right">
-                            <a class="prev" href="#" style="display: none;">&laquo;</a>
-                            <a class="next" href="#">&raquo;</a>
-                        </div>
-                        <div class="clearfix"></div>
-                    </div>
-                </div>
-
-                <div class="panel-user-info panel panel-default" data-action="watching">
-                    <div class="panel-heading">
-                        <h3 class="panel-title"><i class="fas fa-eye"></i> Watching</h3>
-                    </div>
-                    <table class="table panel-body">
-                        <tbody>
-                        </tbody>
-                    </table>
-
-                    <div class="panel-footer">
-                        <div class="pull-right">
-                            <a class="prev" href="#" style="display: none;">&laquo;</a>
-                            <a class="next" href="#">&raquo;</a>
-                        </div>
-                        <div class="clearfix"></div>
-                    </div>
-                </div>
+                <projects-panel v-if="user" title="Stars" action="starred" :none-found="user.name + ' has not starred any projects. :('"></projects-panel>
+                <projects-panel v-if="user" title="Watching" action="watching" :none-found="user.name + ' is not watching any projects. :('"></projects-panel>
             </template>
             <div v-else>
                 <member-list v-if="user"
@@ -123,9 +90,11 @@
     import {avatarUrl} from "../../utils";
     import MemberList from "../../components/MemberList";
     import {Role} from "../../enums";
+    import ProjectsPanel from "../../components/ProjectsPanel";
 
     export default {
         components: {
+            ProjectsPanel,
             MemberList,
             ProjectList,
             Icon

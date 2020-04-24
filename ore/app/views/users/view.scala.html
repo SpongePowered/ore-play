@@ -21,12 +21,6 @@
     <script type="text/javascript" src="@assetsFinder.path("javascripts/userPage.js")"></script>
     <script @CSPNonce.attr>
             window.USERNAME ='@u.user.name';
-            @for(category <- Category.values) {
-                CATEGORY_TITLE['@category.apiName'] = '@category.title';
-                CATEGORY_ICON['@category.apiName'] = '@category.icon';
-            }
-            NO_ACTION_MESSAGE.starred = '@messages("user.noStars", u.user.name)';
-            NO_ACTION_MESSAGE.watching = '@messages("user.noWatching", u.user.name)';
     </script>
     @additionalScripts
 }
