@@ -19,7 +19,7 @@
     api: {
       avatarUrl: "http://localhost:8000/avatar/{0}?size=120x120"
     }
-  }
+  },
   discourse: {
     baseUrl: "http://discourse.stage.spongemc.org"
   }
