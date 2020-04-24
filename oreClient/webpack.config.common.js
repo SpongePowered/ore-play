@@ -15,15 +15,16 @@ const outputDir = process.env.FROM_SBT === 'true' ?
 
 module.exports = {
     entry: {
+        'font-awesome': Path.resolve(entryDir, 'font-awesome.js'),
         main: Path.resolve(resourcesDir, 'scss', 'main.scss'),
         home: Path.resolve(entryDir, 'home.js'),
-        'font-awesome': Path.resolve(entryDir, 'font-awesome.js'),
         'user-profile': Path.resolve(entryDir, 'user-profile.js'),
     },
     output: {
         path: outputDir,
         filename: '[name].js',
-        libraryTarget: 'umd'
+        libraryTarget: 'umd',
+        publicPath: '/'
     },
     plugins: [
         new VueLoaderPlugin(),

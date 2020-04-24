@@ -21,7 +21,11 @@ export class API {
                     headers: {
                         'Authorization': 'OreApi session=' + session,
                         'Csrf-Token': typeof csrf !== 'undefined' ? csrf : undefined
-                    }
+                    },
+                    xhrFields: {
+                        //Technically not needed, but some internal compat stuff assumes cookies will be present
+                        withCredentials: true
+                    },
                 }).done((data) => {
                     resolve(data);
                 }).fail((xhr) => {
@@ -47,7 +51,7 @@ export class API {
             const date = new Date();
             date.setTime(date.getTime() + 60000);
 
-            if (window.isLoggedIn || config.alwaysTryLogin) {
+            if (this.hasUser()) {
                 session = parseJsonOrNull(localStorage.getItem('api_session'));
                 if (session === null || !isNaN(new Date(session.expires).getTime()) && new Date(session.expires) < date) {
                     return $.ajax({
@@ -98,7 +102,7 @@ export class API {
     }
 
     static hasUser() {
-        return window.isLoggedIn;
+        return window.isLoggedIn || config.alwaysTryLogin;
     }
 
     static invalidateSession() {

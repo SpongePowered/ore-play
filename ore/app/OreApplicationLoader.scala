@@ -94,7 +94,7 @@ class OreComponents(context: ApplicationLoader.Context)
   eager(applicationEvolutions)
 
   override lazy val httpFilters: Seq[EssentialFilter] = {
-    val filters              = super.httpFilters ++ enabledFilters
+    val filters              = enabledFilters ++ super.httpFilters
     val enabledFiltersConfig = configuration.get[Seq[String]]("play.filters.enabled")
     val enabledFiltersCode   = filters.map(_.getClass.getName)
 
@@ -108,6 +108,7 @@ class OreComponents(context: ApplicationLoader.Context)
   }
 
   lazy val enabledFilters: Seq[EssentialFilter] = {
+
     val baseFilters = Seq(
       new CSPFilter(new DefaultCSPResultProcessor(new DefaultCSPProcessor(CSPConfig.fromConfiguration(configuration))))
     )

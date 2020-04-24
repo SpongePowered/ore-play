@@ -134,7 +134,7 @@ lazy val oreClient = project
     name := "ore-client",
     Assets / webpackDevConfig := baseDirectory.value / "webpack.config.dev.js",
     Assets / webpackProdConfig := baseDirectory.value / "webpack.config.prod.js",
-    webpackMonitoredDirectories in Assets += baseDirectory.value / "src" / "main" / "assets",
+    //webpackMonitoredDirectories in Assets += baseDirectory.value / "src" / "main" / "assets",
     includeFilter in webpackMonitoredFiles in Assets := "*.vue" || "*.js",
     webpackMonitoredFiles in Assets ++= Seq(
       baseDirectory.value / "webpack.config.common.js",

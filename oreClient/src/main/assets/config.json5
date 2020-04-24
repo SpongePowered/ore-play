@@ -1,5 +1,5 @@
 {
-  alwaysTryLogin: false,
+  alwaysTryLogin: true,
   app: {
     baseUrl: "http://localhost:9000"
   },
