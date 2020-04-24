@@ -1,4 +1,5 @@
 {
+  alwaysTryLogin: false,
   app: {
     baseUrl: "localhost:9000"
   },
@@ -6,6 +7,9 @@
     projects: {
       maxDescLen: 120,
       maxNameLen: 25
+    },
+    users: {
+      maxTaglineLen: 100
     }
   },
   sponge: {
@@ -15,5 +19,8 @@
     api: {
       avatarUrl: "http://localhost:8000/avatar/{0}?size=120x120"
     }
+  }
+  discourse: {
+    baseUrl: "http://discourse.stage.spongemc.org"
   }
 }

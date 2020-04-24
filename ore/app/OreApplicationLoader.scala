@@ -14,14 +14,9 @@ import play.api.http.{HttpErrorHandler, JsonHttpErrorHandler}
 import play.api.i18n.MessagesApi
 import play.api.mvc.EssentialFilter
 import play.api.routing.Router
-import play.api.{
-  ApplicationLoader,
-  BuiltInComponentsFromContext,
-  LoggerConfigurator,
-  OptionalSourceMapper,
-  Application => PlayApplication
-}
+import play.api.{ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator, OptionalSourceMapper, Application => PlayApplication}
 import play.filters.HttpFiltersComponents
+import play.filters.cors.{CORSConfigProvider, CORSFilterProvider}
 import play.filters.csp.{CSPConfig, CSPFilter, DefaultCSPProcessor, DefaultCSPResultProcessor}
 import play.filters.gzip.{GzipFilter, GzipFilterConfig}
 
@@ -111,7 +106,10 @@ class OreComponents(context: ApplicationLoader.Context)
       new CSPFilter(new DefaultCSPResultProcessor(new DefaultCSPProcessor(CSPConfig.fromConfiguration(configuration))))
     )
 
-    val devFilters = Seq(new GzipFilter(GzipFilterConfig.fromConfiguration(configuration)))
+    val devFilters = Seq(
+      new GzipFilter(GzipFilterConfig.fromConfiguration(configuration)),
+      new CORSFilterProvider(configuration, httpErrorHandler, new CORSConfigProvider(configuration).get).get
+    )
 
     val filterSeq = Seq(
       true                         -> baseFilters,

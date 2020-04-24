@@ -9,7 +9,7 @@
                         </div>
                         <div class="col-xs-10 text">
                             <div class="headline">Ore</div>
-                            <div>A Minecraft package repository Testing</div>
+                            <div>A Minecraft package repository</div>
                         </div>
                     </div>
                 </div>

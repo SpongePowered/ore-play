@@ -11,7 +11,7 @@ const modulesDir = Path.resolve(__dirname, 'node_modules');
 
 const outputDir = process.env.FROM_SBT === 'true' ?
     Path.resolve(__dirname, 'target', 'web', 'public', 'main', 'build') :
-    Path.resolve(__dirname, 'build');
+    Path.resolve(__dirname, 'dist');
 
 module.exports = {
     entry: {
@@ -23,7 +23,6 @@ module.exports = {
     output: {
         path: outputDir,
         filename: '[name].js',
-        publicPath: '/dist/',
         libraryTarget: 'umd'
     },
     plugins: [
@@ -47,11 +46,11 @@ module.exports = {
             },
             {
                 test: /\.css$/,
-                use: [MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader'],
+                use: [process.env.NODE_ENV !== 'production' && process.env.FROM_SBT !== 'true' ? 'vue-style-loader' : MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader'],
             },
             {
                 test: /\.scss$/,
-                use: [MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader', 'sass-loader'],
+                use: [process.env.NODE_ENV !== 'production' && process.env.FROM_SBT !== 'true' ? 'vue-style-loader' : MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader', 'sass-loader'],
             },
             {
                 test: /\.json5$/i,
@@ -64,7 +63,7 @@ module.exports = {
                     {
                         loader: 'file-loader',
                         options: {
-                            publicPath: '/assets/lib/ore-client',
+                            publicPath: process.env.FROM_SBT === 'true' ? '/assets/lib/ore-client' : undefined,
                             esModule: false
                         }
                     },
@@ -80,6 +79,9 @@ module.exports = {
         modules: [
             modulesDir
         ]
+    },
+    devServer: {
+        historyApiFallback: true
     },
     optimization: {
         splitChunks: {
