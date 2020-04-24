@@ -10,6 +10,7 @@
 @(underReview: Seq[ReviewedQueueEntry], versions: Seq[NotStartedQueueEntry])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
 
 @scripts = {
+    <script type="text/javascript" src="@assetsFinder.path("lib/moment/min/moment.min.js")"></script>
     <script @CSPNonce.attr type="text/javascript" src="@assetsFinder.path("javascripts/queue.js")"></script>
     <script @CSPNonce.attr>
             $(function(){

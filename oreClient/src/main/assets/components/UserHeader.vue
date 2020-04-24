@@ -87,6 +87,7 @@
     import {avatarUrl} from "../utils";
     import config from "../config.json5";
     import {API} from "../api";
+    import moment from 'moment';
 
     export default {
         components: {Icon, Prompt},

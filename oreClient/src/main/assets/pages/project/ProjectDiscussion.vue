@@ -35,6 +35,7 @@
     import {mapState} from "vuex";
     import config from "../../config.json5"
     import NProgress from "nprogress";
+    import moment from 'moment';
 
     export default {
         components: {Editor},
@@ -62,7 +63,7 @@
                 return document.location.pathname
             },
             formatDate(date) {
-                return window.moment(date).format("MMM D, YYYY")
+                return moment(date).format("MMM D, YYYY")
             },
             updateData(topicId) {
                 NProgress.start();

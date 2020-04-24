@@ -65,7 +65,7 @@
 
 <script>
     import Tag from "./Tag"
-    import {clearFromEmpty} from "./../utils"
+    import {clearFromEmpty, numberWithCommas} from "./../utils"
     import {Category, Platform, Visibility} from "../enums";
     import Pagination from "./Pagination";
     import Icon from "./Icon"

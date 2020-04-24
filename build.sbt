@@ -164,10 +164,7 @@ lazy val ore = project
     libraryDependencies ++= Deps.flexmarkDeps,
     libraryDependencies ++= Seq(
       WebjarsDeps.jQuery,
-      WebjarsDeps.fontAwesome,
-      WebjarsDeps.filesize,
       WebjarsDeps.moment,
-      WebjarsDeps.clipboard,
       WebjarsDeps.chartJs,
       WebjarsDeps.swaggerUI
     ),

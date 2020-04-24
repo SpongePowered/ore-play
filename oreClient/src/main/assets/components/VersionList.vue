@@ -92,6 +92,9 @@
     import {API} from "../api";
     import NProgress from "nprogress"
     import {mapState} from 'vuex'
+    import filesize from 'filesize'
+    import moment from 'moment';
+    import {numberWithCommas} from '../utils';
 
     export default {
         components: {
@@ -161,10 +164,10 @@
                 });
             },
             formatSize(size) {
-                return window.filesize(size);
+                return filesize(size);
             },
             formatDate(date) {
-                return window.moment(date).format("MMM D, YYYY")
+                return moment(date).format("MMM D, YYYY")
             },
             classForVisibility(visibility) {
                 return Visibility.fromName(visibility).class;

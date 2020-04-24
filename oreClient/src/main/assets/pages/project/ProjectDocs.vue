@@ -145,6 +145,8 @@
     import isEqual from 'lodash/isEqual'
     import NProgress from "nprogress";
     import {mapState} from 'vuex'
+    import moment from 'moment';
+    import {numberWithCommas} from '../../utils';
 
     export default {
         components: {

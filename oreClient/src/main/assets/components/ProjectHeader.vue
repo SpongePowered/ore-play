@@ -252,6 +252,7 @@
     import markdownItTaskLists from "markdown-it-task-lists"
     import {API} from "../api";
     import {mapState} from 'vuex'
+    import {numberWithCommas} from '../utils';
 
     const md = markdownIt({
         linkify: true,
