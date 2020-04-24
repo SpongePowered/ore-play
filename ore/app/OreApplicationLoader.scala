@@ -14,7 +14,13 @@ import play.api.http.{HttpErrorHandler, JsonHttpErrorHandler}
 import play.api.i18n.MessagesApi
 import play.api.mvc.EssentialFilter
 import play.api.routing.Router
-import play.api.{ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator, OptionalSourceMapper, Application => PlayApplication}
+import play.api.{
+  ApplicationLoader,
+  BuiltInComponentsFromContext,
+  LoggerConfigurator,
+  OptionalSourceMapper,
+  Application => PlayApplication
+}
 import play.filters.HttpFiltersComponents
 import play.filters.cors.{CORSConfigProvider, CORSFilterProvider}
 import play.filters.csp.{CSPConfig, CSPFilter, DefaultCSPProcessor, DefaultCSPResultProcessor}
