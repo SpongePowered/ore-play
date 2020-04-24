@@ -12,19 +12,19 @@
                 <div id="sp-logo-menu">
                     <ul id="sp-logo-dropdown">
                         <li><a href="https://www.spongepowered.org">
-                            <font-awesome-icon :icon="['fas', 'home']" fixed-width/>Homepage
+                            <font-awesome-icon :icon="['fas', 'home']" fixed-width/> Homepage
                         </a></li>
                         <li><a href="https://forums.spongepowered.org">
-                            <font-awesome-icon :icon="['fas', 'comments']" fixed-width/>Forums
+                            <font-awesome-icon :icon="['fas', 'comments']" fixed-width/> Forums
                         </a></li>
                         <li><a href="https://github.com/SpongePowered">
-                            <font-awesome-icon :icon="['fas', 'code']" fixed-width/>Code
+                            <font-awesome-icon :icon="['fas', 'code']" fixed-width/> Code
                         </a></li>
                         <li><a href="https://docs.spongepowered.org">
-                            <font-awesome-icon :icon="['fas', 'book']" fixed-width/>Docs
+                            <font-awesome-icon :icon="['fas', 'book']" fixed-width/> Docs
                         </a></li>
                         <li><a href="https://jd.spongepowered.org">
-                            <font-awesome-icon :icon="['fas', 'graduation-cap']" fixed-width/>Javadocs
+                            <font-awesome-icon :icon="['fas', 'graduation-cap']" fixed-width/> Javadocs
                         </a></li>
                         <li class="active">
                             <router-link :to="{name: 'home'}">
@@ -32,10 +32,10 @@
                             </router-link>
                         </li>
                         <li><a href="https://www.spongepowered.org/downloads">
-                            <font-awesome-icon :icon="['fas', 'download']" fixed-width/>Downloads
+                            <font-awesome-icon :icon="['fas', 'download']" fixed-width/> Downloads
                         </a></li>
                         <li><a href="https://www.spongepowered.org/chat">
-                            <font-awesome-icon :icon="['fas', 'comment']" fixed-width/>Chat
+                            <font-awesome-icon :icon="['fas', 'comment']" fixed-width/> Chat
                         </a></li>
                     </ul>
                 </div>
