@@ -65,6 +65,22 @@ more stack size to sbt in the way you're starting sbt. `-Xss4m` should be enough
 this in the VM arguments field. If you're invoking sbt directly, the most common ways to set this is either through 
 the `SBT_OPTS` environment variable, or with a file named `.jvmopts` with each flag on a new line.
 
+### Running with Webpack dev server
+Play can be a bit slow to reload the application sometimes. Therefor it can be nice to instead use webpack's hot module 
+replacement. To do so, there are a few extra steps you need to go through.
+
+1. Comment out the line with `webpackMonitoredDirectories` in `build.sbt` (not needed, just for sanity with reloading)
+2. Add this to your `application.conf` under the filters section
+```
+cors {
+    allowedOrigins = ["http://localhost:8080"]
+}
+```
+3. If you want to see a logged in view, set `alwaysTryLogin` to `true` in `config.json5`
+4. Start Ore like normal
+5. Use `yarn run start` to start the webpack dev server
+6. Navigate to `http://localhost:8080`
+
 ### Using Hydra
 
 Hydra is the world’s only parallel compiler for the Scala language.
