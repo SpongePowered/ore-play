@@ -5,7 +5,7 @@
                 <div class="col-md-9 ore-banner">
                     <div class="row aligned-row">
                         <div class="col-xs-2 ore-logo">
-                            <img :src="assetPath('images/ore-colored.svg')" alt="Ore logo" />
+                            <img src="../images/ore-colored.svg" alt="Ore logo" />
                         </div>
                         <div class="col-xs-10 text">
                             <div class="headline">Ore</div>
@@ -18,7 +18,7 @@
                         <span>Sponsored by</span>
                         <div class="panel-body" :set="sponsor = randomSponsor">
                             <a :href="sponsor.link">
-                                <img class="logo" :src="assetPath(sponsor.image)" alt="Sponsor" />
+                                <img class="logo" :src="sponsor.image" alt="Sponsor" />
                             </a>
                         </div>
                     </div>
@@ -94,7 +94,7 @@
     import queryString from "query-string"
     import {clearFromDefaults} from "./../utils"
     import {Category, Platform, SortOptions} from "./../enums";
-    import sponsors from "./sponsors.json"
+    import sponsors from "./sponsors.js"
 
     function defaultData() {
         return {
@@ -164,9 +164,6 @@
                 } else {
                     this.categories.push(category.id);
                 }
-            },
-            assetPath(path) {
-                return '/assets/' + path;
             }
         },
         created() {

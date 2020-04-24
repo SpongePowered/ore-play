@@ -11,7 +11,7 @@ sorted according to different criteria.
 }
 
 @stylesheets = {
-    <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/ore-client/home.css")" />
+    <link rel="stylesheet" type="text/css" href="@assetsFinder.path("lib/ore-client/home.css")" />
 }
 
 @meta = {
@@ -22,7 +22,7 @@ sorted according to different criteria.
     <meta property="og:description" content="@messages("general.description")" />
 }
 
-@layout.base(messages("general.title"), scripts, additionalMeta = meta, additionalStyling = stylesheets) {
+@layout.base(messages("general.title"), scripts, additionalMeta = meta, additionalStyling = stylesheets, empty = true) {
 
     <div id="home"></div>
 }

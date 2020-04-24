@@ -8,7 +8,7 @@ this.
 @import ore.OreConfig
 @import views.html.helper.CSPNonce
 @(title: String, additionalScripts: Html = Html(""), scriptsEnabled: Boolean = true, authEnabled: Boolean = true, showHeader: Boolean = true,
-        showFooter: Boolean = true, noContainer: Boolean = false, additionalMeta: Html = Html(""), additionalStyling: Html = Html(""))(content: Html)(implicit request: OreRequest[_], messages: Messages, config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
+        showFooter: Boolean = true, noContainer: Boolean = false, empty: Boolean = false, additionalMeta: Html = Html(""), additionalStyling: Html = Html(""))(content: Html)(implicit request: OreRequest[_], messages: Messages, config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
 
 <!DOCTYPE html>
 <html lang="@messages.lang.language">
@@ -50,14 +50,17 @@ this.
 
         <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
     </head>
-    <body class="site">
-        @if(showHeader) {
-            @layout.header(authEnabled)
-        }
+    <body @if(!empty) {class="site"}>
+        @if(empty) {
+          @content
+        } else {
+            @if(showHeader) {
+                @layout.header(authEnabled)
+            }
 
-        <div class="site-content">
+            <div class="site-content">
             @if(noContainer) {
-              @content
+                @content
             } else {
                 <div class="container @if(showHeader){site-header-margin}">
                     @if(config.ore.staging) {
@@ -79,10 +82,11 @@ this.
                     @content
                 </div>
             }
-        </div>
+            </div>
 
-        @if(showFooter) {
-            @layout.footer()
+            @if(showFooter) {
+                @layout.footer()
+            }
         }
 
         @if(scriptsEnabled) {

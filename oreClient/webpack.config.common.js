@@ -58,6 +58,18 @@ module.exports = {
                 loader: 'json5-loader',
                 type: 'javascript/auto',
             },
+            {
+                test: /\.(png|jpe?g|gif|svg)$/i,
+                use: [
+                    {
+                        loader: 'file-loader',
+                        options: {
+                            publicPath: '/assets/lib/ore-client',
+                            esModule: false
+                        }
+                    },
+                ],
+            },
         ]
     },
     resolve: {

@@ -61,11 +61,23 @@ final class Application(forms: OreForms)(
         controllers.project.routes.javascript.Versions.download,
         controllers.routes.javascript.Users.editApiKeys,
         controllers.routes.javascript.Users.logIn,
+        controllers.routes.javascript.Users.signUp,
+        controllers.routes.javascript.Users.logOut,
+        controllers.routes.javascript.Users.showAuthors,
+        controllers.routes.javascript.Users.showStaff,
+        controllers.routes.javascript.Users.showNotifications,
         controllers.routes.javascript.Application.showLog,
         controllers.routes.javascript.Application.linkOut,
         controllers.routes.javascript.Application.showActivities,
         controllers.routes.javascript.Application.userAdmin,
-        controllers.routes.javascript.Reviews.showReviews
+        controllers.routes.javascript.Application.swagger,
+        controllers.routes.javascript.Application.showFlags,
+        controllers.routes.javascript.Application.showProjectVisibility,
+        controllers.routes.javascript.Application.showQueue,
+        controllers.routes.javascript.Application.showStats,
+        controllers.routes.javascript.Application.showHealth,
+        controllers.routes.javascript.Reviews.showReviews,
+        controllers.routes.javascript.Organizations.showCreator
       )
     ).as("text/javascript")
   }
