@@ -64,7 +64,6 @@ const router = new VueRouter({
         },
         {
             path: '/:owner/:slug/',
-            name: 'project',
             component: Project,
             props: true,
             children: [
