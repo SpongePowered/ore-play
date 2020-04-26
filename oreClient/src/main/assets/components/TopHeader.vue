@@ -49,12 +49,10 @@
                     </a>
                     <ul class="user-dropdown dropdown-menu" aria-label="Create new&hellip;">
                         <li>
-                            <!--
-                            <a :href="projectRoutes.Projects.showCreator().absoluteURL()">
+                            <router-link :to="{name: 'new_project'}">
                                 <font-awesome-icon class="mr-1" :icon="['fas', 'book']" fixed-width/>
                                 <span>New project</span>
-                            </a>
-                            -->
+                            </router-link>
                             <a :href="routes.Organizations.showCreator().absoluteURL()">
                                 <font-awesome-icon class="mr-1" :icon="['fas', 'users']" fixed-width/>
                                 <span>New organization</span>

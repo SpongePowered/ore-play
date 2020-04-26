@@ -15,24 +15,11 @@ import NewVersion from "../pages/project/NewVersion";
 import NewProject from "../pages/project/NewProject";
 import User from "../pages/user/User";
 
-import topStore from "../stores/top"
-import projectModule from "../stores/project"
-import globalModule from "../stores/global"
-import userModule from "../stores/user"
+import {store} from '../stores/index'
 import UserProjects from "../pages/user/UserProjects";
 
 Vue.use(VueRouter);
-Vue.use(Vuex);
 Vue.component('font-awesome-icon', FontAwesomeIcon);
-
-const store = new Vuex.Store({
-    ...topStore,
-    modules: {
-        project: projectModule,
-        global: globalModule,
-        user: userModule
-    }
-});
 
 store.dispatch('global/loadUser');
 

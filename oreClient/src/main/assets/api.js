@@ -1,5 +1,6 @@
 import {parseJsonOrNull} from "./utils";
 import config from './config.json5';
+import {store} from './stores/index'
 
 $.ajaxSettings.traditional = true;
 
@@ -27,6 +28,11 @@ export class API {
                         withCredentials: true
                     },
                 }).done((data) => {
+                    //store.commit({
+                    //    type: 'addAlert',
+                    //    level: 'info',
+                    //    message: 'test'
+                    //});
                     resolve(data);
                 }).fail((xhr) => {
                     if (xhr.responseJSON && (xhr.responseJSON.error === 'Api session expired' || xhr.responseJSON.error === 'Invalid session')) {

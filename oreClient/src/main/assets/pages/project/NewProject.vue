@@ -1,6 +1,6 @@
 <template>
     <div class="row">
-        <div class="col-md-10">
+        <div class="col-xs-12">
             <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3 class="panel-title">
@@ -82,28 +82,62 @@
         },
         methods: {
             create() {
-                API.request("projects", "POST", {
-                    name: this.projectName,
-                    plugin_id: this.pluginId,
-                    category: this.category,
-                    description: this.projectDescription,
-                    owner_name: this.owner
-                }).then((data) => {
-                    this.$router.push({path: `/${data.namespace.owner}/${data.namespace.slug}`})
-                }).catch((xhr) => {
-                    console.log(xhr)
-                })
+                let error = false;
+                const messages = [];
+
+                if(!this.projectName || this.projectName === "") {
+                    messages.push("Project name is required");
+                    error = true;
+                }
+                if(!this.pluginId || this.pluginId === "") {
+                    messages.push("Plugin id is required");
+                    error = true;
+                }
+                if(!this.category) {
+                    messages.push("Category is required");
+                    error = true;
+                }
+                if(!this.owner || this.owner === "") {
+                    messages.push("Owner is required");
+                    error = true;
+                }
+
+                if(error) {
+                    this.$store.commit({
+                        type: 'addAlerts',
+                        level: 'error',
+                        messages: messages
+                    });
+                } else {
+                    API.request("projects", "POST", {
+                        name: this.projectName,
+                        plugin_id: this.pluginId,
+                        category: this.category,
+                        description: this.projectDescription,
+                        owner_name: this.owner
+                    }).then((data) => {
+                        this.$router.push({path: `/${data.namespace.owner}/${data.namespace.slug}`})
+                    })
+                }
+            },
+            updateOwners(all) {
+                this.availableOwners = [];
+
+                all.filter(m => m.scope === 'organization').forEach(o => {
+                    API.request("permissions/hasAny", "GET",{'permissions': [Permission.CreateProject], 'organizationName': o.organization.name}).then(res => {
+                        if(res.result === true) this.availableOwners.push(o)
+                    })
+                });
+            }
+        },
+        created() {
+            if(this.memberships) {
+                this.updateOwners(this.memberships);
             }
         },
         watch: {
             memberships(newVal, oldVal) {
-                this.availableOwners = [];
-
-                newVal.filter(m => m.scope === 'organization').forEach(o => {
-                   API.request("permissions/hasAny", "GET",{'permissions': [Permission.CreateProject], 'organizationName': o.organization.name}).then(res => {
-                        if(res.result === true) this.availableOwners.push(o)
-                   })
-                });
+                this.updateOwners(newVal);
             }
         }
     }
