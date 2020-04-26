@@ -177,6 +177,7 @@ trait ProjectFactory {
             ProjectUserRole(ownerId, newProject.id, Role.ProjectOwner, isAccepted = true)
           )
       }
+      _ <- service.insert(Page(newProject.id, Page.homeName, Some(Page.homeMessage), isDeletable = false, None))
     } yield newProject
   }
 

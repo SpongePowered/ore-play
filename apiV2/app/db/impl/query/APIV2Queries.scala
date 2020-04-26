@@ -149,7 +149,7 @@ object APIV2Queries extends DoobieOreProtocol {
              |       p.license_name,
              |       p.license_url,
              |       p.forum_sync
-             |  FROM projects p JOIN project_stats ps ON p.id = ps.id JOIN promoted_versions ppv on p.id = ppv.project_id""".stripMargin
+             |  FROM projects p JOIN project_stats ps ON p.id = ps.id""".stripMargin
 
     val visibilityFrag =
       if (canSeeHidden) None
