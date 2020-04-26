@@ -12,6 +12,7 @@ import ProjectVersions from "../pages/project/ProjectVersions";
 import Project from "../pages/project/Project";
 import VersionPage from "../pages/project/VersionPage";
 import NewVersion from "../pages/project/NewVersion";
+import NewProject from "../pages/project/NewProject";
 import User from "../pages/user/User";
 
 import topStore from "../stores/top"
@@ -55,6 +56,11 @@ const router = new VueRouter({
                     component: UserProjects
                 }
             ]
+        },
+        {
+            path: '/projects/new',
+            name: 'new_project',
+            component: NewProject
         },
         {
             path: '/:owner/:slug/',

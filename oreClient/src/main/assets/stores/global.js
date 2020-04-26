@@ -3,6 +3,7 @@ import {API} from "../api";
 const state = {
     currentUser: null,
     permissions: [],
+    memberships: [],
     headerData: null
 }
 const mutations =  {
@@ -14,6 +15,9 @@ const mutations =  {
     },
     setHeaderData(state, payload) {
         state.headerData = payload.headerData;
+    },
+    setMemberships(state, payload) {
+        state.memberships = payload.memberships;
     },
     setTagline(state, payload) {
         state.currentUser.tagline = payload.tagline;
@@ -27,6 +31,13 @@ const actions = {
                     type: 'setUser',
                     user: res
                 });
+
+                API.request(`users/${res.name}/memberships`).then(res => {
+                    context.commit({
+                        type: 'setMemberships',
+                        memberships: res
+                    });
+                });
             });
 
             API.request("permissions").then(response => {
@@ -35,7 +46,6 @@ const actions = {
                     permissions: response.permissions
                 })
             });
-
 
             API.request('_headerdata').then(res => {
                 context.commit({

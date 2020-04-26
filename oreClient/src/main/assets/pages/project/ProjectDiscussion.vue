@@ -69,8 +69,7 @@
                 NProgress.start();
                 $.ajax({
                     url: config.discourse.baseUrl + '/t/' +
-                        //topicId
-                        '23'
+                        topicId
                         + '.json',
                     method: 'GET',
                     contentType: 'application/json',
