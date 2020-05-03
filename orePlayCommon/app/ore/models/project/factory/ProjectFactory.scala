@@ -319,7 +319,9 @@ trait ProjectFactory {
             else setVisibility
 
           initProject <* projects.refreshHomePage(MDCLogger)(OreMDC.NoMDC)
-        } else UIO.succeed(project)
+        } else {
+          projects.refreshHomePage(MDCLogger)(OreMDC.NoMDC).as(project)
+        }
       }
       _ <- if (pending.createForumPost) {
         service.insert(Job.UpdateDiscourseVersionPost.newJob(version.id).toJob).unit
