@@ -46,6 +46,7 @@ play {
                 font-src = "'self' data: https://fonts.gstatic.com"
                 frame-src = "https://forums.spongepowered.org"
                 frame-ancestors = "'none'"
+                report-uri = ${?CSP_REPORT_URI}
                 report-to = ${?CSP_REPORT_TO}
             }
         }
