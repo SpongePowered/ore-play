@@ -35,15 +35,13 @@ class UserTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.
     .flatMap(now => service.deleteWhere(ApiSession)(_.expires < now))
     .unit
 
-  private val schedule: Schedule[Clock, Any, Int] = Schedule.fixed(interval)
+  private val schedule: Schedule[Clock, Any, Int] =
+    Schedule.fixed(interval).tapInput(_ => UIO(Logger.debug(s"Deleting old API sessions")))
 
   Logger.info("DbUpdateTask starting")
-  //TODO: Repeat in case of failure
-  private val task = runtime.unsafeRun(action.sandbox.option.unit.repeat(schedule).fork)
+  private val task = runtime.unsafeRunToFuture(
+    action.catchAllCause(cause => UIO.effectTotal(Logger.error(cause.prettyPrint))).repeat(schedule)
+  )
 
-  lifecycle.addStopHook { () =>
-    Future {
-      runtime.unsafeRun(task.interrupt)
-    }
-  }
+  lifecycle.addStopHook(() => task.cancel())
 }

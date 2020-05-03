@@ -81,8 +81,8 @@ object OreJobProcessorMain extends zio.ManagedApp {
       val schedule = Schedule.spaced(Duration.fromScala(env.get[OreJobsConfig].jobs.checkInterval))
 
       ZManaged.fromEffect(
-        checkAndCreateFibers.sandbox
-          .catchAll { cause =>
+        checkAndCreateFibers
+          .catchAllCause { cause =>
             Logger.error(s"Encountered an error while checking if there are more jobs\n${cause.prettyPrint}")
             ZIO.unit
           }

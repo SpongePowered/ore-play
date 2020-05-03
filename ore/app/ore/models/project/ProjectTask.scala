@@ -51,13 +51,10 @@ class ProjectTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: z
 
   private val action = (updateFalseNewProjects *> deleteNewProjects).unit.delay(interval)
 
-  //TODO: Repeat in case of failure
-  private val task = runtime.unsafeRun(action.sandbox.option.unit.repeat(schedule).fork)
+  private val task = runtime.unsafeRunToFuture(
+    action.catchAllCause(cause => UIO.effectTotal(Logger.error(cause.prettyPrint))).repeat(schedule)
+  )
 
-  lifecycle.addStopHook { () =>
-    Future {
-      runtime.unsafeRun(task.interrupt)
-    }
-  }
+  lifecycle.addStopHook(() => task.cancel())
   Logger.info(s"Initialized. First run in ${this.interval.asScala.toSeconds} seconds.")
 }
