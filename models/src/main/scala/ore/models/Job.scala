@@ -17,7 +17,10 @@ case class JobInfo(
     lastErrorDescriptor: Option[String],
     state: Job.JobState,
     jobType: Job.JobType
-)
+) {
+
+  def withoutError: JobInfo = copy(lastError = None)
+}
 object JobInfo {
   def newJob(tpe: Job.JobType): JobInfo = JobInfo(None, None, None, None, Job.JobState.NotStarted, tpe)
 }
@@ -62,6 +65,8 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
     def info: JobInfo
 
     def toJob: Job
+
+    def withoutError: TypedJob
   }
 
   case class UpdateDiscourseProjectTopic(
@@ -71,6 +76,8 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
 
     def toJob: Job =
       Job(info, Map("project_id" -> projectId.toString))
+
+    override def withoutError: TypedJob = UpdateDiscourseProjectTopic(info.withoutError, projectId)
   }
   object UpdateDiscourseProjectTopic extends JobType("update_project_discourse_topic") {
     def newJob(projectId: DbRef[Project]): UpdateDiscourseProjectTopic =
@@ -96,6 +103,8 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
 
     def toJob: Job =
       Job(info, Map("version_id" -> versionId.toString))
+
+    override def withoutError: TypedJob = UpdateDiscourseVersionPost(info.withoutError, versionId)
   }
   object UpdateDiscourseVersionPost extends JobType("update_version_discourse_post") {
     def newJob(versionId: DbRef[Version]): UpdateDiscourseVersionPost =
@@ -121,6 +130,8 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
 
     def toJob: Job =
       Job(info, Map("topic_id" -> topicId.toString))
+
+    override def withoutError: TypedJob = DeleteDiscourseTopic(info.withoutError, topicId)
   }
   object DeleteDiscourseTopic extends JobType("delete_discourse_topic") {
     def newJob(topicId: Int): DeleteDiscourseTopic =
@@ -141,6 +152,8 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
 
   case class PostDiscourseReply(info: JobInfo, topicId: Int, poster: String, content: String) extends TypedJob {
     override def toJob: Job = Job(info, Map("topic_id" -> topicId.toString, "poster" -> poster, "content" -> content))
+
+    override def withoutError: TypedJob = PostDiscourseReply(info.withoutError, topicId, poster, content)
   }
   object PostDiscourseReply extends JobType("post_discourse_reply") {
     def newJob(topicId: Int, poster: String, content: String): PostDiscourseReply =

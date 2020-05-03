@@ -166,7 +166,7 @@ object JobsProcessor {
 
         case DiscourseError.UnknownError(messages, tpe, extras) =>
           val e = s"""|Encountered error when executing Discourse request
-                      |Job: ${job.obj}
+                      |Job: ${job.obj.withoutError}
                       |Type: $tpe
                       |Messages: ${messages.mkString("\n  ", "\n  ", "")}
                       |Extras: ${extras.mkString("\n  ", "\n  ", "")}""".stripMargin
@@ -174,7 +174,7 @@ object JobsProcessor {
           retryInConfig(Some(e), Some(s"unknown_error_$tpe"))(_.jobs.timeouts.unknownError)
         case DiscourseError.StatusError(statusCode, message) =>
           val e = s"""|Encountered status error when executing Discourse request
-                      |Job: ${job.obj}
+                      |Job: ${job.obj.withoutError}
                       |Status code: $statusCode
                       |Message: ${message.getOrElse("None")}""".stripMargin
 
