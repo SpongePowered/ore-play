@@ -168,7 +168,7 @@ object ProjectBase {
 
       val doRename = {
         val fileOp      = this.fileManager.renameProject(project.ownerName, project.name, newName)
-        val renameModel = service.update(project)(_.copy(name = newName, slug = newSlug))
+        val renameModel = service.update(project)(_.copy(name = newName))
         val addForumJob = service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob)
 
         // Project's name alter's the topic title, update it

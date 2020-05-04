@@ -7,7 +7,7 @@ import db.impl.access.ProjectBase
 import ore.data.user.notification.NotificationType
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.VersionTable
+import ore.db.impl.schema.{ProjectTable, VersionTable}
 import ore.db.{DbRef, Model, ModelService}
 import ore.member.MembershipDossier
 import ore.models.Job
@@ -144,15 +144,18 @@ trait ProjectFactory {
   ): IO[String, Model[Project]] = {
     val name = template.name
     val slug = slugify(name)
-    val project = Project(
-      pluginId = template.pluginId,
-      ownerId = ownerId,
-      ownerName = ownerName,
-      name = name,
-      slug = slug,
-      category = template.category,
-      description = template.description,
-      visibility = Visibility.New
+    val insertProject = TableQuery[ProjectTable].map(p =>
+      (p.pluginId, p.ownerId, p.ownerName, p.name, p.category, p.description.?, p.visibility)
+    ) += (
+      (
+        template.pluginId,
+        ownerId,
+        ownerName,
+        name,
+        template.category,
+        template.description,
+        Visibility.New
+      )
     )
 
     def cond[E](bool: Boolean, e: E) = if (bool) IO.succeed(()) else IO.fail(e)
@@ -168,7 +171,8 @@ trait ProjectFactory {
       _          <- cond(!existsId, "project with that plugin id already exists")
       _          <- cond(available, "slug not available")
       _          <- cond(config.isValidProjectName(name), "invalid name")
-      newProject <- service.insert(project)
+      _          <- service.runDBIO(insertProject)
+      newProject <- ModelView.now(Project).find(_.pluginId === template.pluginId).value.someOrFail("Impossible")
       _ <- {
         MembershipDossier
           .projectHasMemberships[UIO]

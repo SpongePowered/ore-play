@@ -1,6 +1,7 @@
 package ore.util
 
 import java.security.MessageDigest
+import java.util.Locale
 
 import ore.db.impl.OrePostgresDriver.api._
 
@@ -9,13 +10,16 @@ import ore.db.impl.OrePostgresDriver.api._
   */
 object StringUtils {
 
+  private val replaceRegex = """[^a-z\-_0-9]""".r.unanchored
+
   /**
     * Returns a URL readable string from the specified string.
     *
     * @param str  String to create slug for
     * @return     Slug of string
     */
-  def slugify(str: String): String = compact(str).replace(' ', '-')
+  def slugify(str: String): String =
+    replaceRegex.replaceAllIn(compact(str).toLowerCase(Locale.ROOT).replace(' ', '-'), "").substring(0, 32)
 
   /**
     * Returns the specified String with all consecutive spaces removed.
