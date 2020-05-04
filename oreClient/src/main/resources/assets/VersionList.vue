@@ -2,7 +2,7 @@
     <div class="version-list">
         <div class="row text-center">
             <div class="col-xs-12">
-                <a v-if="canUpload" class="btn yellow" :href="routes.Versions.showCreator(projectOwner, projectSlug).absoluteURL()">Upload a New Version</a>
+                <a v-if="canUpload" class="btn yellow" :href="routes.Versions.showCreator(htmlDecode(projectOwner), htmlDecode(projectSlug)).absoluteURL()">Upload a New Version</a>
             </div>
         </div>
         <div v-show="loading">
@@ -11,7 +11,7 @@
         </div>
         <div v-show="!loading">
             <div class="list-group">
-                <a v-for="version in versions" :href="routes.Versions.show(projectOwner, projectSlug, version.name).absoluteURL()" class="list-group-item"
+                <a v-for="version in versions" :href="routes.Versions.show(htmlDecode(projectOwner), htmlDecode(projectSlug), version.name).absoluteURL()" class="list-group-item"
                    :class="[classForVisibility(version.visibility)]">
                     <div class="container-fluid">
                         <div class="row">
@@ -111,6 +111,13 @@
             },
             classForVisibility(visibility) {
                 return Visibility.fromName(visibility).class;
+            },
+            htmlDecode(htmlEncoded) {
+              const parser = new DOMParser;
+              const dom = parser.parseFromString(
+                '<!doctype html><body>' + htmlEncoded,
+                'text/html');
+              return dom.body.textContent;
             }
         },
         computed: {
