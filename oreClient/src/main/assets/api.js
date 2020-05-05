@@ -52,7 +52,7 @@ export class API {
                                     type: isArray ? 'addAlert' : 'addAlerts',
                                     level: 'error',
                                 };
-                                payload[isArray ? 'messages' : 'message'] = xhr.responseJSON.user_error;
+                                payload[isArray ? 'messages' : 'message'] = xhr.responseJSON.api_error;
                                 store.commit(payload);
                             }
 
