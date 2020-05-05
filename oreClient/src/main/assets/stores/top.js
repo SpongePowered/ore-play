@@ -21,7 +21,7 @@ const mutations = {
     dismissAlert(state, payload) {
         state.alerts[payload.level].splice(payload.index, 1)
     },
-    dismissAllAlert(state, payload) {
+    dismissAllAlerts(state, payload) {
         state.alerts[payload.level] = []
     }
 }

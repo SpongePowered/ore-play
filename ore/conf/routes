@@ -66,6 +66,7 @@ GET     /robots.txt                                                 @controllers
 
 # ---------- Projects ----------
 
+GET     /projects/new                                               @controllers.Application.showHome()
 POST    /invite/:id/:status                                         @controllers.project.Projects.setInviteStatus(id: DbRef[ProjectUserRole], status)
 POST    /invite/:id/:status/:behalf                                 @controllers.project.Projects.setInviteStatusOnBehalf(id: DbRef[ProjectUserRole], status: String, behalf: String)
 

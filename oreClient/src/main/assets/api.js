@@ -28,11 +28,6 @@ export class API {
                         withCredentials: true
                     },
                 }).done((data) => {
-                    //store.commit({
-                    //    type: 'addAlert',
-                    //    level: 'info',
-                    //    message: 'test'
-                    //});
                     resolve(data);
                 }).fail((xhr) => {
                     if (xhr.responseJSON && (xhr.responseJSON.error === 'Api session expired' || xhr.responseJSON.error === 'Invalid session')) {
@@ -44,6 +39,24 @@ export class API {
                             reject(error);
                         });
                     } else {
+                        if(xhr.status === 400) {
+                            if(xhr.responseJSON.user_error) {
+                                store.commit({
+                                    type: 'addAlert',
+                                    level: 'error',
+                                    message: xhr.responseJSON.user_error
+                                });
+                            } else if(xhr.responseJSON.api_error) {
+                                const isArray = Array.isArray(xhr.responseJSON.api_error)
+                                const payload = {
+                                    type: isArray ? 'addAlert' : 'addAlerts',
+                                    level: 'error',
+                                };
+                                payload[isArray ? 'messages' : 'message'] = xhr.responseJSON.user_error;
+                                store.commit(payload);
+                            }
+
+                        }
                         reject(xhr.status)
                     }
                 })

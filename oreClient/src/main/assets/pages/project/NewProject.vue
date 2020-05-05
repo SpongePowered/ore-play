@@ -27,7 +27,7 @@
 
                         <div class="form-group">
                             <label for="projectCategory">Project category</label>
-                            <select class="form-control" v-model="category" required>
+                            <select class="form-control" id="projectCategory" v-model="category" required>
                                 <option v-for="categoryIt in categories.values" :value="categoryIt.id">
                                     {{ categoryIt.name }}
                                 </option>
@@ -40,8 +40,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="projectCategory">Owner</label>
-                            <select id="projectCategory" name="owner" class="form-control" v-model="owner" required>
+                            <label for="projectOwner">Owner</label>
+                            <select id="projectOwner" name="owner" class="form-control" v-model="owner" required>
                                 <option :value="currentUser.name">{{ currentUser.name }}</option>
                                 <option v-for="membership in availableOwners" :value="membership.organization.name">{{ membership.organization.name }}</option>
                             </select>
@@ -85,6 +85,11 @@
                 let error = false;
                 const messages = [];
 
+                this.$store.commit({
+                    type: 'dismissAllAlerts',
+                    level: 'error'
+                });
+
                 if(!this.projectName || this.projectName === "") {
                     messages.push("Project name is required");
                     error = true;
@@ -116,7 +121,7 @@
                         description: this.projectDescription,
                         owner_name: this.owner
                     }).then((data) => {
-                        this.$router.push({path: `/${data.namespace.owner}/${data.namespace.slug}`})
+                        this.$router.push({name: 'project_home', props: {fetchedProject: data}, params: {...data.namespace}})
                     })
                 }
             },
