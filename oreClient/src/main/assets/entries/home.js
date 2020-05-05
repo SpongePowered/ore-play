@@ -99,6 +99,11 @@ const router = new VueRouter({
     ]
 });
 
+router.beforeEach((to, from, next) => {
+    store.commit('dismissAllAlerts');
+    next();
+})
+
 const app = new Vue({
     el: '#home',
     render: createElement => createElement(TopPage),

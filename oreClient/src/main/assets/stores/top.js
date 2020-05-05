@@ -1,3 +1,5 @@
+import Vue from 'vue'
+
 const state = {
     alerts: {
         error: [],
@@ -21,8 +23,13 @@ const mutations = {
     dismissAlert(state, payload) {
         state.alerts[payload.level].splice(payload.index, 1)
     },
+    dismissAlertsByType(state, payload) {
+        Vue.set(state.alerts, payload.level, []);
+    },
     dismissAllAlerts(state, payload) {
-        state.alerts[payload.level] = []
+        Object.keys(state.alerts).forEach(v => {
+            Vue.set(state.alerts, v, []);
+        })
     }
 }
 

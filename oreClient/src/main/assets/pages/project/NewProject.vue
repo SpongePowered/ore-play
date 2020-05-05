@@ -86,7 +86,7 @@
                 const messages = [];
 
                 this.$store.commit({
-                    type: 'dismissAllAlerts',
+                    type: 'dismissAlertsByType',
                     level: 'error'
                 });
 
