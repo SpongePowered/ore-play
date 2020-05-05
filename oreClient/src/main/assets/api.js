@@ -47,15 +47,18 @@ export class API {
                                     message: xhr.responseJSON.user_error
                                 });
                             } else if(xhr.responseJSON.api_error) {
-                                const isArray = Array.isArray(xhr.responseJSON.api_error)
-                                const payload = {
-                                    type: isArray ? 'addAlert' : 'addAlerts',
+                                store.commit({
+                                    type: 'addAlert',
                                     level: 'error',
-                                };
-                                payload[isArray ? 'messages' : 'message'] = xhr.responseJSON.api_error;
-                                store.commit(payload);
+                                    message: xhr.responseJSON.api_error
+                                })
+                            } else if(xhr.responseJSON.api_errors) {
+                                store.commit({
+                                    type: 'addAlerts',
+                                    level: 'error',
+                                    messages: xhr.responseJSON.api_errors
+                                })
                             }
-
                         }
                         reject(xhr.status)
                     }

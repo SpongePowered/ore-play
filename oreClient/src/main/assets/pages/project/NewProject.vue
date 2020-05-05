@@ -121,7 +121,7 @@
                         description: this.projectDescription,
                         owner_name: this.owner
                     }).then((data) => {
-                        this.$router.push({name: 'project_home', props: {fetchedProject: data}, params: {...data.namespace}})
+                        this.$router.push({name: 'project_home', params: {fetchedProject: data, ...data.namespace}})
                     })
                 }
             },
