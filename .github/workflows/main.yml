@@ -74,3 +74,26 @@ jobs:
 
       - name: Run compile
         run: sbt "oreAll/compile;ore/test;ore/assets"
+
+  lintClient:
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node: [12, 14]
+
+    env:
+      client-dir: ./oreClient
+
+    name: Node ${{ matrix.node }} sample
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup node
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Run linting
+        run: yarn run lint
+        working-directory: ${{env.client-dir}}
