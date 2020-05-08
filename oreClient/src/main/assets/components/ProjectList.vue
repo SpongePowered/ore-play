@@ -1,195 +1,225 @@
 <template>
-    <div>
-        <div v-show="loading">
-            <font-awesome-icon spin :icon="['fas', 'spinner']" />
-            <span>Loading projects for you...</span>
-        </div>
-        <div v-show="!loading">
-            <div v-if="projects.length > 0">
-                <ul class="list-group project-list">
-                    <li class="list-group-item project" v-for="project in projects" :class="visibilityFromName(project.visibility).class">
-                        <div class="container-fluid">
-                            <div class="row">
-                                <div class="col-xs-12 col-sm-1">
-                                    <Icon :name="project.namespace.owner" :src="project.icon_url"
-                                          extra-classes="user-avatar-sm"></Icon>
-                                </div>
-                                <div class="col-xs-12 col-sm-11">
-                                    <div class="row">
-                                        <div class="col-sm-6">
-                                            <router-link v-if="useVueRouter" :to="routerLinkProject(project)" v-slot="{href, navigate}">
-                                                <a :href="href" class="title" @click="navigate">
-                                                    {{ project.name }}
-                                                </a>
-                                            </router-link>
-                                            <a v-else :href="routes.Projects.show(project.namespace.owner, project.namespace.slug, '').absoluteURL()" class="title">
-                                                {{ project.name }}
-                                            </a>
-                                        </div>
-                                        <div class="col-sm-6 hidden-xs">
-                                            <div class="info minor">
-                                                <span class="stat" title="Views"><font-awesome-icon :icon="['fas', 'eye']" /> {{ formatStats(project.stats.views) }}</span>
-                                                <span class="stat" title="Download"><font-awesome-icon :icon="['fas', 'download']" /> {{ formatStats(project.stats.downloads) }}</span>
-                                                <span class="stat" title="Stars"><font-awesome-icon :icon="['fas', 'star']" /> {{ formatStats(project.stats.stars) }}</span>
-
-                                                <span :title="categoryFromId(project.category).name" class="stat">
-                                                    <font-awesome-icon :icon="['fas', categoryFromId(project.category).icon]" />
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-sm-7 summary-column">
-                                            <div class="summary">{{ project.summary }}</div>
-                                        </div>
-                                        <div class="col-xs-12 col-sm-5 tags-line" v-if="project.promoted_versions">
-                                            <Tag v-bind:name="platform.name" v-bind:data="platform.versions.join(' | ')" v-bind:color="platform.color"
-                                                 v-bind:key="project.name + '-' + platform.name" v-for="platform in platformsFromPromoted(project.promoted_versions)"></Tag>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </li>
-                </ul>
-                <Pagination :current="current" :total="total" @jumpTo="$emit('jumpToPage', $event)" @next="$emit('nextPage')"
-                            @prev="$emit('prevPage')"></Pagination>
-            </div>
-            <div v-else class="list-group-item empty-project-list">
-                <font-awesome-icon :icon="['far', 'sad-tear']" size="2x" />
-                <span>Oops! No projects found...</span>
-            </div>
-        </div>
+  <div>
+    <div v-show="loading">
+      <font-awesome-icon spin :icon="['fas', 'spinner']" />
+      <span>Loading projects for you...</span>
     </div>
+    <div v-show="!loading">
+      <div v-if="projects.length > 0">
+        <ul class="list-group project-list">
+          <li v-for="project in projects" :key="project.plugin_id" class="list-group-item project" :class="visibilityFromName(project.visibility).class">
+            <div class="container-fluid">
+              <div class="row">
+                <div class="col-xs-12 col-sm-1">
+                  <Icon
+                    :name="project.namespace.owner"
+                    :src="project.icon_url"
+                    extra-classes="user-avatar-sm"
+                  />
+                </div>
+                <div class="col-xs-12 col-sm-11">
+                  <div class="row">
+                    <div class="col-sm-6">
+                      <router-link v-if="useVueRouter" v-slot="{href, navigate}" :to="routerLinkProject(project)">
+                        <a :href="href" class="title" @click="navigate">
+                          {{ project.name }}
+                        </a>
+                      </router-link>
+                      <a v-else :href="routes.Projects.show(project.namespace.owner, project.namespace.slug, '').absoluteURL()" class="title">
+                        {{ project.name }}
+                      </a>
+                    </div>
+                    <div class="col-sm-6 hidden-xs">
+                      <div class="info minor">
+                        <span class="stat" title="Views"><font-awesome-icon :icon="['fas', 'eye']" /> {{ formatStats(project.stats.views) }}</span>
+                        <span class="stat" title="Download"><font-awesome-icon :icon="['fas', 'download']" /> {{ formatStats(project.stats.downloads) }}</span>
+                        <span class="stat" title="Stars"><font-awesome-icon :icon="['fas', 'star']" /> {{ formatStats(project.stats.stars) }}</span>
+
+                        <span :title="categoryFromId(project.category).name" class="stat">
+                          <font-awesome-icon :icon="['fas', categoryFromId(project.category).icon]" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-sm-7 summary-column">
+                      <div class="summary">
+                        {{ project.summary }}
+                      </div>
+                    </div>
+                    <div v-if="project.promoted_versions" class="col-xs-12 col-sm-5 tags-line">
+                      <Tag
+                        v-for="platform in platformsFromPromoted(project.promoted_versions)"
+                        :key="project.name + '-' + platform.name"
+                        :name="platform.name"
+                        :data="platform.versions.join(' | ')"
+                        :color="platform.color"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+        <Pagination
+          :current="current"
+          :total="total"
+          @jumpTo="$emit('jumpToPage', $event)"
+          @next="$emit('nextPage')"
+          @prev="$emit('prevPage')"
+        />
+      </div>
+      <div v-else class="list-group-item empty-project-list">
+        <font-awesome-icon :icon="['far', 'sad-tear']" size="2x" />
+        <span>Oops! No projects found...</span>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
-    import Tag from "./Tag"
-    import {clearFromEmpty, numberWithCommas} from "./../utils"
-    import {Category, Platform, Visibility} from "../enums";
-    import Pagination from "./Pagination";
-    import Icon from "./Icon"
-    import debounce from "lodash/debounce"
-    import {API} from "../api";
-    import NProgress from "nprogress"
-    import npcss from "nprogress/nprogress.css";
+import debounce from 'lodash/debounce'
+import NProgress from 'nprogress'
+import npcss from 'nprogress/nprogress.css'
+import { Category, Platform, Visibility } from '../enums'
+import { API } from '../api'
+import { clearFromEmpty, numberWithCommas } from '../utils'
+import Tag from './Tag'
+import Pagination from './Pagination'
+import Icon from './Icon'
 
-    void(npcss);
+void (npcss) // eslint-disable-line no-void
 
-    export default {
-        components: {
-            Tag,
-            Pagination,
-            Icon
-        },
-        props: {
-            q: String,
-            categories: {
-                type: Array
-            },
-            platforms: Array,
-            owner: String,
-            sort: String,
-            relevance: {
-                type: Boolean,
-                default: true
-            },
-            limit: {
-                type: Number,
-                default: 25
-            },
-            offset: {
-                type: Number,
-                default: 0
-            },
-            useVueRouter: {
-                type: Boolean,
-                default: true
-            }
-        },
-        data() {
-            return {
-                projects: [],
-                totalProjects: 0,
-                loading: true
-            }
-        },
-        computed: {
-            current: function () {
-                return Math.ceil(this.offset / this.limit) + 1;
-            },
-            total: function () {
-                return Math.ceil(this.totalProjects / this.limit)
-            },
-            routes: function () {
-                return jsRoutes.controllers.project;
-            }
-        },
-        created() {
-            this.update();
-            this.debouncedUpdateProps = debounce(this.update, 500);
-            this.$watch(vm => [vm.q, vm.categories, vm.tags, vm.owner, vm.sort, vm.relevance, vm.limit, vm.offset].join(), () => {
-                this.debouncedUpdateProps();
-            });
-        },
-        methods: {
-            update() {
-                NProgress.start();
-                API.request("projects", "GET", clearFromEmpty(this.$props)).then((response) => {
-                    NProgress.done();
-                    this.projects = response.result;
-                    this.totalProjects = response.pagination.count;
-                    this.loading = false;
-                    this.$emit('update:projectCount', this.totalProjects);
-                });
-            },
-            categoryFromId(id) {
-                return Category.fromId(id);
-            },
-            visibilityFromName(name) {
-                return Visibility.fromName(name);
-            },
-            platformsFromPromoted(promotedVersions) {
-                let platformArray = [];
-                promotedVersions
-                    .map(version => version.platforms)
-                    .forEach(platforms => platformArray = platforms.concat(platformArray));
-
-                const reducedPlatforms = [];
-
-                Platform.values.forEach(platform => {
-                    let versions = [];
-                    platformArray.filter(plat => plat.platform === platform.id).reverse().forEach(plat => {
-                        versions.push(plat.display_platform_version || plat.platform_version);
-                    });
-
-                    if(versions.length > 0) {
-                        reducedPlatforms.push({
-                            name: platform.shortName,
-                            versions: versions,
-                            color: platform.color
-                        });
-                    }
-                });
-
-                return reducedPlatforms;
-            },
-            formatStats(number) {
-                return numberWithCommas(number);
-            },
-            routerLinkProject(project) {
-                return {
-                    name: 'project_home',
-                    params: {
-                        pluginId: project.plugin_id,
-                        fetchedProject: project,
-                        owner: project.namespace.owner,
-                        slug: project.namespace.slug
-                    }
-                }
-            }
-        }
+export default {
+  components: {
+    Tag,
+    Pagination,
+    Icon
+  },
+  props: {
+    q: {
+      type: String,
+      default: null
+    },
+    categories: {
+      type: Array,
+      default: null
+    },
+    platforms: {
+      type: Array,
+      default: null
+    },
+    owner: {
+      type: String,
+      default: null
+    },
+    sort: {
+      type: String,
+      default: null
+    },
+    relevance: {
+      type: Boolean,
+      default: true
+    },
+    limit: {
+      type: Number,
+      default: 25
+    },
+    offset: {
+      type: Number,
+      default: 0
+    },
+    useVueRouter: {
+      type: Boolean,
+      default: true
     }
+  },
+  data () {
+    return {
+      projects: [],
+      totalProjects: 0,
+      loading: true
+    }
+  },
+  computed: {
+    current () {
+      return Math.ceil(this.offset / this.limit) + 1
+    },
+    total () {
+      return Math.ceil(this.totalProjects / this.limit)
+    },
+    routes () {
+      return jsRoutes.controllers.project
+    }
+  },
+  created () {
+    this.update()
+    this.debouncedUpdateProps = debounce(this.update, 500)
+    this.$watch(vm => [vm.q, vm.categories, vm.tags, vm.owner, vm.sort, vm.relevance, vm.limit, vm.offset].join(), () => {
+      this.debouncedUpdateProps()
+    })
+  },
+  methods: {
+    update () {
+      NProgress.start()
+      API.request('projects', 'GET', clearFromEmpty(this.$props)).then((response) => {
+        NProgress.done()
+        this.projects = response.result
+        this.totalProjects = response.pagination.count
+        this.loading = false
+        this.$emit('update:projectCount', this.totalProjects)
+      })
+    },
+    categoryFromId (id) {
+      return Category.fromId(id)
+    },
+    visibilityFromName (name) {
+      return Visibility.fromName(name)
+    },
+    platformsFromPromoted (promotedVersions) {
+      let platformArray = []
+      promotedVersions
+        .map(version => version.platforms)
+        .forEach((platforms) => {
+          platformArray = platforms.concat(platformArray)
+        })
+
+      const reducedPlatforms = []
+
+      Platform.values.forEach((platform) => {
+        const versions = []
+        platformArray.filter(plat => plat.platform === platform.id).reverse().forEach((plat) => {
+          versions.push(plat.display_platform_version || plat.platform_version)
+        })
+
+        if (versions.length > 0) {
+          reducedPlatforms.push({
+            name: platform.shortName,
+            versions,
+            color: platform.color
+          })
+        }
+      })
+
+      return reducedPlatforms
+    },
+    formatStats (number) {
+      return numberWithCommas(number)
+    },
+    routerLinkProject (project) {
+      return {
+        name: 'project_home',
+        params: {
+          pluginId: project.plugin_id,
+          fetchedProject: project,
+          owner: project.namespace.owner,
+          slug: project.namespace.slug
+        }
+      }
+    }
+  }
+}
 </script>
 
 <style lang="scss">

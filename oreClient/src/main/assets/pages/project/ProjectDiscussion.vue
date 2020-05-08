@@ -1,102 +1,103 @@
 <template>
-    <div>
-        <div class="row posts" v-if="discourseData">
-            <div class="col-xs-12">
-                <header class="discourse" data-embed-state="loaded">
-                    <span class="replies">{{ discourseData.posts_count }} replies</span>
-                </header>
-                <div v-for="post in postsFiltered">
-                    <article :id="'post-' + post.id" class="post">
-                        <a :href="config.discourse.baseUrl + '/t/' + post.topic_slug + '/' + post.topic_id + '/' + post.post_number" :title="post.created_at" class="post-date"
-                           target="_blank">{{ formatDate(post.created_at) }}</a>
-                        <div class="author">
-                            <a :href="config.discourse.baseUrl + '/u/' + post.username" target="_blank">
-                                <img :src="config.discourse.baseUrl + post.avatar_template.replace('{size}', '45')" alt="">
-                            </a>
-                        </div>
-                        <div class="cooked">
-                            <h3 class="username">
-                                <a :href="config.discourse.baseUrl + '/u/' + post.username" class="" target="_blank">{{ post.username }}</a>
-                            </h3>
-                            <span v-html="post.cooked"></span>
-                        </div>
-                    </article>
-                </div>
+  <div>
+    <div v-if="discourseData" class="row posts">
+      <div class="col-xs-12">
+        <header class="discourse" data-embed-state="loaded">
+          <span class="replies">{{ discourseData.posts_count }} replies</span>
+        </header>
+        <div v-for="post in postsFiltered" :key="post.id">
+          <article :id="'post-' + post.id" class="post">
+            <a
+              :href="config.discourse.baseUrl + '/t/' + post.topic_slug + '/' + post.topic_id + '/' + post.post_number"
+              :title="post.created_at"
+              class="post-date"
+              target="_blank"
+            >{{ formatDate(post.created_at) }}</a>
+            <div class="author">
+              <a :href="config.discourse.baseUrl + '/u/' + post.username" target="_blank">
+                <img :src="config.discourse.baseUrl + post.avatar_template.replace('{size}', '45')" alt="">
+              </a>
             </div>
-            <div class="col-xs-12">
-                <a class="btn yellow mt-2" :href="config.discourse.baseUrl + '/t/' + 23">Reply on the forums</a>
+            <div class="cooked">
+              <h3 class="username">
+                <a :href="config.discourse.baseUrl + '/u/' + post.username" class="" target="_blank">{{ post.username }}</a>
+              </h3>
+              <span v-html="post.cooked" /> <!-- eslint-disable-line vue/no-v-html -->
             </div>
+          </article>
         </div>
+      </div>
+      <div class="col-xs-12">
+        <a class="btn yellow mt-2" :href="config.discourse.baseUrl + '/t/' + 23">Reply on the forums</a>
+      </div>
     </div>
+  </div>
 </template>
 
 <script>
-    import Editor from "../../components/Editor";
-    import {mapState} from "vuex";
-    import config from "../../config.json5"
-    import NProgress from "nprogress";
-    import moment from 'moment';
+import { mapState } from 'vuex'
+import NProgress from 'nprogress'
+import moment from 'moment'
+import config from '../../config.json5'
 
-    export default {
-        components: {Editor},
-        data() {
-            return {
-                discourseData: null
-            };
-        },
-        computed: {
-            routes() {
-                return jsRoutes.controllers;
-            },
-            postsFiltered() {
-                return this.discourseData.post_stream.posts.filter(p => p.post_number !== 1 && p.hidden === false && p.deleted_at === null);
-            },
-            ...mapState('project', [
-                'project'
-            ]),
-            config() {
-                return config
-            }
-        },
-        methods: {
-            path() {
-                return document.location.pathname
-            },
-            formatDate(date) {
-                return moment(date).format("MMM D, YYYY")
-            },
-            updateData(topicId) {
-                NProgress.start();
-                $.ajax({
-                    url: config.discourse.baseUrl + '/t/' +
-                        topicId
-                        + '.json',
-                    method: 'GET',
-                    contentType: 'application/json',
-                    crossDomain: true
-                }).always(() => {
-                    NProgress.done();
-                }).done((data) => {
-                    this.discourseData = data;
-                }).fail((xhr) => {
-                    // TODO
-                    console.log(xhr)
-                })
-            }
-        },
-        watch: {
-            project(val, oldVal) {
-                if(!oldVal || val.plugin_id !== oldVal.plugin_id) {
-                    this.updateData(val.external.discourse.topic_id);
-                }
-            }
-        },
-        created() {
-            if(this.project) {
-                this.updateData(this.project.external.discourse.topic_id);
-            }
-        }
+export default {
+  data () {
+    return {
+      discourseData: null
     }
+  },
+  computed: {
+    routes () {
+      return jsRoutes.controllers
+    },
+    postsFiltered () {
+      return this.discourseData.post_stream.posts.filter(p => p.post_number !== 1 && p.hidden === false && p.deleted_at === null)
+    },
+    ...mapState('project', [
+      'project'
+    ]),
+    config () {
+      return config
+    }
+  },
+  watch: {
+    project (val, oldVal) {
+      if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
+        this.updateData(val.external.discourse.topic_id)
+      }
+    }
+  },
+  created () {
+    if (this.project) {
+      this.updateData(this.project.external.discourse.topic_id)
+    }
+  },
+  methods: {
+    path () {
+      return document.location.pathname
+    },
+    formatDate (date) {
+      return moment(date).format('MMM D, YYYY')
+    },
+    updateData (topicId) {
+      NProgress.start()
+      $.ajax({
+        url: config.discourse.baseUrl + '/t/' +
+                        topicId +
+                        '.json',
+        method: 'GET',
+        contentType: 'application/json',
+        crossDomain: true
+      }).always(() => {
+        NProgress.done()
+      }).done((data) => {
+        this.discourseData = data
+      }).fail((xhr) => {
+        // TODO
+      })
+    }
+  }
+}
 </script>
 <style lang="scss">
     .posts {

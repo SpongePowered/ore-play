@@ -1,26 +1,33 @@
 <template>
-    <ProjectList :owner="user" :offset="(page - 1) * limit" :limit="limit"
-                 @prevPage="page--" @nextPage="page++" @jumpToPage="page = $event" :use-vue-router="false"></ProjectList>
+  <ProjectList
+    :owner="user"
+    :offset="(page - 1) * limit"
+    :limit="limit"
+    :use-vue-router="false"
+    @prevPage="page--"
+    @nextPage="page++"
+    @jumpToPage="page = $event"
+  />
 </template>
 
 <script>
-    import ProjectList from "./../components/ProjectList";
+import ProjectList from './../components/ProjectList'
 
-    export default {
-        components: {
-            ProjectList
-        },
-        props: {
-            user: {
-                type: String,
-                required: true
-            }
-        },
-        data: function() {
-            return {
-                page: 1,
-                limit: 5
-            }
-        }
+export default {
+  components: {
+    ProjectList
+  },
+  props: {
+    user: {
+      type: String,
+      required: true
     }
+  },
+  data () {
+    return {
+      page: 1,
+      limit: 5
+    }
+  }
+}
 </script>

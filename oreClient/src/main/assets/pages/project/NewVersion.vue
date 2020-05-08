@@ -1,3 +1,3 @@
 <template>
-    <div>New version</div>
+  <div>New version</div>
 </template>
