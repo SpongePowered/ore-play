@@ -85,7 +85,7 @@ jobs:
     env:
       client-dir: ./oreClient
 
-    name: Node ${{ matrix.node }} sample
+    name: Client Linting (Node ${{ matrix.node }})
     steps:
       - uses: actions/checkout@v2
 
@@ -94,6 +94,19 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
+      - name: Get yarn cache directory path
+          id: yarn-cache-dir-path
+          working-directory: ${{env.client-dir}}
+          run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - uses: actions/cache@v1
+          id: yarn-cache
+          with:
+            path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+            key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+            restore-keys: |
+              ${{ runner.os }}-yarn-t
+
       - name: Install dependencies
         run: yarn install
         working-directory: ${{env.client-dir}}
@@ -101,16 +114,3 @@ jobs:
       - name: Run linting
         run: yarn run lint
         working-directory: ${{env.client-dir}}
-
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        working-directory: ${{env.client-dir}}
-        run: echo "::set-output name=dir::$(yarn cache dir)"
-
-      - uses: actions/cache@v1
-        id: yarn-cache
-        with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-t
