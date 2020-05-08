@@ -76,8 +76,6 @@ jobs:
         run: sbt "oreAll/compile;ore/test;ore/assets"
 
   lintClient:
-    needs: build
-
     runs-on: ubuntu-latest
 
     strategy:
@@ -90,10 +88,29 @@ jobs:
     name: Node ${{ matrix.node }} sample
     steps:
       - uses: actions/checkout@v2
+
       - name: Setup node
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: yarn install
+        working-directory: ${{env.client-dir}}
+
       - name: Run linting
         run: yarn run lint
         working-directory: ${{env.client-dir}}
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        working-directory: ${{env.client-dir}}
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - uses: actions/cache@v1
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-t
