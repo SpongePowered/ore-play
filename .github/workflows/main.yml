@@ -95,17 +95,17 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Get yarn cache directory path
-          id: yarn-cache-dir-path
-          working-directory: ${{env.client-dir}}
-          run: echo "::set-output name=dir::$(yarn cache dir)"
+        id: yarn-cache-dir-path
+        working-directory: ${{env.client-dir}}
+        run: echo "::set-output name=dir::$(yarn cache dir)"
 
       - uses: actions/cache@v1
-          id: yarn-cache
-          with:
-            path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-            key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-            restore-keys: |
-              ${{ runner.os }}-yarn-t
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-t
 
       - name: Install dependencies
         run: yarn install
