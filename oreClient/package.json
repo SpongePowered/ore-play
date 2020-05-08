@@ -3,7 +3,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "builddev": "webpack --config webpack.config.dev.js",
-    "start": "webpack-dev-server --open --hot --config webpack.config.dev.js"
+    "start": "webpack-dev-server --open --hot --config webpack.config.dev.js",
+    "lint:js": "eslint --ext .js,.mjs,.vue .",
+    "fixlint:js": "eslint --ext .js,.vue . --fix"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.28",
