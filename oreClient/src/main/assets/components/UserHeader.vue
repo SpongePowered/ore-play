@@ -11,9 +11,9 @@
 
         <template v-if="user && canEditOrgSettings">
           <div class="edit-avatar" style="display: none;">
-            <a :href="routes.Organizations.updateAvatar(user.name).absoluteURL()"><i
-              class="fas fa-edit"
-            /> Edit avatar</a>
+            <a :href="routes.Organizations.updateAvatar(user.name).absoluteURL()"
+              ><i class="fas fa-edit" /> Edit avatar</a
+            >
           </div>
 
           <prompt
@@ -29,12 +29,7 @@
 
             <template v-if="isCurrentUser && !orga">
               <a class="user-settings" :href="config.security.api.url + '/accounts/settings'">
-                <i
-                  class="fas fa-cog"
-                  data-toggle="tooltip"
-                  data-placement="top"
-                  title="Settings"
-                />
+                <i class="fas fa-cog" data-toggle="tooltip" data-placement="top" title="Settings" />
               </a>
 
               <a class="action-api" :href="routes.Users.editApiKeys(user.name).absoluteURL()">
@@ -47,12 +42,7 @@
               class="user-settings"
               :href="routes.Application.showActivities(user.name).absoluteURL()"
             >
-              <i
-                class="fas fa-calendar"
-                data-toggle="tooltip"
-                data-placement="top"
-                title="Activity"
-              />
+              <i class="fas fa-calendar" data-toggle="tooltip" data-placement="top" title="Activity" />
             </a>
 
             <a
@@ -60,12 +50,7 @@
               class="user-settings"
               :href="routes.Application.userAdmin(user.name).absoluteURL()"
             >
-              <i
-                class="fas fa-wrench"
-                data-toggle="tooltip"
-                data-placement="top"
-                title="User Admin"
-              />
+              <i class="fas fa-wrench" data-toggle="tooltip" data-placement="top" title="User Admin" />
             </a>
           </h1>
 
@@ -75,12 +60,7 @@
               Add a tagline
             </i>
 
-            <a
-              v-if="isCurrentUser || canEditOrgSettings"
-              href="#"
-              data-toggle="modal"
-              data-target="#modal-tagline"
-            >
+            <a v-if="isCurrentUser || canEditOrgSettings" href="#" data-toggle="modal" data-target="#modal-tagline">
               <i class="fas fa-edit" />
             </a>
           </div>
@@ -93,18 +73,18 @@
           v-for="role in user.roles"
           :key="role.name"
           class="user-role channel"
-          :style="{'background-color': role.color}"
+          :style="{ 'background-color': role.color }"
         >
           {{ role.title }}
         </li>
       </ul>
 
       <div v-if="user" class="user-info">
-        <i class="minor">{{ user.project_count }}&nbsp;{{ user.project_count === 1 ? 'project' : 'projects'
-        }}</i><br>
+        <i class="minor">{{ user.project_count }}&nbsp;{{ user.project_count === 1 ? 'project' : 'projects' }}</i
+        ><br />
         <i class="minor">
-          A member since {{ user.join_date ? prettifyDate(user.join_date) : prettifyDate(user.created_at) }}
-        </i><br>
+          A member since {{ user.join_date ? prettifyDate(user.join_date) : prettifyDate(user.created_at) }} </i
+        ><br />
         <a :href="'https://forums.spongepowered.org/users/' + user.name">
           View on forums <i class="fas fa-external-link-alt" />
         </a>
@@ -114,13 +94,7 @@
         <div class="modal-dialog" role="document">
           <div class="modal-content">
             <div class="modal-header">
-              <button
-                type="button"
-                class="close"
-                data-dismiss="modal"
-                aria-label="Close"
-                @click="resetTagline"
-              >
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close" @click="resetTagline">
                 <span aria-hidden="true">&times;</span>
               </button>
               <h4 class="modal-title">
@@ -141,17 +115,12 @@
                   type="text"
                   name="tagline"
                   :maxlength="config.ore.users.maxTaglineLen"
-                >
+                />
               </div>
               <div class="clearfix" />
             </div>
             <div class="modal-footer">
-              <button
-                type="button"
-                class="btn btn-default"
-                data-dismiss="modal"
-                @click.prevent="resetTagline"
-              >
+              <button type="button" class="btn btn-default" data-dismiss="modal" @click.prevent="resetTagline">
                 Close
               </button>
               <button type="submit" class="btn btn-primary" @click.prevent="updateTagline">
@@ -176,49 +145,49 @@ import Icon from './Icon'
 
 export default {
   components: { Icon, Prompt },
-  data () {
+  data() {
     return {
-      editTagline: this.currentUser ? this.currentUser.tagline ? this.currentUser.tagline : '' : ''
+      editTagline: this.currentUser ? (this.currentUser.tagline ? this.currentUser.tagline : '') : '',
     }
   },
   computed: {
-    roles () {
+    roles() {
       return Role
     },
-    prompts () {
+    prompts() {
       return PromptEnum
     },
-    routes () {
+    routes() {
       return jsRoutes.controllers
     },
-    isCurrentUser () {
+    isCurrentUser() {
       return this.currentUser && this.user && this.currentUser.name === this.user.name
     },
-    canEditOrgSettings () {
+    canEditOrgSettings() {
       return this.orgaPermissions.includes('edit_organization_settings')
     },
-    config () {
+    config() {
       return config
     },
     ...mapState('global', ['currentUser', 'permissions', 'headerData']),
-    ...mapState('user', ['user', 'orga', 'orgaPermissions'])
+    ...mapState('user', ['user', 'orga', 'orgaPermissions']),
   },
   watch: {
-    user (val, oldVal) {
+    user(val, oldVal) {
       if (!oldVal || val.name !== oldVal.name) {
         this.resetTagline()
       }
-    }
+    },
   },
   methods: {
-    prettifyDate (rawDate) {
+    prettifyDate(rawDate) {
       return moment(rawDate).format('MMM DD[,] YYYY')
     },
     avatarUrl,
-    resetTagline () {
+    resetTagline() {
       this.editTagline = this.user.tagline ? this.user.tagline : ''
     },
-    updateTagline () {
+    updateTagline() {
       const taglineUrl = jsRoutes.controllers.Users.saveTagline(this.user.name).absoluteURL()
       const data = new FormData()
       data.append('tagline', this.editTagline)
@@ -227,17 +196,17 @@ export default {
       fetch(taglineUrl, {
         credentials: 'same-origin',
         method: 'post',
-        body: data
+        body: data,
       }).then((res) => {
         if (res.ok) {
           this.$store.commit({
             type: 'user/setTagline',
-            tagline: this.editTagline
+            tagline: this.editTagline,
           })
           if (this.user.name === this.currentUser.name) {
             this.$store.commit({
               type: 'global/setTagline',
-              tagline: this.editTagline
+              tagline: this.editTagline,
             })
           }
           $('#modal-tagline').modal('hide')
@@ -245,7 +214,7 @@ export default {
           // TODO
         }
       })
-    }
-  }
+    },
+  },
 }
 </script>

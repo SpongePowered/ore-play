@@ -29,7 +29,7 @@ const router = new VueRouter({
     {
       path: '/',
       name: 'home',
-      component: Home
+      component: Home,
     },
     {
       path: '/:user',
@@ -39,14 +39,14 @@ const router = new VueRouter({
         {
           path: '',
           name: 'user_projects',
-          component: UserProjects
-        }
-      ]
+          component: UserProjects,
+        },
+      ],
     },
     {
       path: '/projects/new',
       name: 'new_project',
-      component: NewProject
+      component: NewProject,
     },
     {
       path: '/:owner/:slug/',
@@ -58,44 +58,44 @@ const router = new VueRouter({
           name: 'project_home',
           component: ProjectDocs,
           props: {
-            page: ['Home']
-          }
+            page: ['Home'],
+          },
         },
         {
           path: 'pages/:page+',
           name: 'pages',
           component: ProjectDocs,
-          props: true
+          props: true,
         },
         {
           path: 'versions',
           name: 'versions',
-          component: ProjectVersions
+          component: ProjectVersions,
         },
         {
           path: 'versions/new',
           name: 'new_version',
-          component: NewVersion
+          component: NewVersion,
         },
         {
           path: 'versions/:version',
           name: 'version',
           component: VersionPage,
-          props: true
+          props: true,
         },
         {
           path: 'discuss',
           name: 'discussion',
-          component: ProjectDiscussion
+          component: ProjectDiscussion,
         },
         {
           path: 'settings',
           name: 'settings',
-          component: ProjectSettings
-        }
-      ]
-    }
-  ]
+          component: ProjectSettings,
+        },
+      ],
+    },
+  ],
 })
 
 router.beforeEach((to, from, next) => {
@@ -103,9 +103,10 @@ router.beforeEach((to, from, next) => {
   next()
 })
 
-new Vue({ // eslint-disable-line no-new
+// eslint-disable-next-line no-new
+new Vue({
   el: '#home',
-  render: createElement => createElement(TopPage),
+  render: (createElement) => createElement(TopPage),
   router,
-  store
+  store,
 })

@@ -1,9 +1,9 @@
 <template>
-  <router-link v-if="name" :to="{name: 'user_projects', params: {user: name}}">
-    <img class="user-avatar" :class="extraClasses" :src="src" :alt="name">
+  <router-link v-if="name" :to="{ name: 'user_projects', params: { user: name } }">
+    <img class="user-avatar" :class="extraClasses" :src="src" :alt="name" />
   </router-link>
   <a v-else :href="linkUrl">
-    <img class="user-avatar" :class="extraClasses" :src="src" :alt="name">
+    <img class="user-avatar" :class="extraClasses" :src="src" :alt="name" />
   </a>
 </template>
 
@@ -12,29 +12,29 @@ export default {
   props: {
     src: {
       type: String,
-      required: true
+      required: true,
     },
     href: {
       type: String,
-      default: null
+      default: null,
     },
     extraClasses: {
       type: String,
-      default: ''
+      default: '',
     },
     name: {
       type: String,
-      default: null
-    }
+      default: null,
+    },
   },
   computed: {
-    linkUrl () {
+    linkUrl() {
       if (this.href != null) {
         return this.href
       } else {
         return '#'
       }
-    }
-  }
+    },
+  },
 }
 </script>

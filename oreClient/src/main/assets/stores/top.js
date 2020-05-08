@@ -5,35 +5,37 @@ const state = {
     error: [],
     success: [],
     info: [],
-    warning: []
-  }
+    warning: [],
+  },
 }
 
 const mutations = {
-  addAlert (state, payload) {
+  addAlert(state, payload) {
     state.alerts[payload.level].push({
-      message: payload.message
+      message: payload.message,
     })
   },
-  addAlerts (state, payload) {
-    state.alerts[payload.level] = state.alerts[payload.level].concat(payload.messages.map((m) => {
-      return { message: m }
-    }))
+  addAlerts(state, payload) {
+    state.alerts[payload.level] = state.alerts[payload.level].concat(
+      payload.messages.map((m) => {
+        return { message: m }
+      })
+    )
   },
-  dismissAlert (state, payload) {
+  dismissAlert(state, payload) {
     state.alerts[payload.level].splice(payload.index, 1)
   },
-  dismissAlertsByType (state, payload) {
+  dismissAlertsByType(state, payload) {
     Vue.set(state.alerts, payload.level, [])
   },
-  dismissAllAlerts (state, payload) {
+  dismissAllAlerts(state, payload) {
     Object.keys(state.alerts).forEach((v) => {
       Vue.set(state.alerts, v, [])
     })
-  }
+  },
 }
 
 export default {
   state,
-  mutations
+  mutations,
 }

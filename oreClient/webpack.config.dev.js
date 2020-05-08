@@ -10,8 +10,8 @@ module.exports = merge(commonConfig, {
       favicon: 'src/main/assets/images/favicon.ico',
       template: 'index_template.html',
       meta: {
-        viewport: 'width=device-width, initial-scale=1'
-      }
-    })
-  ]
+        viewport: 'width=device-width, initial-scale=1',
+      },
+    }),
+  ],
 })

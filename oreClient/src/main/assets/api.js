@@ -5,11 +5,11 @@ import { store } from './stores/index'
 $.ajaxSettings.traditional = true
 
 export class API {
-  static request (url, method = 'GET', data = {}) {
+  static request(url, method = 'GET', data = {}) {
     return this.getSession().then((session) => {
       return new Promise((resolve, reject) => {
         const isFormData = data instanceof FormData
-        const isBodyRequest = (method === 'POST' || method === 'PUT' || method === 'PATCH')
+        const isBodyRequest = method === 'POST' || method === 'PUT' || method === 'PATCH'
 
         $.ajax({
           url: config.app.baseUrl + '/api/v2/' + url,
@@ -20,53 +20,60 @@ export class API {
           processData: !(isFormData || isBodyRequest),
           headers: {
             Authorization: 'OreApi session=' + session,
-            'Csrf-Token': typeof csrf !== 'undefined' ? csrf : undefined
+            'Csrf-Token': typeof csrf !== 'undefined' ? csrf : undefined,
           },
           xhrFields: {
             // Technically not needed, but some internal compat stuff assumes cookies will be present
-            withCredentials: true
-          }
-        }).done((data) => {
-          resolve(data)
-        }).fail((xhr) => {
-          if (xhr.responseJSON && (xhr.responseJSON.error === 'Api session expired' || xhr.responseJSON.error === 'Invalid session')) {
-            // This should never happen but just in case we catch it and invalidate the session to definitely get a new one
-            API.invalidateSession()
-            API.request(url, method, data).then((data) => {
-              resolve(data)
-            }).catch((error) => {
-              reject(error)
-            })
-          } else {
-            if (xhr.status === 400) {
-              if (xhr.responseJSON.user_error) {
-                store.commit({
-                  type: 'addAlert',
-                  level: 'error',
-                  message: xhr.responseJSON.user_error
-                })
-              } else if (xhr.responseJSON.api_error) {
-                store.commit({
-                  type: 'addAlert',
-                  level: 'error',
-                  message: xhr.responseJSON.api_error
-                })
-              } else if (xhr.responseJSON.api_errors) {
-                store.commit({
-                  type: 'addAlerts',
-                  level: 'error',
-                  messages: xhr.responseJSON.api_errors
-                })
-              }
-            }
-            reject(xhr.status)
-          }
+            withCredentials: true,
+          },
         })
+          .done((data) => {
+            resolve(data)
+          })
+          .fail((xhr) => {
+            if (
+              xhr.responseJSON &&
+              (xhr.responseJSON.error === 'Api session expired' || xhr.responseJSON.error === 'Invalid session')
+            ) {
+              // This should never happen but just in case we catch it and invalidate the session to definitely get a new one
+              API.invalidateSession()
+              API.request(url, method, data)
+                .then((data) => {
+                  resolve(data)
+                })
+                .catch((error) => {
+                  reject(error)
+                })
+            } else {
+              if (xhr.status === 400) {
+                if (xhr.responseJSON.user_error) {
+                  store.commit({
+                    type: 'addAlert',
+                    level: 'error',
+                    message: xhr.responseJSON.user_error,
+                  })
+                } else if (xhr.responseJSON.api_error) {
+                  store.commit({
+                    type: 'addAlert',
+                    level: 'error',
+                    message: xhr.responseJSON.api_error,
+                  })
+                } else if (xhr.responseJSON.api_errors) {
+                  store.commit({
+                    type: 'addAlerts',
+                    level: 'error',
+                    messages: xhr.responseJSON.api_errors,
+                  })
+                }
+              }
+              reject(xhr.status)
+            }
+          })
       })
     })
   }
 
-  static getSession () {
+  static getSession() {
     return new Promise((resolve, reject) => {
       let session
       const date = new Date()
@@ -80,21 +87,23 @@ export class API {
             method: 'POST',
             dataType: 'json',
             xhrFields: {
-              withCredentials: true
+              withCredentials: true,
             },
             headers: {
-              'Csrf-Token': typeof csrf !== 'undefined' ? csrf : undefined
-            }
-          }).done((data) => {
-            if (data.type !== 'user') {
-              reject(new Error('Expected user session from user authentication'))
-            } else {
-              localStorage.setItem('api_session', JSON.stringify(data))
-              resolve(data.session)
-            }
-          }).fail((xhr) => {
-            reject(xhr.statusText)
+              'Csrf-Token': typeof csrf !== 'undefined' ? csrf : undefined,
+            },
           })
+            .done((data) => {
+              if (data.type !== 'user') {
+                reject(new Error('Expected user session from user authentication'))
+              } else {
+                localStorage.setItem('api_session', JSON.stringify(data))
+                resolve(data.session)
+              }
+            })
+            .fail((xhr) => {
+              reject(xhr.statusText)
+            })
         } else {
           resolve(session.session)
         }
@@ -104,17 +113,19 @@ export class API {
           $.ajax({
             url: config.app.baseUrl + '/api/v2/authenticate',
             method: 'POST',
-            dataType: 'json'
-          }).done((data) => {
-            if (data.type !== 'public') {
-              reject(new Error('Expected public session from public authentication'))
-            } else {
-              localStorage.setItem('public_api_session', JSON.stringify(data))
-              resolve(data.session)
-            }
-          }).fail((xhr) => {
-            reject(xhr.statusText)
+            dataType: 'json',
           })
+            .done((data) => {
+              if (data.type !== 'public') {
+                reject(new Error('Expected public session from public authentication'))
+              } else {
+                localStorage.setItem('public_api_session', JSON.stringify(data))
+                resolve(data.session)
+              }
+            })
+            .fail((xhr) => {
+              reject(xhr.statusText)
+            })
         } else {
           resolve(session.session)
         }
@@ -122,11 +133,11 @@ export class API {
     })
   }
 
-  static hasUser () {
+  static hasUser() {
     return window.isLoggedIn || config.alwaysTryLogin
   }
 
-  static invalidateSession () {
+  static invalidateSession() {
     if (window.isLoggedIn) {
       localStorage.removeItem('api_session')
     } else {

@@ -1,13 +1,25 @@
 <template>
   <div v-if="enabled">
     <!-- Edit -->
-    <button type="button" class="btn btn-sm btn-edit btn-page btn-default" :class="editClasses" title="Edit" @click="state = 'edit'">
+    <button
+      type="button"
+      class="btn btn-sm btn-edit btn-page btn-default"
+      :class="editClasses"
+      title="Edit"
+      @click="state = 'edit'"
+    >
       <font-awesome-icon :icon="['fas', 'edit']" /> Edit
     </button>
 
     <!-- Preview -->
     <div class="btn-edit-container btn-preview-container" :class="buttonStateClasses" title="Preview">
-      <button v-if="state !== 'display'" type="button" class="btn btn-sm btn-preview btn-page btn-default" :class="previewClasses" @click="state = 'preview'">
+      <button
+        v-if="state !== 'display'"
+        type="button"
+        class="btn btn-sm btn-preview btn-page btn-default"
+        :class="previewClasses"
+        @click="state = 'preview'"
+      >
         <font-awesome-icon :icon="['fas', 'eye']" />
       </button>
     </div>
@@ -39,22 +51,14 @@
         </button>
       </div>
 
-      <div
-        id="modal-page-delete"
-        class="modal fade"
-        tabindex="-1"
-        role="dialog"
-        aria-labelledby="label-page-delete"
-      >
+      <div id="modal-page-delete" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="label-page-delete">
         <div class="modal-dialog" role="document">
           <div class="modal-content">
             <div class="modal-header">
               <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                 <span aria-hidden="true">&times;</span>
               </button>
-              <h4 id="label-page-delete" class="modal-title">
-                Delete {{ subject.toLowerCase() }}
-              </h4>
+              <h4 id="label-page-delete" class="modal-title">Delete {{ subject.toLowerCase() }}</h4>
             </div>
             <div class="modal-body">
               Are you sure you want to delete this {{ subject.toLowerCase() }}? This cannot be undone.
@@ -75,12 +79,15 @@
     <div v-if="state === 'edit'" class="page-edit">
       <textarea v-model="rawData" name="content" class="form-control" />
     </div>
-    <div v-else-if="state === 'preview'" class="page-preview page-rendered" v-html="previewCooked" /> <!-- eslint-disable-line vue/no-v-html -->
-    <div v-else-if="state === 'display'" class="page-content page-rendered" v-html="cooked" /> <!-- eslint-disable-line vue/no-v-html -->
+    <!-- eslint-disable-next-line vue/no-v-html -->
+    <div v-else-if="state === 'preview'" class="page-preview page-rendered" v-html="previewCooked" />
+    <!-- eslint-disable-next-line vue/no-v-html -->
+    <div v-else-if="state === 'display'" class="page-content page-rendered" v-html="cooked" />
   </div>
   <div v-else>
     <!-- Saved window -->
-    <div class="page-content page-rendered" v-html="cooked" /> <!-- eslint-disable-line vue/no-v-html -->
+    <!-- eslint-disable-next-line vue/no-v-html -->
+    <div class="page-content page-rendered" v-html="cooked" />
   </div>
 </template>
 
@@ -93,79 +100,82 @@ import markdownItTaskLists from 'markdown-it-task-lists'
 const md = markdownIt({
   html: true,
   linkify: true,
-  typographer: true
-}).use(markdownItAnchor).use(markdownItWikilinks({ relativeBaseURL: location.pathname + '/pages/', uriSuffix: '' })).use(markdownItTaskLists)
+  typographer: true,
+})
+  .use(markdownItAnchor)
+  .use(markdownItWikilinks({ relativeBaseURL: location.pathname + '/pages/', uriSuffix: '' }))
+  .use(markdownItTaskLists)
 
 export default {
   props: {
     savable: {
       type: Boolean,
-      default: true
+      default: true,
     },
     deletable: {
       type: Boolean,
-      default: false
+      default: false,
     },
     enabled: {
       type: Boolean,
-      required: true
+      required: true,
     },
     cancellable: {
       type: Boolean,
-      default: true
+      default: true,
     },
     raw: {
       type: String,
-      default: ''
+      default: '',
     },
     subject: {
       type: String,
-      default: ''
-    }
+      default: '',
+    },
   },
-  data () {
+  data() {
     return {
       state: 'display',
-      rawData: this.raw
+      rawData: this.raw,
     }
   },
   computed: {
-    previewCooked () {
+    previewCooked() {
       return md.render(this.rawData)
     },
-    cooked () {
+    cooked() {
       return md.render(this.raw)
     },
-    buttonStateClasses () {
+    buttonStateClasses() {
       return {
         'btn-editor-display': this.state === 'display',
-        'btn-editor-active': this.state !== 'display'
+        'btn-editor-active': this.state !== 'display',
       }
     },
-    editClasses () {
+    editClasses() {
       return {
         'editor-tab-active': this.state === 'edit',
         'editor-tab-inactive': this.state !== 'edit',
-        ...this.buttonStateClasses
+        ...this.buttonStateClasses,
       }
     },
-    previewClasses () {
+    previewClasses() {
       return {
         'editor-tab-active': this.state === 'preview',
-        'editor-tab-inactive': this.state !== 'preview'
+        'editor-tab-inactive': this.state !== 'preview',
       }
-    }
+    },
   },
   watch: {
-    raw (newVal, oldVal) {
+    raw(newVal, oldVal) {
       this.rawData = newVal
-    }
+    },
   },
   methods: {
-    reset () {
+    reset() {
       this.rawData = this.raw
       this.state = 'display'
-    }
-  }
+    },
+  },
 }
 </script>

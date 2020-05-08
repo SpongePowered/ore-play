@@ -1,24 +1,24 @@
 <template>
   <div class="panel-user-info panel panel-default" data-action="starred">
     <div class="panel-heading">
-      <h3 class="panel-title">
-        <i class="fas fa-star" />{{ title }}
-      </h3>
+      <h3 class="panel-title"><i class="fas fa-star" />{{ title }}</h3>
     </div>
     <table class="table panel-body">
       <tbody>
         <tr v-if="!pagination || pagination.count === 0">
-          <td><i class="minor">{{ noneFound }}</i></td>
+          <td>
+            <i class="minor">{{ noneFound }}</i>
+          </td>
         </tr>
         <tr v-for="project in projects" v-else :key="project.plugin_id">
           <td>
-            <router-link
-              :to="{name: 'project_home', params: {pluginId: project.plugin_id, ...project.namespace}}"
-            >
+            <router-link :to="{ name: 'project_home', params: { pluginId: project.plugin_id, ...project.namespace } }">
               {{ project.namespace.owner }}/<strong>{{ project.namespace.slug }}</strong>
             </router-link>
             <div class="pull-right">
-              <span v-if="project.promoted_versions.length" class="minor">{{ project.promoted_versions[0].version }}</span>
+              <span v-if="project.promoted_versions.length" class="minor">{{
+                project.promoted_versions[0].version
+              }}</span>
               <font-awesome-icon
                 :icon="['fas', categories.fromId(project.category).icon]"
                 fixed-width
@@ -41,7 +41,6 @@
 </template>
 
 <script>
-
 // TODO
 import { mapState } from 'vuex'
 import { API } from '../api'
@@ -53,50 +52,50 @@ export default {
   props: {
     title: {
       type: String,
-      required: true
+      required: true,
     },
     action: {
       type: String,
-      required: true
+      required: true,
     },
     noneFound: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
-  data () {
+  data() {
     return {
       page: 1,
       pagination: null,
-      projects: []
+      projects: [],
     }
   },
   computed: {
-    showNext () {
+    showNext() {
       return this.pagination && this.pagination.count > this.page * CONTENT_PER_PAGE
     },
-    showPrev () {
+    showPrev() {
       return this.page > 1
     },
-    categories () {
+    categories() {
       return Category
     },
-    ...mapState('user', ['user'])
+    ...mapState('user', ['user']),
   },
   watch: {
-    user (val, oldVal) {
+    user(val, oldVal) {
       if (!oldVal || val.name !== oldVal.name) {
         this.loadActions(0, 1)
       }
-    }
+    },
   },
-  created () {
+  created() {
     if (this.user) {
       this.loadActions(0, 1)
     }
   },
   methods: {
-    loadActions (increment, set) {
+    loadActions(increment, set) {
       if (set) {
         this.page = set
       }
@@ -104,11 +103,13 @@ export default {
       this.page += increment
       const offset = (this.page - 1) * CONTENT_PER_PAGE
 
-      API.request('users/' + this.user.name + '/' + this.action + '?offset=' + offset + '&limit=' + CONTENT_PER_PAGE).then((result) => {
+      API.request(
+        'users/' + this.user.name + '/' + this.action + '?offset=' + offset + '&limit=' + CONTENT_PER_PAGE
+      ).then((result) => {
         this.pagination = result.pagination
         this.projects = result.result
       })
-    }
-  }
+    },
+  },
 }
 </script>

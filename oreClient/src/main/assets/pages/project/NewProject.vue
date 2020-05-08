@@ -11,7 +11,10 @@
         <div v-if="memberships && currentUser" class="panel-body project-body">
           <div class="minor create-blurb">
             <p>A project contains your downloads and the documentation for your plugin.</p>
-            <p>Before continuing, please review the <a href="https://docs.spongepowered.org/stable/en/ore/guidelines.html">Ore Submission Guidelines</a></p>
+            <p>
+              Before continuing, please review the
+              <a href="https://docs.spongepowered.org/stable/en/ore/guidelines.html">Ore Submission Guidelines</a>
+            </p>
           </div>
 
           <div>
@@ -24,7 +27,7 @@
                 name="name"
                 class="form-control"
                 required
-              >
+              />
             </div>
 
             <div class="form-group">
@@ -36,7 +39,7 @@
                 name="pluginId"
                 class="form-control"
                 required
-              >
+              />
             </div>
 
             <div class="form-group">
@@ -50,7 +53,13 @@
 
             <div class="form-group">
               <label for="projectDescription">Project description</label>
-              <input id="projectDescription" v-model.trim="projectDescription" type="text" name="description" class="form-control">
+              <input
+                id="projectDescription"
+                v-model.trim="projectDescription"
+                type="text"
+                name="description"
+                class="form-control"
+              />
             </div>
 
             <div class="form-group">
@@ -59,7 +68,11 @@
                 <option :value="currentUser.name">
                   {{ currentUser.name }}
                 </option>
-                <option v-for="membership in availableOwners" :key="membership.organization.name" :value="membership.organization.name">
+                <option
+                  v-for="membership in availableOwners"
+                  :key="membership.organization.name"
+                  :value="membership.organization.name"
+                >
                   {{ membership.organization.name }}
                 </option>
               </select>
@@ -81,43 +94,40 @@ import { Category, Permission } from '../../enums'
 import { API } from '../../api'
 
 export default {
-  data () {
+  data() {
     return {
       projectName: '',
       pluginId: '',
       projectDescription: '',
       category: null,
       owner: '',
-      availableOwners: []
+      availableOwners: [],
     }
   },
   computed: {
-    categories () {
+    categories() {
       return Category
     },
-    ...mapState('global', [
-      'currentUser',
-      'memberships'
-    ])
+    ...mapState('global', ['currentUser', 'memberships']),
   },
   watch: {
-    memberships (newVal, oldVal) {
+    memberships(newVal, oldVal) {
       this.updateOwners(newVal)
-    }
+    },
   },
-  created () {
+  created() {
     if (this.memberships) {
       this.updateOwners(this.memberships)
     }
   },
   methods: {
-    create () {
+    create() {
       let error = false
       const messages = []
 
       this.$store.commit({
         type: 'dismissAlertsByType',
-        level: 'error'
+        level: 'error',
       })
 
       if (!this.projectName || this.projectName === '') {
@@ -141,7 +151,7 @@ export default {
         this.$store.commit({
           type: 'addAlerts',
           level: 'error',
-          messages
+          messages,
         })
       } else {
         API.request('projects', 'POST', {
@@ -149,21 +159,28 @@ export default {
           plugin_id: this.pluginId,
           category: this.category,
           description: this.projectDescription,
-          owner_name: this.owner
+          owner_name: this.owner,
         }).then((data) => {
           this.$router.push({ name: 'project_home', params: { fetchedProject: data, ...data.namespace } })
         })
       }
     },
-    updateOwners (all) {
+    updateOwners(all) {
       this.availableOwners = []
 
-      all.filter(m => m.scope === 'organization').forEach((o) => {
-        API.request('permissions/hasAny', 'GET', { permissions: [Permission.CreateProject], organizationName: o.organization.name }).then((res) => {
-          if (res.result === true) { this.availableOwners.push(o) }
+      all
+        .filter((m) => m.scope === 'organization')
+        .forEach((o) => {
+          API.request('permissions/hasAny', 'GET', {
+            permissions: [Permission.CreateProject],
+            organizationName: o.organization.name,
+          }).then((res) => {
+            if (res.result === true) {
+              this.availableOwners.push(o)
+            }
+          })
         })
-      })
-    }
-  }
+    },
+  },
 }
 </script>

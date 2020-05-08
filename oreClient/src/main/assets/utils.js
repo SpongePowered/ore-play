@@ -1,12 +1,12 @@
 import config from './config.json5'
 
-export function clearFromEmpty (object) {
+export function clearFromEmpty(object) {
   return Object.entries(object)
     .filter(([key, value]) => value != null && value !== '')
     .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {})
 }
 
-export function cleanEmptyObject (object) {
+export function cleanEmptyObject(object) {
   if (Array.isArray(object) || typeof object !== 'object') {
     return object
   }
@@ -24,11 +24,11 @@ export function cleanEmptyObject (object) {
   return Object.entries(object).length ? object : null
 }
 
-export function nullIfEmpty (value) {
+export function nullIfEmpty(value) {
   return value && value.length ? value : null
 }
 
-export function clearFromDefaults (object, defaults) {
+export function clearFromDefaults(object, defaults) {
   return Object.entries(object)
     .filter(([key, value]) => {
       if (Array.isArray(value) && Array.isArray(defaults[key])) {
@@ -40,7 +40,7 @@ export function clearFromDefaults (object, defaults) {
     .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {})
 }
 
-export function parseJsonOrNull (jsonString) {
+export function parseJsonOrNull(jsonString) {
   try {
     return JSON.parse(jsonString)
   } catch (e) {
@@ -49,16 +49,14 @@ export function parseJsonOrNull (jsonString) {
 }
 
 // https://stackoverflow.com/a/4673436/7207457
-export function formatString (format) {
+export function formatString(format) {
   const args = Array.prototype.slice.call(arguments, 1)
   return format.replace(/{(\d+)}/g, function (match, number) {
-    return typeof args[number] !== 'undefined'
-      ? args[number]
-      : match
+    return typeof args[number] !== 'undefined' ? args[number] : match
   })
-};
+}
 
-export function avatarUrl (name) {
+export function avatarUrl(name) {
   if (name === 'Spongie') {
     return config.sponge.logo
   } else {
@@ -66,7 +64,7 @@ export function avatarUrl (name) {
   }
 }
 
-export function numberWithCommas (x) {
+export function numberWithCommas(x) {
   const parts = x.toString().split('.')
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return parts.join('.')

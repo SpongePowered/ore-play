@@ -41,85 +41,88 @@ export default {
   props: {
     current: {
       type: Number,
-      required: true
+      required: true,
     },
     total: {
       type: Number,
-      required: true
-    }
+      required: true,
+    },
   },
   computed: {
-    hasPrevious () {
+    hasPrevious() {
       return this.current - 1 >= 1
     },
-    hasNext () {
+    hasNext() {
       return this.current + 1 <= this.total
-    }
+    },
   },
   methods: {
-    previous () {
+    previous() {
       if (this.hasPrevious) {
         this.$emit('prev')
       }
     },
-    next () {
+    next() {
       if (this.hasNext) {
         this.$emit('next')
       }
     },
-    jump (page) {
+    jump(page) {
       if (page > 0 <= this.total) {
         this.$emit('jumpTo', page)
       }
-    }
-  }
+    },
+  },
 }
 </script>
 
 <style lang="scss">
-    @import "./../scss/variables";
+@import './../scss/variables';
 
-    .pagination {
-        display: flex;
-        justify-content: center;
+.pagination {
+  display: flex;
+  justify-content: center;
 
-        > li {
-            margin-right: 1rem;
-            cursor: pointer;
+  > li {
+    margin-right: 1rem;
+    cursor: pointer;
 
-            &:last-child {
-                margin-right: 0;
-            }
-
-            &.disabled a, &.disabled a:hover {
-                background: transparent;
-                border: 1px solid #ddd;
-                color: inherit;
-            }
-
-            a {
-                border: 1px solid #ddd;
-                padding: 0.85rem 1.6rem;
-                background: #ffffff;
-                color: $sponge_grey;
-
-                &:first-child, &:last-child {
-                    border-radius: 0;
-                }
-
-                &:hover {
-                    border-color: #f7cf0d;
-                    background: #f7cf0d;
-                    color: #685603;
-                }
-            }
-
-            &.active {
-                > a, > a:hover {
-                    cursor: pointer;
-                    color: darken($sponge_yellow, 30);
-                }
-            }
-        }
+    &:last-child {
+      margin-right: 0;
     }
+
+    &.disabled a,
+    &.disabled a:hover {
+      background: transparent;
+      border: 1px solid #ddd;
+      color: inherit;
+    }
+
+    a {
+      border: 1px solid #ddd;
+      padding: 0.85rem 1.6rem;
+      background: #ffffff;
+      color: $sponge_grey;
+
+      &:first-child,
+      &:last-child {
+        border-radius: 0;
+      }
+
+      &:hover {
+        border-color: #f7cf0d;
+        background: #f7cf0d;
+        color: #685603;
+      }
+    }
+
+    &.active {
+      > a,
+      > a:hover {
+        cursor: pointer;
+        color: darken($sponge_yellow, 30);
+      }
+    }
+  }
+}
 </style>

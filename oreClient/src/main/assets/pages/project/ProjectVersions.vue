@@ -16,19 +16,21 @@
             aria-label="Reset stability"
             :checked="stability.length === 0"
             @click="stability = []"
-          >
+          />
         </div>
 
         <ul class="list-group list-channel">
           <li v-for="stabilityFor in stabilityObj.values" :key="stabilityFor.id" class="list-group-item">
-            <label :for="'stability-' + stabilityFor.id" class="channel" :style="{background: stabilityFor.color}">{{ stabilityFor.title }}</label>
+            <label :for="'stability-' + stabilityFor.id" class="channel" :style="{ background: stabilityFor.color }">{{
+              stabilityFor.title
+            }}</label>
             <input
               :id="'stability-' + stabilityFor.id"
               type="checkbox"
               class="pull-right"
               :checked="stability.includes(stabilityFor.id)"
               @click="toggleStability($event, stabilityFor.id)"
-            >
+            />
           </li>
         </ul>
       </div>
@@ -44,18 +46,22 @@
             aria-label="Reset platforms"
             :checked="true"
             @click="resetPlatforms"
-          >
+          />
         </div>
 
         <ul class="list-group list-channel">
           <li class="list-group-item">
             <label for="minecraftVersionToggle">Use Minecraft versions:</label>
-            <input id="minecraftVersionToggle" v-model="minecraftVersions" type="checkbox">
+            <input id="minecraftVersionToggle" v-model="minecraftVersions" type="checkbox" />
           </li>
           <li v-for="platform in platformObj.values" :key="platform.id" class="list-group-item">
-            <span class="channel" :style="{background: platform.color.background}">{{ platform.shortName }}</span>
+            <span class="channel" :style="{ background: platform.color.background }">{{ platform.shortName }}</span>
             <template v-if="minecraftVersions">
-              <select :value="platformValue(platform.id)" class="pull-right" @change="processSelection(platform.id, $event, 'minecraftVersions')">
+              <select
+                :value="platformValue(platform.id)"
+                class="pull-right"
+                @change="processSelection(platform.id, $event, 'minecraftVersions')"
+              >
                 <option value="$all">
                   All
                 </option>
@@ -68,7 +74,11 @@
               </select>
             </template>
             <template v-else>
-              <select :value="platformValue(platform.id)" class="pull-right" @change="processSelection(platform.id, $event, 'versions')">
+              <select
+                :value="platformValue(platform.id)"
+                class="pull-right"
+                @change="processSelection(platform.id, $event, 'versions')"
+              >
                 <option value="$all">
                   All
                 </option>
@@ -84,7 +94,12 @@
         </ul>
       </div>
 
-      <member-list :permissions="permissions" :members="members" role-category="project" :settings-route="{name: 'settings'}" />
+      <member-list
+        :permissions="permissions"
+        :members="members"
+        role-category="project"
+        :settings-route="{ name: 'settings' }"
+      />
     </div>
   </div>
 </template>
@@ -98,26 +113,26 @@ import { Platform, Stability } from '../../enums'
 export default {
   components: {
     MemberList,
-    VersionList
+    VersionList,
   },
-  data () {
+  data() {
     return {
       platforms: Platform.values.reduce((o, p) => ({ ...o, [p.id]: { name: '$all', versions: [p.id] } }), {}),
       stability: ['recommended', 'stable', 'beta', 'alpha'],
-      minecraftVersions: true
+      minecraftVersions: true,
     }
   },
   computed: {
-    stabilityObj () {
+    stabilityObj() {
       return Stability
     },
-    platformObj () {
+    platformObj() {
       return Platform
     },
-    flatStability () {
+    flatStability() {
       return this.stability.flat()
     },
-    concatPlatforms () {
+    concatPlatforms() {
       if (this.isAllSame('$all')) {
         return []
       } else {
@@ -131,13 +146,10 @@ export default {
         return res.flat()
       }
     },
-    ...mapState('project', [
-      'permissions',
-      'members'
-    ])
+    ...mapState('project', ['permissions', 'members']),
   },
   methods: {
-    toggleStability (event, id) {
+    toggleStability(event, id) {
       if (this.stability.includes(id)) {
         this.stability.splice(this.stability.indexOf(id), 1)
       } else if (this.stability.length + 1 === Stability.values.length) {
@@ -147,16 +159,16 @@ export default {
         this.stability.push(id)
       }
     },
-    platformValue (id) {
+    platformValue(id) {
       return this.platforms[id].name
     },
-    resetPlatforms () {
+    resetPlatforms() {
       this.platforms = Platform.values.reduce((o, p) => ({ ...o, [p.id]: { name: '$all', versions: [p.id] } }), {})
     },
-    isAllSame (name) {
-      return Platform.values.filter(p => this.platforms[p.id].name === name).length === Platform.values.length
+    isAllSame(name) {
+      return Platform.values.filter((p) => this.platforms[p.id].name === name).length === Platform.values.length
     },
-    processSelection (id, event, field) {
+    processSelection(id, event, field) {
       const allAll = this.isAllSame('$all')
 
       const versionName = event.target.value
@@ -179,9 +191,9 @@ export default {
         }
 
         this.platforms[id].name = versionName
-        this.platforms[id].versions = Platform.fromId(id)[field][versionName].map(v => id + ':' + v)
+        this.platforms[id].versions = Platform.fromId(id)[field][versionName].map((v) => id + ':' + v)
       }
-    }
-  }
+    },
+  },
 }
 </script>

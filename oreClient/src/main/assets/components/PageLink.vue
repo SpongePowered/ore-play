@@ -10,7 +10,7 @@
     <router-link
       v-if="!page.navigational"
       v-slot="{ href, navigate }"
-      :to="{name: 'pages', params: {'page': page.slug}}"
+      :to="{ name: 'pages', params: { page: page.slug } }"
     >
       <a :href="href" @click="navigate">{{ page.name[page.name.length - 1] }}</a>
     </router-link>
@@ -20,14 +20,14 @@
 
     <div v-if="permissions.includes('edit_page')" class="pull-right">
       <a href="#" @click="$emit('edit-page', page)">
-        <font-awesome-icon style="padding-left:5px" :icon="['fas', 'edit']" />
+        <font-awesome-icon style="padding-left: 5px;" :icon="['fas', 'edit']" />
       </a>
     </div>
 
     <page-list
       v-if="page.children && expandedChildren"
       :pages="page.children"
-      @edit-page="event => $emit('edit-page', event)"
+      @edit-page="(event) => $emit('edit-page', event)"
     />
   </li>
 </template>
@@ -38,19 +38,19 @@ import PageList from './PageList'
 
 export default {
   components: {
-    PageList
+    PageList,
   },
   props: {
     page: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
   },
-  data () {
+  data() {
     return {
-      expandedChildren: false
+      expandedChildren: false,
     }
   },
-  computed: mapState('project', ['permissions'])
+  computed: mapState('project', ['permissions']),
 }
 </script>

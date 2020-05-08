@@ -1,14 +1,13 @@
 <template>
-  <input type="hidden" name="csrfToken" :value="windowObj.csrf">
+  <input type="hidden" name="csrfToken" :value="windowObj.csrf" />
 </template>
 
 <script>
-
 export default {
   computed: {
-    windowObj () {
+    windowObj() {
       return window
-    }
-  }
+    },
+  },
 }
 </script>

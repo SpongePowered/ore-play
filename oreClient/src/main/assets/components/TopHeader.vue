@@ -3,8 +3,8 @@
     <div class="container">
       <!-- Left navbar -->
       <div id="sp-logo-container">
-        <router-link class="logo" :to="{name: 'home'}">
-          <img src="../images/spongie-mark.svg" alt="Sponge logo">
+        <router-link class="logo" :to="{ name: 'home' }">
+          <img src="../images/spongie-mark.svg" alt="Sponge logo" />
           <span>Sponge</span>
           <font-awesome-icon :icon="['fas', 'chevron-down']" fixed-width />
         </router-link>
@@ -37,8 +37,8 @@
               </a>
             </li>
             <li class="active">
-              <router-link :to="{name: 'home'}">
-                <img src="../images/ore-nav.svg" alt="" class="fa-fw ore-nav">Plugins (Ore)
+              <router-link :to="{ name: 'home' }">
+                <img src="../images/ore-nav.svg" alt="" class="fa-fw ore-nav" />Plugins (Ore)
               </router-link>
             </li>
             <li>
@@ -63,7 +63,7 @@
           </a>
           <ul class="user-dropdown dropdown-menu" aria-label="Create new&hellip;">
             <li>
-              <router-link :to="{name: 'new_project'}">
+              <router-link :to="{ name: 'new_project' }">
                 <font-awesome-icon class="mr-1" :icon="['fas', 'book']" fixed-width />
                 <span>New project</span>
               </router-link>
@@ -75,12 +75,7 @@
           </ul>
         </li>
 
-        <li
-          class="nav-icon authors-icon"
-          data-toggle="tooltip"
-          data-placement="bottom"
-          title="View project creators."
-        >
+        <li class="nav-icon authors-icon" data-toggle="tooltip" data-placement="bottom" title="View project creators.">
           <a :href="routes.Users.showAuthors(null, null).absoluteURL()">
             <font-awesome-icon class="icon" :icon="['fas', 'users']" />
           </a>
@@ -107,12 +102,12 @@
               class="user-avatar"
               :src="avatarUrl(currentUser.name)"
               :alt="currentUser.name"
-            >
+            />
             <span class="caret" />
           </a>
           <ul class="user-dropdown dropdown-menu" aria-label="dropdownMenu1">
             <li v-if="currentUser">
-              <router-link :to="{name: 'user_projects', params: {user: currentUser.name}}">
+              <router-link :to="{ name: 'user_projects', params: { user: currentUser.name } }">
                 <font-awesome-icon class="mr-1" :icon="['fas', 'user']" />
                 <span>{{ currentUser.name }}</span>
               </router-link>
@@ -190,14 +185,10 @@
         </li>
         <li v-if="!currentUser">
           <div class="btn-group-login">
-            <a
-              :href="routes.Users.signUp().absoluteURL()"
-              class="btn btn-primary navbar-btn"
-            >Sign up</a>
-            <a
-              :href="routes.Users.logIn(null, null, currentPath).absoluteURL()"
-              class="btn btn-primary navbar-btn"
-            >Log in</a>
+            <a :href="routes.Users.signUp().absoluteURL()" class="btn btn-primary navbar-btn">Sign up</a>
+            <a :href="routes.Users.logIn(null, null, currentPath).absoluteURL()" class="btn btn-primary navbar-btn">
+              Log in
+            </a>
           </div>
         </li>
       </ul>
@@ -211,16 +202,16 @@ import { avatarUrl } from '../utils'
 
 export default {
   computed: {
-    routes () {
+    routes() {
       return jsRoutes.controllers
     },
-    currentPath () {
+    currentPath() {
       return window.location.pathname
     },
-    ...mapState('global', ['currentUser', 'permissions', 'headerData'])
+    ...mapState('global', ['currentUser', 'permissions', 'headerData']),
   },
   methods: {
-    avatarUrl
-  }
+    avatarUrl,
+  },
 }
 </script>

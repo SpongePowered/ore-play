@@ -4,7 +4,8 @@
       <div class="container">
         <div class="row">
           <div class="col-lg-12">
-            By using this site you're accepting our <a class="tos" href="https://docs.spongepowered.org/stable/en/about/tos.html">Terms of Service</a>
+            By using this site you're accepting our
+            <a class="tos" href="https://docs.spongepowered.org/stable/en/about/tos.html">Terms of Service</a>
           </div>
         </div>
       </div>
@@ -22,12 +23,14 @@
           </div>
           <div class="col-sm-4 col-xs-12">
             <a href="https://www.spongepowered.org">
-              <img class="spongie" src="../images/spongie-mark.svg" alt="Sponge logo">
+              <img class="spongie" src="../images/spongie-mark.svg" alt="Sponge logo" />
             </a>
           </div>
           <div class="col-sm-2 col-xs-12">
             <h5>Found an Issue?</h5>
-            <a class="btn dark" target="_blank" rel="noopener" href="https://github.com/SpongePowered/Ore/issues">Issues</a>
+            <a class="btn dark" target="_blank" rel="noopener" href="https://github.com/SpongePowered/Ore/issues">
+              Issues
+            </a>
           </div>
           <div class="col-sm-2 col-xs-12">
             <h5>Our Sponsors</h5>
@@ -49,12 +52,11 @@
 </template>
 
 <script>
-
 export default {
   computed: {
-    routes () {
+    routes() {
       return jsRoutes.controllers
-    }
-  }
+    },
+  },
 }
 </script>

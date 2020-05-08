@@ -15,19 +15,19 @@ import ProjectList from './../components/ProjectList'
 
 export default {
   components: {
-    ProjectList
+    ProjectList,
   },
   props: {
     user: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
-  data () {
+  data() {
     return {
       page: 1,
-      limit: 5
+      limit: 5,
     }
-  }
+  },
 }
 </script>

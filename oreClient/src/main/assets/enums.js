@@ -1,5 +1,5 @@
 export class Category {
-  static get values () {
+  static get values() {
     return [
       { id: 'admin_tools', name: 'Admin Tools', icon: 'server' },
       { id: 'chat', name: 'Chat', icon: 'comment' },
@@ -10,17 +10,17 @@ export class Category {
       { id: 'protection', name: 'Protection', icon: 'lock' },
       { id: 'role_playing', name: 'Role Playing', icon: 'magic' },
       { id: 'world_management', name: 'World Management', icon: 'globe' },
-      { id: 'misc', name: 'Miscellaneous', icon: 'asterisk' }
+      { id: 'misc', name: 'Miscellaneous', icon: 'asterisk' },
     ]
   }
 
-  static fromId (id) {
-    return this.values.filter(category => category.id === id)[0]
+  static fromId(id) {
+    return this.values.filter((category) => category.id === id)[0]
   }
 }
 
 export class Platform {
-  static get values () {
+  static get values() {
     return [
       {
         id: 'spongeapi',
@@ -35,14 +35,14 @@ export class Platform {
           '7.x': ['7.0'],
           '6.x': ['6.0'],
           '5.x': ['5.0'],
-          '4.x': ['4.0']
+          '4.x': ['4.0'],
         },
         minecraftVersions: {
           '1.12.x': ['7.0'],
           '1.11.x': ['6.0'],
           '1.10.x': ['5.0'],
-          '1.8.9': ['4.0']
-        }
+          '1.8.9': ['4.0'],
+        },
       },
       {
         id: 'spongeforge',
@@ -54,13 +54,13 @@ export class Platform {
         versions: {
           '7.x': ['1.12.2-2838-7.1.10'],
           '6.x': ['1.11.2-2476-6.1.0-BETA-2792'],
-          '5.x': ['1.10.2-2477-5.2.0-BETA-2793']
+          '5.x': ['1.10.2-2477-5.2.0-BETA-2793'],
         },
         minecraftVersions: {
           '1.12.x': ['1.12.2-2838-7.1.10'],
           '1.11.x': ['1.11.2-2476-6.1.0-BETA-2792'],
-          '1.10.x': ['1.10.2-2477-5.2.0-BETA-2793']
-        }
+          '1.10.x': ['1.10.2-2477-5.2.0-BETA-2793'],
+        },
       },
       {
         id: 'spongevanilla',
@@ -73,14 +73,14 @@ export class Platform {
           '7.x': ['1.12.2-7.1.10'],
           '6.x': ['1.11.2-6.1.0-BETA-27'],
           '5.x': ['1.10.2-5.2.0-BETA-403'],
-          '4.x': ['1.8.9-4.2.0-BETA-352']
+          '4.x': ['1.8.9-4.2.0-BETA-352'],
         },
         minecraftVersions: {
           '1.12.x': ['1.12.2-7.1.10'],
           '1.11.x': ['1.11.2-6.1.0-BETA-27'],
           '1.10.x': ['1.10.2-5.2.0-BETA-403'],
-          '1.8.9': ['1.8.9-4.2.0-BETA-352']
-        }
+          '1.8.9': ['1.8.9-4.2.0-BETA-352'],
+        },
       },
       {
         id: 'sponge',
@@ -90,7 +90,7 @@ export class Platform {
         priority: 1,
         url: 'https://www.spongepowered.org/downloads',
         versions: {},
-        minecraftVersions: {}
+        minecraftVersions: {},
       },
       {
         id: 'lantern',
@@ -100,7 +100,7 @@ export class Platform {
         priority: 2,
         url: 'https://www.lanternpowered.org/',
         versions: {},
-        minecraftVersions: {}
+        minecraftVersions: {},
       },
       {
         id: 'forge',
@@ -128,25 +128,25 @@ export class Platform {
           '1.10': ['12.18.0.2000'],
           '1.9.4': ['12.17.0.2051'],
           1.9: ['12.16.1.1887'],
-          '1.8.9': ['11.15.1.2318']
-        }
-      }
+          '1.8.9': ['11.15.1.2318'],
+        },
+      },
     ]
   }
 
-  static get keys () {
-    return this.values.map(platform => platform.id)
+  static get keys() {
+    return this.values.map((platform) => platform.id)
   }
 
-  static isPlatformDependency (dependency) {
+  static isPlatformDependency(dependency) {
     return this.keys.includes(dependency.pluginId)
   }
 
-  static fromId (id) {
-    return this.values.filter(platform => platform.id === id)[0]
+  static fromId(id) {
+    return this.values.filter((platform) => platform.id === id)[0]
   }
 
-  static getPlatforms (dependencyIds) {
+  static getPlatforms(dependencyIds) {
     /* TODO
         return this.values
             .filter(p => dependencyIds.includes(p.id))
@@ -154,7 +154,7 @@ export class Platform {
             .flatMap(_._2.groupBy(_.priority).maxBy(_._1)._2)
          */
 
-    return this.values.filter(p => dependencyIds.includes(p.id))
+    return this.values.filter((p) => dependencyIds.includes(p.id))
   }
 }
 
@@ -166,27 +166,27 @@ export const SortOptions = [
   { id: 'updated', name: 'Recently updated' },
   { id: 'only_relevance', name: 'Only relevance' },
   { id: 'recent_views', name: 'Recent Views' },
-  { id: 'recent_downloads', name: 'Recent Downloads' }
+  { id: 'recent_downloads', name: 'Recent Downloads' },
 ]
 
 export class Visibility {
-  static get values () {
+  static get values() {
     return [
       { name: 'public', class: '', showModal: false },
       { name: 'new', class: 'project-new', showModal: false },
       { name: 'needsChanges', class: 'striped project-needsChanges', showModal: true },
       { name: 'needsApproval', class: 'striped project-needsChanges', showModal: false },
-      { name: 'softDelete', class: 'striped project-hidden', showModal: true }
+      { name: 'softDelete', class: 'striped project-hidden', showModal: true },
     ]
   }
 
-  static fromName (name) {
-    return this.values.filter(visibility => visibility.name === name)[0]
+  static fromName(name) {
+    return this.values.filter((visibility) => visibility.name === name)[0]
   }
 }
 
 export class Permission {
-  static get all () {
+  static get all() {
     return [
       Permission.ViewPublicInfo,
       Permission.EditOwnUserSettings,
@@ -215,7 +215,7 @@ export class Permission {
       Permission.ManualValueChanges,
       Permission.HardDeleteProject,
       Permission.HardDeleteVersion,
-      Permission.EditAllUserSettings
+      Permission.EditAllUserSettings,
     ]
   }
 }
@@ -250,19 +250,19 @@ Permission.HardDeleteVersion = 'hard_delete_version'
 Permission.EditAllUserSettings = 'edit_all_user_settings'
 
 export class FlagReason {
-  static get values () {
+  static get values() {
     return [
       { value: 0, title: 'Inappropriate Content' },
       { value: 1, title: 'Impersonation or Deception' },
       { value: 2, title: 'Spam' },
       { value: 3, title: 'Malicious Intent' },
-      { value: 4, title: 'Other' }
+      { value: 4, title: 'Other' },
     ]
   }
 }
 
 export class Stability {
-  static get values () {
+  static get values() {
     return [
       { id: 'recommended', title: 'Recommended', color: '#00C8FF' },
       { id: 'stable', title: 'Stable', color: '#00C800' },
@@ -270,32 +270,31 @@ export class Stability {
       { id: 'alpha', title: 'Alpha', color: '#FF6000' },
       { id: 'bleeding', title: 'Bleeding', color: '#FF0000' },
       { id: 'unsupported', title: 'Unsupported', color: '#784646' },
-      { id: 'broken', title: 'Broken', color: '#7F7F7F' }
+      { id: 'broken', title: 'Broken', color: '#7F7F7F' },
     ]
   }
 
-  static fromId (id) {
-    return this.values.filter(stability => stability.id === id)[0]
+  static fromId(id) {
+    return this.values.filter((stability) => stability.id === id)[0]
   }
 }
 
 export class ReleaseType {
-  static get values () {
+  static get values() {
     return [
       { id: 'major_update', title: 'Major update', color: '#4080FF' },
       { id: 'minor_update', title: 'Minor update', color: '#009600' },
       { id: 'patches', title: 'Patches', color: '#7F7F7F' },
-      { id: 'hotfix', title: 'Hotfix', color: '#C80000' }
+      { id: 'hotfix', title: 'Hotfix', color: '#C80000' },
     ]
   }
 
-  static fromId (id) {
-    return this.values.filter(releaseType => releaseType.id === id)[0]
+  static fromId(id) {
+    return this.values.filter((releaseType) => releaseType.id === id)[0]
   }
 }
 
-export class Color {
-}
+export class Color {}
 
 Color.Purple = '#B400FF'
 Color.Violet = '#C87DFF'
@@ -317,7 +316,7 @@ Color.Gray = '#A9A9A9'
 Color.Transparent = 'Transparent'
 
 export class Role {
-  static get values () {
+  static get values() {
     return [
       this.OreAdmin,
       this.OreMod,
@@ -347,170 +346,170 @@ export class Role {
       this.OrganizationAdmin,
       this.OrganizationDev,
       this.OrganizationEditor,
-      this.OrganizationSupport
+      this.OrganizationSupport,
     ]
   }
 
-  static categoryRoles (category) {
-    return this.values.filter(role => role.category === category)
+  static categoryRoles(category) {
+    return this.values.filter((role) => role.category === category)
   }
 
-  static byId (id) {
-    return this.values.filter(role => role.name === id)[0]
+  static byId(id) {
+    return this.values.filter((role) => role.name === id)[0]
   }
 
-  static get projectRoles () {
+  static get projectRoles() {
     return this.categoryRoles('project')
   }
 
-  static get orgRoles () {
+  static get orgRoles() {
     return this.categoryRoles('organization')
   }
 
-  static get OreAdmin () {
+  static get OreAdmin() {
     return {
       name: 'Ore_Admin',
       category: 'global',
       permissions: Permission.all,
       title: 'Ore Admin',
       color: Color.Red,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get OreMod () {
+  static get OreMod() {
     return {
       name: 'Ore_Mod',
       category: 'global',
       permissions: [Permission.IsStaff, Permission.Reviewer, Permission.ModNotesAndFlags, Permission.SeeHidden],
       title: 'Ore Moderator',
       color: Color.Aqua,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get SpongeLeader () {
+  static get SpongeLeader() {
     return {
       name: 'Sponge_Leader',
       category: 'global',
       permissions: [],
       title: 'Sponge Leader',
       color: Color.Amber,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get TeamLeader () {
+  static get TeamLeader() {
     return {
       name: 'Team_Leader',
       category: 'global',
       permissions: [],
       title: 'Team Leader',
       color: Color.Amber,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get CommunityLeader () {
+  static get CommunityLeader() {
     return {
       name: 'Community_Leader',
       category: 'global',
       permissions: [],
       title: 'Community Leader',
       color: Color.Amber,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get SpongeStaff () {
+  static get SpongeStaff() {
     return {
       name: 'Sponge_Staff',
       category: 'global',
       permissions: [],
       title: 'Sponge Staff',
       color: Color.Amber,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get SpongeDev () {
+  static get SpongeDev() {
     return {
       name: 'Sponge_Developer',
       category: 'global',
       permissions: [],
       title: 'Sponge Developer',
       color: Color.Green,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get OreDev () {
+  static get OreDev() {
     return {
       name: 'Ore_Dev',
       category: 'global',
       permissions: [Permission.ViewStats, Permission.ViewLogs, Permission.ViewHealth, Permission.ManualValueChanges],
       title: 'Ore Developer',
       color: Color.Orange,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get WebDev () {
+  static get WebDev() {
     return {
       name: 'Web_Dev',
       category: 'global',
       permissions: [Permission.ViewLogs, Permission.ViewHealth],
       title: 'Web Developer',
       color: Color.Blue,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get Documenter () {
+  static get Documenter() {
     return {
       name: 'Documenter',
       category: 'global',
       permissions: [],
       title: 'Documenter',
       color: Color.Aqua,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get Support () {
+  static get Support() {
     return {
       name: 'Support',
       category: 'global',
       permissions: [],
       title: 'Support',
       color: Color.Aqua,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get Contributor () {
+  static get Contributor() {
     return {
       name: 'Contributor',
       category: 'global',
       permissions: [],
       title: 'Contributor',
       color: Color.Green,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get Advisor () {
+  static get Advisor() {
     return {
       name: 'Advisor',
       category: 'global',
       permissions: [],
       title: 'Advisor',
       color: Color.Aqua,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get StoneDonor () {
+  static get StoneDonor() {
     return {
       name: 'Stone_Donor',
       category: 'global',
@@ -518,11 +517,11 @@ export class Role {
       title: 'Stone Donor',
       color: Color.Gray,
       isAssignable: true,
-      priority: 5
+      priority: 5,
     }
   }
 
-  static get QuartzDonor () {
+  static get QuartzDonor() {
     return {
       name: 'Quartz_Donor',
       category: 'global',
@@ -530,11 +529,11 @@ export class Role {
       title: 'Quartz Donor',
       color: Role.Quartz,
       isAssignable: true,
-      priority: 4
+      priority: 4,
     }
   }
 
-  static get IronDonor () {
+  static get IronDonor() {
     return {
       name: 'Iron_Donor',
       category: 'global',
@@ -542,11 +541,11 @@ export class Role {
       title: 'Iron Donor',
       color: Color.Silver,
       isAssignable: true,
-      priority: 3
+      priority: 3,
     }
   }
 
-  static get GoldDonor () {
+  static get GoldDonor() {
     return {
       name: 'Gold_Donor',
       category: 'global',
@@ -554,11 +553,11 @@ export class Role {
       title: 'Gold Donor',
       color: Color.Gold,
       isAssignable: true,
-      priority: 2
+      priority: 2,
     }
   }
 
-  static get DiamondDonor () {
+  static get DiamondDonor() {
     return {
       name: 'Diamond_Donor',
       category: 'global',
@@ -566,146 +565,169 @@ export class Role {
       title: 'Diamond Donor',
       color: Color.LightBlue,
       isAssignable: true,
-      priority: 1
+      priority: 1,
     }
   }
 
-  static get ProjectOwner () {
+  static get ProjectOwner() {
     return {
       name: 'Project_Owner',
       category: 'project',
       permissions: [Permission.IsSubjectOwner, Permission.DeleteProject, ...Role.ProjectAdmin.permissions],
       title: 'Owner',
       color: Color.Transparent,
-      isAssignable: false
+      isAssignable: false,
     }
   }
 
-  static get ProjectAdmin () {
+  static get ProjectAdmin() {
     return {
       name: 'Project_Admin',
       category: 'project',
-      permissions: [Permission.EditSubjectSettings, Permission.ManageSubjectMembers, Permission.EditApiKeys, Permission.DeleteVersion, ...Role.ProjectDeveloper.permissions],
+      permissions: [
+        Permission.EditSubjectSettings,
+        Permission.ManageSubjectMembers,
+        Permission.EditApiKeys,
+        Permission.DeleteVersion,
+        ...Role.ProjectDeveloper.permissions,
+      ],
       title: 'Admin',
       color: Color.Transparent,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get ProjectDeveloper () {
+  static get ProjectDeveloper() {
     return {
       name: 'Project_Developer',
       category: 'project',
-      permissions: [Permission.CreateVersion, Permission.EditVersion, Permission.EditChannel, ...Role.ProjectEditor.permissions],
+      permissions: [
+        Permission.CreateVersion,
+        Permission.EditVersion,
+        Permission.EditChannel,
+        ...Role.ProjectEditor.permissions,
+      ],
       title: 'Developer',
       color: Color.Transparent,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get ProjectEditor () {
+  static get ProjectEditor() {
     return {
       name: 'Project_Editor',
       category: 'project',
       permissions: [Permission.EditPage, ...Role.ProjectSupport.permissions],
       title: 'Editor',
       color: Color.Transparent,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get ProjectSupport () {
+  static get ProjectSupport() {
     return {
       name: 'Project_Support',
       category: 'project',
       permissions: [Permission.IsSubjectMember],
       title: 'Support',
       color: Color.Transparent,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get Organization () {
+  static get Organization() {
     return {
       name: 'Organization',
       category: 'organization',
       permissions: Role.OrganizationOwner.permissions,
       title: 'Organization',
       color: Color.Purple,
-      isAssignable: false
+      isAssignable: false,
     }
   }
 
-  static get OrganizationOwner () {
+  static get OrganizationOwner() {
     return {
       name: 'Organization_Owner',
       category: 'organization',
       permissions: [Permission.IsSubjectOwner, ...Role.ProjectOwner.permissions, ...Role.OrganizationAdmin.permissions],
       title: 'Owner',
       color: Color.Purple,
-      isAssignable: false
+      isAssignable: false,
     }
   }
 
-  static get OrganizationAdmin () {
+  static get OrganizationAdmin() {
     return {
       name: 'Organization_Admin',
       category: 'organization',
-      permissions: [Permission.EditApiKeys, Permission.ManageSubjectMembers, Permission.EditOwnUserSettings, Permission.DeleteProject, Permission.DeleteVersion, ...Role.OrganizationDev.permissions],
+      permissions: [
+        Permission.EditApiKeys,
+        Permission.ManageSubjectMembers,
+        Permission.EditOwnUserSettings,
+        Permission.DeleteProject,
+        Permission.DeleteVersion,
+        ...Role.OrganizationDev.permissions,
+      ],
       title: 'Admin',
       color: Color.Transparent,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get OrganizationDev () {
+  static get OrganizationDev() {
     return {
       name: 'Organization_Developer',
       category: 'organization',
-      permissions: [Permission.CreateProject, Permission.EditSubjectSettings, ...Role.ProjectDeveloper.permissions, ...Role.OrganizationEditor.permissions],
+      permissions: [
+        Permission.CreateProject,
+        Permission.EditSubjectSettings,
+        ...Role.ProjectDeveloper.permissions,
+        ...Role.OrganizationEditor.permissions,
+      ],
       title: 'Developer',
       color: Color.Transparent,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get OrganizationEditor () {
+  static get OrganizationEditor() {
     return {
       name: 'Organization_Editor',
       category: 'organization',
       permissions: [...Role.ProjectEditor.permissions, ...Role.OrganizationSupport.permissions],
       title: 'Editor',
       color: Color.Transparent,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 
-  static get OrganizationSupport () {
+  static get OrganizationSupport() {
     return {
       name: 'Organization_Support',
       category: 'organization',
       permissions: [Permission.PostAsOrganization, Permission.IsSubjectMember],
       title: 'Support',
       color: Color.Transparent,
-      isAssignable: true
+      isAssignable: true,
     }
   }
 }
 
 export class Prompt {
-  static get values () {
+  static get values() {
     return [this.ChangeAvatar]
   }
 
-  static get ChangeAvatar () {
+  static get ChangeAvatar() {
     return {
       id: 0,
       title: 'Change your avatar!',
-      message: 'Welcome to your new organization! Start by changing your avatar by clicking on it.'
+      message: 'Welcome to your new organization! Start by changing your avatar by clicking on it.',
     }
   }
 
-  static fromId (id) {
-    return this.values.filter(prompt => prompt.id === id)[0]
+  static fromId(id) {
+    return this.values.filter((prompt) => prompt.id === id)[0]
   }
 }

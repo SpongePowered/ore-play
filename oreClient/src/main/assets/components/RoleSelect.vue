@@ -13,17 +13,17 @@ export default {
   props: {
     value: {
       type: String,
-      required: true
+      required: true,
     },
     roleCategory: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
   computed: {
-    roles () {
-      return Role.categoryRoles(this.roleCategory).filter(role => role.isAssignable)
-    }
-  }
+    roles() {
+      return Role.categoryRoles(this.roleCategory).filter((role) => role.isAssignable)
+    },
+  },
 }
 </script>

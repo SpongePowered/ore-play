@@ -6,24 +6,24 @@ const state = {
   membershipOrgs: [],
   membershipProjects: [],
   orgaPermissions: [],
-  orgaMembers: []
+  orgaMembers: [],
 }
 
 const mutations = {
-  setUser (state, payload) {
+  setUser(state, payload) {
     state.user = payload.user
   },
-  setOrga (state, payload) {
+  setOrga(state, payload) {
     state.orga = payload.orga
   },
-  setOrgaPermissions (state, payload) {
+  setOrgaPermissions(state, payload) {
     state.orgaPermissions = payload.orgaPermissions
   },
-  setMemberships (state, payload) {
-    state.membershipOrgs = payload.memberships.filter(m => m.scope === 'organization')
-    state.membershipProjects = payload.memberships.filter(m => m.scope === 'project')
+  setMemberships(state, payload) {
+    state.membershipOrgs = payload.memberships.filter((m) => m.scope === 'organization')
+    state.membershipProjects = payload.memberships.filter((m) => m.scope === 'project')
   },
-  clearUser (state) {
+  clearUser(state) {
     state.user = null
     state.orga = null
     state.membershipOrgs = []
@@ -31,64 +31,65 @@ const mutations = {
     state.orgaPermissions = []
     state.orgaMembers = []
   },
-  updateMembers (state, payload) {
+  updateMembers(state, payload) {
     state.orgaMembers = payload.members
   },
-  setTagline (state, payload) {
+  setTagline(state, payload) {
     state.user.tagline = payload.tagline
-  }
+  },
 }
 
 const actions = {
-  setActiveUser (context, user) {
+  setActiveUser(context, user) {
     if (!context.state.user || context.state.user.name !== user) {
       context.commit('clearUser')
 
       API.request('users/' + user).then((res) => {
         context.commit({
           type: 'setUser',
-          user: res
+          user: res,
         })
       })
 
       API.request('users/' + user + '/memberships').then((res) => {
         context.commit({
           type: 'setMemberships',
-          memberships: res
+          memberships: res,
         })
       })
 
-      API.request('organizations/' + user).then((res) => {
-        context.commit({
-          type: 'setOrga',
-          orga: res
-        })
-
-        API.request('organizations/' + user + '/members').then((response) => {
+      API.request('organizations/' + user)
+        .then((res) => {
           context.commit({
-            type: 'updateMembers',
-            members: response
+            type: 'setOrga',
+            orga: res,
+          })
+
+          API.request('organizations/' + user + '/members').then((response) => {
+            context.commit({
+              type: 'updateMembers',
+              members: response,
+            })
+          })
+
+          API.request('permissions', { organization: user }).then((response) => {
+            context.commit({
+              type: 'setOrgaPermissions',
+              orgaPermissions: response.permissions,
+            })
           })
         })
-
-        API.request('permissions', { organization: user }).then((response) => {
-          context.commit({
-            type: 'setOrgaPermissions',
-            orgaPermissions: response.permissions
-          })
+        .catch((res) => {
+          if (res !== '404') {
+          }
         })
-      }).catch((res) => {
-        if (res !== '404') {
-
-        }
-      })
     }
-  }
+  },
 }
 
 export default {
   namespaced: true,
   state,
   mutations,
-  actions
+  actions,
 }

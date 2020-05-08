@@ -9,18 +9,24 @@
               Settings
             </h3>
             <template v-if="permissions.includes('see_hidden')">
-              <btn-hide :current-visibility="project.visibility" :endpoint="'projects/' + project.plugin_id + '/visibility'" emit-location="project/setVisibility" />
+              <btn-hide
+                :current-visibility="project.visibility"
+                :endpoint="'projects/' + project.plugin_id + '/visibility'"
+                emit-location="project/setVisibility"
+              />
             </template>
           </div>
 
           <div class="panel-body">
             <!-- Summary -->
-            <div class="setting" :set="maxLength = config.ore.projects.maxDescLen">
+            <div class="setting" :set="(maxLength = config.ore.projects.maxDescLen)">
               <div class="setting-description">
                 <h4>Summary</h4>
-                <p><label for="summary-setting">A short summary of your project (max {{ maxLength }}).</label></p>
+                <p>
+                  <label for="summary-setting">A short summary of your project (max {{ maxLength }}).</label>
+                </p>
               </div>
-              <input id="summary-setting" v-model="summary" class="form-control" type="text" :maxlength="maxLength">
+              <input id="summary-setting" v-model="summary" class="form-control" type="text" :maxlength="maxLength" />
               <div class="clearfix" />
             </div>
 
@@ -29,8 +35,8 @@
                 <h4>Category</h4>
                 <p>
                   <label for="category-setting">
-                    Categorize your project into one of {{ categories.values.length }} categories.
-                    Appropriately categorizing your project makes it easier for people to find.
+                    Categorize your project into one of {{ categories.values.length }} categories. Appropriately
+                    categorizing your project makes it easier for people to find.
                   </label>
                 </p>
               </div>
@@ -59,7 +65,7 @@
                 type="text"
                 class="form-control"
                 placeholder="sponge server plugins mods"
-              >
+              />
               <div class="clearfix" />
             </div>
 
@@ -68,8 +74,8 @@
                 <h4>Homepage <i>(optional)</i></h4>
                 <p>
                   <label for="homepage-setting">
-                    Having a custom homepage for your project helps you look more proper, official,
-                    and gives you another place to gather information about your project.
+                    Having a custom homepage for your project helps you look more proper, official, and gives you
+                    another place to gather information about your project.
                   </label>
                 </p>
               </div>
@@ -79,7 +85,7 @@
                 type="url"
                 class="form-control"
                 placeholder="https://spongepowered.org"
-              >
+              />
               <div class="clearfix" />
             </div>
 
@@ -88,8 +94,8 @@
                 <h4>Issue tracker <i>(optional)</i></h4>
                 <p>
                   <label for="issues-setting">
-                    Providing an issue tracker helps your users get support more easily and provides
-                    you with an easy way to track bugs.
+                    Providing an issue tracker helps your users get support more easily and provides you with an easy
+                    way to track bugs.
                   </label>
                 </p>
               </div>
@@ -99,14 +105,18 @@
                 type="url"
                 class="form-control"
                 placeholder="https://github.com/SpongePowered/SpongeAPI/issues"
-              >
+              />
               <div class="clearfix" />
             </div>
 
             <div class="setting">
               <div class="setting-description">
                 <h4>Source code <i>(optional)</i></h4>
-                <p><label for="sources-setting">Support the community of developers by making your project open source!</label></p>
+                <p>
+                  <label for="sources-setting"
+                    >Support the community of developers by making your project open source!</label
+                  >
+                </p>
               </div>
               <input
                 id="sources-setting"
@@ -114,7 +124,7 @@
                 type="url"
                 class="form-control"
                 placeholder="https://github.com/SpongePowered/SpongeAPI"
-              >
+              />
             </div>
 
             <div class="setting">
@@ -122,8 +132,8 @@
                 <h4>External support <i>(optional)</i></h4>
                 <p>
                   <label for="support-setting">
-                    An external place where you can offer support to your users. Could be a forum,
-                    a Discord server, or somewhere else.
+                    An external place where you can offer support to your users. Could be a forum, a Discord server, or
+                    somewhere else.
                   </label>
                 </p>
               </div>
@@ -133,7 +143,7 @@
                 type="url"
                 class="form-control"
                 placeholder="https://discord.gg/sponge"
-              >
+              />
               <div class="clearfix" />
             </div>
 
@@ -154,7 +164,7 @@
                     <span class="license">{{ licenseName }}</span>
                     <span class="caret" />
                   </button>
-                  <input v-model="licenseName" type="text" class="form-control" style="display: none;">
+                  <input v-model="licenseName" type="text" class="form-control" style="display: none;" />
                   <ul class="dropdown-menu dropdown-license">
                     <li><a>MIT</a></li>
                     <li><a>Apache 2.0</a></li>
@@ -169,7 +179,7 @@
                   type="text"
                   class="form-control"
                   placeholder="https://github.com/SpongePowered/SpongeAPI/LICENSE.md"
-                >
+                />
               </div>
               <div class="clearfix" />
             </div>
@@ -181,7 +191,7 @@
               </div>
               <div class="setting-content">
                 <label>
-                  <input v-model="forumSync" type="checkbox">
+                  <input v-model="forumSync" type="checkbox" />
                   Make forum posts
                 </label>
               </div>
@@ -211,7 +221,7 @@
 
                   <icon :src="iconUrl" extra-classes="user-avatar-md" />
 
-                  <input id="icon" class="form-control-static" type="file" name="icon" @change="selectedLogo = true">
+                  <input id="icon" class="form-control-static" type="file" name="icon" @change="selectedLogo = true" />
                 </div>
                 <div class="setting-content">
                   <div class="icon-description">
@@ -220,7 +230,11 @@
                       <button class="btn btn-default btn-reset" @click.prevent="resetIcon">
                         Reset
                       </button>
-                      <button class="btn btn-info btn-upload pull-right" :disabled="!selectedLogo" @click.prevent="updateIcon">
+                      <button
+                        class="btn btn-info btn-upload pull-right"
+                        :disabled="!selectedLogo"
+                        @click.prevent="updateIcon"
+                      >
                         <font-awesome-icon :icon="['fas', 'upload']" /> Upload
                       </button>
                     </div>
@@ -237,18 +251,22 @@
                   Generate a unique deployment key to enable build deployment from Gradle
                   <a href="#"><font-awesome-icon :icon="['fas', 'question-circle']" /></a>
                 </p>
-                <input class="form-control input-key" type="text" :value="deployKey ? deployKey.key : ''" readonly>
+                <input class="form-control input-key" type="text" :value="deployKey ? deployKey.key : ''" readonly />
               </div>
               <div class="setting-content">
                 <template v-if="deployKey !== null">
                   <button class="btn btn-danger btn-block" @click="revokeDeployKey">
-                    <span class="spinner" :style="{display: showDeployKeySpinner ? 'inline' : 'none'}"><font-awesome-icon :icon="['fas', 'spinner']" spin /></span>
+                    <span class="spinner" :style="{ display: showDeployKeySpinner ? 'inline' : 'none' }">
+                      <font-awesome-icon :icon="['fas', 'spinner']" spin />
+                    </span>
                     <span class="text">Revoke key</span>
                   </button>
                 </template>
                 <template v-else>
                   <button class="btn btn-info btn-block" @click="generateDeployKey">
-                    <span class="spinner" :style="{display: showDeployKeySpinner ? 'inline' : 'none'}"><font-awesome-icon :icon="['fas', 'spinner']" spin /></span>
+                    <span class="spinner" :style="{ display: showDeployKeySpinner ? 'inline' : 'none' }">
+                      <font-awesome-icon :icon="['fas', 'spinner']" spin />
+                    </span>
                     <span class="text">Generate key</span>
                   </button>
                 </template>
@@ -262,16 +280,19 @@
                 <h4 class="danger">
                   Rename
                 </h4>
-                <p>Rename project. <strong>NOTE: This will not change the project's plugin id, only it's name.</strong></p>
+                <p>
+                  Rename project. <strong>NOTE: This will not change the project's plugin id, only it's name.</strong>
+                </p>
               </div>
               <div class="setting-content">
-                <input
-                  v-model="newName"
-                  class="form-control"
-                  type="text"
-                  :maxlength="config.ore.projects.maxNameLen"
+                <input v-model="newName" class="form-control" type="text" :maxlength="config.ore.projects.maxNameLen" />
+                <button
+                  id="btn-rename"
+                  data-toggle="modal"
+                  data-target="#modal-rename"
+                  class="btn btn-warning"
+                  :disabled="newName === project.name"
                 >
-                <button id="btn-rename" data-toggle="modal" data-target="#modal-rename" class="btn btn-warning" :disabled="newName === project.name">
                   Rename
                 </button>
               </div>
@@ -284,7 +305,7 @@
                 <h4 class="danger">
                   Transfer
                 </h4>
-                <p>Transfer project ownership. </p>
+                <p>Transfer project ownership.</p>
               </div>
               <div class="setting-content">
                 <select v-model="newOwner" class="form-control">
@@ -292,7 +313,13 @@
                     {{ member.user }}
                   </option>
                 </select>
-                <button id="btn-transfer" data-toggle="modal" data-target="#modal-transfer" class="btn btn-warning" :disabled="newOwner === project.namespace.owner">
+                <button
+                  id="btn-transfer"
+                  data-toggle="modal"
+                  data-target="#modal-transfer"
+                  class="btn btn-warning"
+                  :disabled="newOwner === project.namespace.owner"
+                >
                   Transfer
                 </button>
               </div>
@@ -308,11 +335,7 @@
                 <p>Once you delete a project, it cannot be recovered.</p>
               </div>
               <div class="setting-content">
-                <button
-                  class="btn btn-delete btn-danger"
-                  data-toggle="modal"
-                  data-target="#modal-delete"
-                >
+                <button class="btn btn-delete btn-danger" data-toggle="modal" data-target="#modal-delete">
                   Delete
                 </button>
               </div>
@@ -344,7 +367,7 @@
 
       <!-- Side panel -->
       <div class="col-md-4">
-        <router-link :to="{name: 'settings'}">
+        <router-link :to="{ name: 'settings' }">
           <member-list
             :editable="true"
             :members="members"
@@ -377,7 +400,7 @@
               <button type="button" class="btn btn-default" data-dismiss="modal">
                 Close
               </button>
-              <button name="rename" class="btn btn-warning" @click="sendProjectUpdate({'name': newName})">
+              <button name="rename" class="btn btn-warning" @click="sendProjectUpdate({ name: newName })">
                 Rename
               </button>
             </div>
@@ -405,7 +428,11 @@
               <button type="button" class="btn btn-default" data-dismiss="modal">
                 Close
               </button>
-              <button name="transfer" class="btn btn-warning" @click="sendProjectUpdate({namespace: {owner: newOwner}})">
+              <button
+                name="transfer"
+                class="btn btn-warning"
+                @click="sendProjectUpdate({ namespace: { owner: newOwner } })"
+              >
                 Transfer
               </button>
             </div>
@@ -426,12 +453,15 @@
             </h4>
           </div>
           <div class="modal-body">
-            Are you sure you want to delete your Project? This action cannot be undone. Please explain why you want to delete it.
-            <br>
+            Are you sure you want to delete your Project? This action cannot be undone. Please explain why you want to
+            delete it.
+            <br />
             <textarea v-model="deleteReason" name="comment" class="textarea-delete-comment form-control" rows="3" />
-            <br>
+            <br />
             <div class="alert alert-warning">
-              WARNING: You or anybody else will not be able to use the plugin ID "{0}" in the future if you continue. If you are deleting your project to recreate it, please do not delete your project and contact the Ore staff for help.
+              WARNING: You or anybody else will not be able to use the plugin ID "{0}" in the future if you continue. If
+              you are deleting your project to recreate it, please do not delete your project and contact the Ore staff
+              for help.
             </div>
           </div>
           <div class="modal-footer">
@@ -470,9 +500,9 @@ export default {
     BtnHide,
     MemberList,
     CSRFField,
-    Icon
+    Icon,
   },
-  data () {
+  data() {
     // Seems project hasn't been initialized yet, so we use the store directly
     const project = this.$store.state.project.project
 
@@ -482,7 +512,7 @@ export default {
       sendingChanges: false,
       selectedLogo: false,
       deleteReason: '',
-      hardDelete: false
+      hardDelete: false,
     }
 
     if (project) {
@@ -504,61 +534,67 @@ export default {
         forumSync: null,
         summary: null,
         iconUrl: null,
-        ...alwaysPresent
+        ...alwaysPresent,
       }
     }
   },
   computed: {
-    routes () {
+    routes() {
       return jsRoutes.controllers
     },
-    config () {
+    config() {
       return config
     },
-    categories () {
+    categories() {
       return Category
     },
-    keywordArr () {
+    keywordArr() {
       return this.keywords.length ? this.keywords.split(' ') : []
     },
-    dataToSend () {
+    dataToSend() {
       const base = clearFromDefaults({ category: this.category, summary: this.summary }, this.project)
-      base.settings = clearFromDefaults({
-        keywords: this.keywordArr,
-        homepage: nullIfEmpty(this.homepage),
-        issues: nullIfEmpty(this.issues),
-        support: nullIfEmpty(this.support),
-        forum_sync: this.forumSync
-      }, this.project.settings)
-      base.settings.license = clearFromDefaults({ name: nullIfEmpty(this.licenseName), url: nullIfEmpty(this.licenseUrl) }, this.project.settings.license)
+      base.settings = clearFromDefaults(
+        {
+          keywords: this.keywordArr,
+          homepage: nullIfEmpty(this.homepage),
+          issues: nullIfEmpty(this.issues),
+          support: nullIfEmpty(this.support),
+          forum_sync: this.forumSync,
+        },
+        this.project.settings
+      )
+      base.settings.license = clearFromDefaults(
+        { name: nullIfEmpty(this.licenseName), url: nullIfEmpty(this.licenseUrl) },
+        this.project.settings.license
+      )
 
       const ret = cleanEmptyObject(base)
       return ret || {}
     },
-    saveChangesIcon () {
+    saveChangesIcon() {
       return ['fas', this.sendingChanges ? 'spinner' : 'check']
     },
-    adminMembers () {
+    adminMembers() {
       return this.members.filter((member) => {
         return (member.role.name === 'Project_Owner' || member.role.name === 'Project_Admin') && member.role.is_accepted
       })
     },
-    ...mapState('project', ['project', 'permissions', 'members'])
+    ...mapState('project', ['project', 'permissions', 'members']),
   },
   watch: {
-    project (val, oldVal) {
+    project(val, oldVal) {
       if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
         this.updateDataFromProject(val, this)
       }
-    }
+    },
   },
-  created () {
+  created() {
     if (this.project) {
       this.getDeployKey(this.project)
     }
   },
   methods: {
-    updateDataFromProject (project, self) {
+    updateDataFromProject(project, self) {
       this.getDeployKey(project)
 
       self.newName = project.name
@@ -575,10 +611,10 @@ export default {
       self.summary = project.summary
       self.iconUrl = project.icon_url
     },
-    avatarUrl (name) {
+    avatarUrl(name) {
       return avatarUrlUtils(name)
     },
-    sendProjectUpdate (update) {
+    sendProjectUpdate(update) {
       if (Object.entries(update).length) {
         this.sendingChanges = true
         $('#modal-rename').modal('hide')
@@ -586,21 +622,23 @@ export default {
         const changedName = this.project.name !== this.newName
         const changedOwner = this.project.namespace.owner !== this.newOwner
 
-        API.request('projects/' + this.project.plugin_id, 'PATCH', update).then((result) => {
-          this.$store.commit({
-            type: 'project/updateProject',
-            project: result
-          })
-          this.sendingChanges = false
-          this.updateDataFromProject(result, this)
+        API.request('projects/' + this.project.plugin_id, 'PATCH', update)
+          .then((result) => {
+            this.$store.commit({
+              type: 'project/updateProject',
+              project: result,
+            })
+            this.sendingChanges = false
+            this.updateDataFromProject(result, this)
 
-          if (changedName || changedOwner) {
-            this.$router.replace({ name: 'settings', params: result.namespace })
-          }
-        }).catch((failed) => {
-          this.sendingChanges = false
-          // TODO
-        })
+            if (changedName || changedOwner) {
+              this.$router.replace({ name: 'settings', params: result.namespace })
+            }
+          })
+          .catch((failed) => {
+            this.sendingChanges = false
+            // TODO
+          })
       } else {
         // Some "illusion" of the change being acknowledged is always good
         this.sendingChanges = true
@@ -609,14 +647,14 @@ export default {
         }, 150)
       }
     },
-    updateIcon () {
+    updateIcon() {
       const form = document.getElementById('form-icon')
       const data = new FormData(form)
       const iconUrl = '/' + this.project.namespace.owner + '/' + this.project.namespace.slug + '/icon'
       fetch(iconUrl, {
         credentials: 'same-origin',
         method: 'post',
-        body: data
+        body: data,
       }).then((res) => {
         if (res.ok) {
           form.reset()
@@ -628,13 +666,13 @@ export default {
         }
       })
     },
-    resetIcon () {
+    resetIcon() {
       const data = new FormData(document.getElementById('form-icon'))
       const iconUrl = '/' + this.project.namespace.owner + '/' + this.project.namespace.slug + '/icon'
       fetch(iconUrl + '/reset', {
         credentials: 'same-origin',
         method: 'post',
-        body: data
+        body: data,
       }).then((res) => {
         if (res.ok) {
           this.selectedLogo = false
@@ -645,9 +683,9 @@ export default {
         }
       })
     },
-    getDeployKey (project) {
+    getDeployKey(project) {
       fetch('/api/v1/projects/' + project.plugin_id + '/keys', {
-        credentials: 'same-origin'
+        credentials: 'same-origin',
       }).then((res) => {
         if (res.ok) {
           res.json().then((json) => {
@@ -660,21 +698,21 @@ export default {
         }
       })
     },
-    generateDeployKey () {
+    generateDeployKey() {
       this.showDeployKeySpinner = true
       const data = new FormData()
       data.append('csrfToken', window.csrf)
       fetch('/api/v1/projects/' + this.project.plugin_id + '/keys/new', {
         method: 'POST',
         credentials: 'same-origin',
-        body: data
+        body: data,
       }).then((res) => {
         this.showDeployKeySpinner = false
         if (res.ok) {
           res.json().then((json) => {
             this.deployKey = {
               key: json.value,
-              id: json.id
+              id: json.id,
             }
           })
         } else {
@@ -682,7 +720,7 @@ export default {
         }
       })
     },
-    revokeDeployKey () {
+    revokeDeployKey() {
       this.showDeployKeySpinner = true
       const data = new FormData()
       data.append('id', this.deployKey.id)
@@ -690,7 +728,7 @@ export default {
       fetch('/api/v1/projects/' + this.project.plugin_id + '/keys/revoke', {
         method: 'POST',
         credentials: 'same-origin',
-        body: data
+        body: data,
       }).then((res) => {
         this.showDeployKeySpinner = false
         if (res.ok) {
@@ -700,11 +738,11 @@ export default {
         }
       })
     },
-    resetDeleteData () {
+    resetDeleteData() {
       this.hardDelete = false
       this.deleteReason = ''
     },
-    deleteProject () {
+    deleteProject() {
       if (this.hardDelete) {
         API.request('projects/' + this.project.plugin_id, 'DELETE').then((res) => {
           this.$store.commit('project/clearProject')
@@ -714,12 +752,12 @@ export default {
       } else {
         API.request('projects/' + this.project.plugin_id + '/visibility', 'POST', {
           visibility: 'softDelete',
-          comment: this.deleteReason
+          comment: this.deleteReason,
         }).then((res) => {
           if (this.permissions.includes('see_hidden')) {
             this.$store.commit({
               type: 'project/setVisibility',
-              visibility: 'softDelete'
+              visibility: 'softDelete',
             })
             $('#modal-delete').modal('hide')
           } else {
@@ -729,7 +767,7 @@ export default {
           }
         })
       }
-    }
-  }
+    },
+  },
 }
 </script>

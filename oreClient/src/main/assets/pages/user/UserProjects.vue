@@ -24,7 +24,10 @@
             <tr v-for="membership in membershipProjects" :key="membership.project.plugin_id">
               <td>
                 <router-link
-                  :to="{name: 'project_home', params: {pluginid: membership.project.pluginId, ...membership.project.namespace}}"
+                  :to="{
+                    name: 'project_home',
+                    params: { pluginid: membership.project.pluginId, ...membership.project.namespace },
+                  }"
                 >
                   {{ membership.project.namespace.owner }}/{{ membership.project.namespace.slug }}
                 </router-link>
@@ -67,8 +70,7 @@
             <tbody>
               <tr v-if="!membershipOrgs.length">
                 <td>
-                  <i class="minor"><i class="fas fa-star" /> {{ user.name }} is not part of any
-                    organizations. :(</i>
+                  <i class="minor"><i class="fas fa-star" /> {{ user.name }} is not part of any organizations. :(</i>
                 </td>
               </tr>
               <tr v-for="membership in membershipOrgs" v-else :key="membership.organization.name">
@@ -78,7 +80,7 @@
                     :name="membership.organization.name"
                     extra-classes="user-avatar-xxs"
                   />
-                  <router-link :to="{name: 'user_projects', params: {user: membership.organization.name}}">
+                  <router-link :to="{ name: 'user_projects', params: { user: membership.organization.name } }">
                     {{ membership.organization.name }}
                   </router-link>
                   <div class="pull-right">
@@ -94,8 +96,18 @@
           </div>
         </div>
 
-        <projects-panel v-if="user" title="Stars" action="starred" :none-found="user.name + ' has not starred any projects. :('" />
-        <projects-panel v-if="user" title="Watching" action="watching" :none-found="user.name + ' is not watching any projects. :('" />
+        <projects-panel
+          v-if="user"
+          title="Stars"
+          action="starred"
+          :none-found="user.name + ' has not starred any projects. :('"
+        />
+        <projects-panel
+          v-if="user"
+          title="Watching"
+          action="watching"
+          :none-found="user.name + ' is not watching any projects. :('"
+        />
       </template>
       <div v-else>
         <member-list
@@ -127,25 +139,25 @@ export default {
     ProjectsPanel,
     MemberList,
     ProjectList,
-    Icon
+    Icon,
   },
-  data () {
+  data() {
     return {
       page: 1,
-      limit: 5
+      limit: 5,
     }
   },
   computed: {
-    roles () {
+    roles() {
       return Role
     },
-    canEditOrgMembers () {
+    canEditOrgMembers() {
       return this.orgaPermissions.includes('manage_organization_members')
     },
-    ...mapState('user', ['user', 'orga', 'orgaPermissions', 'membershipOrgs', 'membershipProjects', 'orgaMembers'])
+    ...mapState('user', ['user', 'orga', 'orgaPermissions', 'membershipOrgs', 'membershipProjects', 'orgaMembers']),
   },
   methods: {
-    avatarUrl
-  }
+    avatarUrl,
+  },
 }
 </script>

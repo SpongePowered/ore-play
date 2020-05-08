@@ -5,27 +5,27 @@ import { API } from '../api'
 const state = {
   project: null,
   permissions: [],
-  members: []
+  members: [],
 }
 const mutations = {
-  updateProject (state, payload) {
+  updateProject(state, payload) {
     state.project = payload.project
   },
-  updatePermissions (state, payload) {
+  updatePermissions(state, payload) {
     state.permissions = payload.permissions
   },
-  updateMembers (state, payload) {
+  updateMembers(state, payload) {
     state.members = payload.members
   },
-  setVisibility (state, payload) {
+  setVisibility(state, payload) {
     Vue.set(state.project, 'visibility', payload.visibility)
   },
-  clearProject (state) {
+  clearProject(state) {
     state.project = null
     state.permissions = []
     state.members = []
   },
-  toggleStarred (state) {
+  toggleStarred(state) {
     if (state.project.user_actions.starred) {
       Vue.set(state.project.stats, 'stars', state.project.stats.stars - 1)
     } else {
@@ -34,7 +34,7 @@ const mutations = {
 
     Vue.set(state.project.user_actions, 'starred', !state.project.user_actions.starred)
   },
-  setWatching (state, payload) {
+  setWatching(state, payload) {
     const watching = payload.watching
     if (state.project.user_actions.watching !== watching) {
       if (watching) {
@@ -45,21 +45,21 @@ const mutations = {
     }
 
     Vue.set(state.project.user_actions, 'watching', watching)
-  }
+  },
 }
 const actions = {
-  setActiveProjectFromFetched (context, project) {
+  setActiveProjectFromFetched(context, project) {
     const projectsDiffer = !context.state.project || context.state.project.plugin_id !== project.plugin_id
     context.commit({
       type: 'updateProject',
-      project
+      project,
     })
 
     if (projectsDiffer || !context.state.permissions.length) {
       API.request('permissions', 'GET', { pluginId: project.plugin_id }).then((response) => {
         context.commit({
           type: 'updatePermissions',
-          permissions: response.permissions
+          permissions: response.permissions,
         })
       })
     }
@@ -68,15 +68,15 @@ const actions = {
       API.request('projects/' + project.plugin_id + '/members').then((response) => {
         context.commit({
           type: 'updateMembers',
-          members: response
+          members: response,
         })
       })
     }
   },
-  setActiveProject (context, project) {
+  setActiveProject(context, project) {
     if (typeof project === 'string') {
       if (!context.state.project || context.state.project.plugin_id !== project) {
-        API.request('projects/' + project).then(res => context.dispatch('setActiveProjectFromFetched', res))
+        API.request('projects/' + project).then((res) => context.dispatch('setActiveProjectFromFetched', res))
       }
     } else if (!context.state.project || !isEqual(context.state.project.namespace, project)) {
       API.request('projects?exact=true&owner=' + project.owner + '&q=' + project.slug).then((res) => {
@@ -88,12 +88,12 @@ const actions = {
         }
       })
     }
-  }
+  },
 }
 
 export default {
   namespaced: true,
   state,
   mutations,
-  actions
+  actions,
 }

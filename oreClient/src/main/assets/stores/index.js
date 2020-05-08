@@ -12,6 +12,6 @@ export const store = new Vuex.Store({
   modules: {
     project: projectModule,
     global: globalModule,
-    user: userModule
-  }
+    user: userModule,
+  },
 })

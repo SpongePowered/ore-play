@@ -4,38 +4,38 @@ const state = {
   currentUser: null,
   permissions: [],
   memberships: [],
-  headerData: null
+  headerData: null,
 }
 const mutations = {
-  setUser (state, payload) {
+  setUser(state, payload) {
     state.currentUser = payload.user
   },
-  updatePermissions (state, payload) {
+  updatePermissions(state, payload) {
     state.permissions = payload.permissions
   },
-  setHeaderData (state, payload) {
+  setHeaderData(state, payload) {
     state.headerData = payload.headerData
   },
-  setMemberships (state, payload) {
+  setMemberships(state, payload) {
     state.memberships = payload.memberships
   },
-  setTagline (state, payload) {
+  setTagline(state, payload) {
     state.currentUser.tagline = payload.tagline
-  }
+  },
 }
 const actions = {
-  loadUser (context) {
+  loadUser(context) {
     if (API.hasUser()) {
       API.request('users/@me').then((res) => {
         context.commit({
           type: 'setUser',
-          user: res
+          user: res,
         })
 
         API.request(`users/${res.name}/memberships`).then((res) => {
           context.commit({
             type: 'setMemberships',
-            memberships: res
+            memberships: res,
           })
         })
       })
@@ -43,23 +43,23 @@ const actions = {
       API.request('permissions').then((response) => {
         context.commit({
           type: 'updatePermissions',
-          permissions: response.permissions
+          permissions: response.permissions,
         })
       })
 
       API.request('_headerdata').then((res) => {
         context.commit({
           type: 'setHeaderData',
-          headerData: res
+          headerData: res,
         })
       })
     }
-  }
+  },
 }
 
 export default {
   namespaced: true,
   state,
   mutations,
-  actions
+  actions,
 }

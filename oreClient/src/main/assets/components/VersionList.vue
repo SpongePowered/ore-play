@@ -2,7 +2,7 @@
   <div class="version-list">
     <div class="row text-center">
       <div class="col-xs-12">
-        <router-link v-slot="{ href, navigate }" :to="{name: 'new_version'}">
+        <router-link v-slot="{ href, navigate }" :to="{ name: 'new_version' }">
           <a v-if="canUpload" class="btn yellow" :href="href" @click="navigate">Upload a New Version</a>
         </router-link>
       </div>
@@ -21,21 +21,21 @@
                   <span class="text-bold" style="font-size: 16px;">{{ version.name }}</span>
                 </div>
                 <div class="col-xs-4">
-                  <span
-                    class="channel"
-                    :style="{ background: stabilities.fromId(version.tags.stability).color }"
-                  >{{ stabilities.fromId(version.tags.stability).title }}</span>
+                  <span class="channel" :style="{ background: stabilities.fromId(version.tags.stability).color }">{{
+                    stabilities.fromId(version.tags.stability).title
+                  }}</span>
                   <span
                     v-if="version.tags.release_type"
                     class="channel"
                     :style="{ background: releaseTypes.fromId(version.tags.release_type).color }"
-                  >{{ releaseTypes.fromId(version.tags.release_type).title }}</span>
+                    >{{ releaseTypes.fromId(version.tags.release_type).title }}</span
+                  >
                 </div>
                 <div class="col-xs-4">
                   <Tag
                     v-if="version.tags.mixin"
                     name="Mixin"
-                    :color="{background: '#FFA500', foreground: '#333333'}"
+                    :color="{ background: '#FFA500', foreground: '#333333' }"
                   /><Tag
                     v-for="platform in groupPlatforms(version.tags.platforms)"
                     :key="platform.id + ':' + platform.versions.join('|')"
@@ -76,10 +76,28 @@
                 </div>
                 <div class="col-xs-4">
                   <div class="btn-group d-flex d-flex-space-between">
-                    <router-link v-slot="{ href, navigate }" :to="{name: 'version', params: {'version': version.name, 'fetchedVersionObj': version}}">
-                      <a :href="href" class="btn btn-default mb-0" @click="navigate"><font-awesome-icon :icon="['fas', 'info-circle']" /> Changelog</a>
+                    <router-link
+                      v-slot="{ href, navigate }"
+                      :to="{ name: 'version', params: { version: version.name, fetchedVersionObj: version } }"
+                    >
+                      <a :href="href" class="btn btn-default mb-0" @click="navigate">
+                        <font-awesome-icon :icon="['fas', 'info-circle']" />
+                        Changelog
+                      </a>
                     </router-link>
-                    <a v-if="project" :href="routes.Versions.download(project.namespace.owner, project.namespace.slug, version.name, null).absoluteURL()" class="btn btn-primary mb-0"><font-awesome-icon :icon="['fas', 'download']" /> Download</a>
+                    <a
+                      v-if="project"
+                      :href="
+                        routes.Versions.download(
+                          project.namespace.owner,
+                          project.namespace.slug,
+                          version.name,
+                          null
+                        ).absoluteURL()
+                      "
+                      class="btn btn-primary mb-0"
+                      ><font-awesome-icon :icon="['fas', 'download']" /> Download</a
+                    >
                   </div>
                 </div>
               </div>
@@ -107,84 +125,84 @@ import Tag from './Tag'
 export default {
   components: {
     Tag,
-    Pagination
+    Pagination,
   },
   props: {
     stability: {
       type: Array,
-      required: true
+      required: true,
     },
     platforms: {
       type: Array,
-      required: true
-    }
+      required: true,
+    },
   },
-  data () {
+  data() {
     return {
       page: 1,
       limit: 10,
       versions: [],
       totalVersions: 0,
-      loading: true
+      loading: true,
     }
   },
   computed: {
-    canUpload () {
+    canUpload() {
       return this.permissions.includes('create_version')
     },
-    routes () {
+    routes() {
       return jsRoutes.controllers.project
     },
-    offset () {
+    offset() {
       return (this.page - 1) * this.limit
     },
-    current () {
+    current() {
       return Math.ceil(this.offset / this.limit) + 1
     },
-    total () {
+    total() {
       return Math.ceil(this.totalVersions / this.limit)
     },
-    stabilities () {
+    stabilities() {
       return Stability
     },
-    releaseTypes () {
+    releaseTypes() {
       return ReleaseType
     },
-    ...mapState('project', ['project', 'permissions'])
+    ...mapState('project', ['project', 'permissions']),
   },
   watch: {
-    page () {
+    page() {
       this.update()
       window.scrollTo(0, 0)
     },
-    stability () {
+    stability() {
       this.page = 1
       this.update()
       window.scrollTo(0, 0)
     },
-    platforms () {
+    platforms() {
       this.page = 1
       this.update()
       window.scrollTo(0, 0)
     },
-    project (val, oldVal) {
+    project(val, oldVal) {
       if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
         this.update()
       }
-    }
+    },
   },
-  created () {
+  created() {
     if (this.project) {
       this.update()
     }
   },
   methods: {
-    update () {
+    update() {
       const requestParams = {
         limit: this.limit,
         offset: this.offset,
         platforms: this.platforms,
-        stability: this.stability
+        stability: this.stability,
       }
 
       NProgress.start()
@@ -195,16 +213,16 @@ export default {
         NProgress.done()
       })
     },
-    formatSize (size) {
+    formatSize(size) {
       return filesize(size)
     },
-    formatDate (date) {
+    formatDate(date) {
       return moment(date).format('MMM D, YYYY')
     },
-    classForVisibility (visibility) {
+    classForVisibility(visibility) {
       return Visibility.fromName(visibility).class
     },
-    groupPlatforms (platforms) {
+    groupPlatforms(platforms) {
       const versions = {}
 
       for (const platform of platforms) {
@@ -229,16 +247,16 @@ export default {
             id: platform,
             shortName: obj.shortName,
             versions: versions[platform],
-            color: obj.color
+            color: obj.color,
           })
         }
       }
 
       return platformObjs
     },
-    formatStats (number) {
+    formatStats(number) {
       return numberWithCommas(number)
-    }
-  }
+    },
+  },
 }
 </script>

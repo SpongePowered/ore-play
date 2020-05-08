@@ -7,8 +7,19 @@
         <div v-if="hasAnyAlerts" class="row">
           <div class="col-xs-12">
             <div v-for="level of levels" :key="level">
-              <div v-if="alerts[level].length" class="alert alert-fade alert-dismissable" :class="levelToClass(level)" role="alert">
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close" @click="$store.commit('dismissAllAlert', {level})">
+              <div
+                v-if="alerts[level].length"
+                class="alert alert-fade alert-dismissable"
+                :class="levelToClass(level)"
+                role="alert"
+              >
+                <button
+                  type="button"
+                  class="close"
+                  data-dismiss="alert"
+                  aria-label="Close"
+                  @click="$store.commit('dismissAllAlert', { level })"
+                >
                   <span aria-hidden="true">&times;</span>
                 </button>
 
@@ -40,27 +51,27 @@ const levelClasses = {
   error: 'alert-danger',
   success: 'alert-success',
   info: 'alert-info',
-  warning: 'alert-warning'
+  warning: 'alert-warning',
 }
 
 export default {
   components: {
     TopHeader,
-    TopFooter
+    TopFooter,
   },
   computed: {
-    levels () {
+    levels() {
       return ['error', 'success', 'info', 'warning']
     },
-    hasAnyAlerts () {
-      return this.levels.some(level => this.alerts[level].length)
+    hasAnyAlerts() {
+      return this.levels.some((level) => this.alerts[level].length)
     },
-    ...mapState(['alerts'])
+    ...mapState(['alerts']),
   },
   methods: {
-    levelToClass (level) {
+    levelToClass(level) {
       return levelClasses[level]
-    }
-  }
+    },
+  },
 }
 </script>

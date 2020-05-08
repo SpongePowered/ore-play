@@ -2,25 +2,28 @@
   <div class="project-header-container">
     <div v-if="project && project.visibility !== 'public'" class="row">
       <div class="col-xs-12">
-        <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
+        <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0;">
           <span v-if="project.visibility === 'new'">
-            This project is new, and will not be shown to others until a version has been uploaded. If a version is not uploaded over a longer time the project will be deleted.
+            This project is new, and will not be shown to others until a version has been uploaded. If a version is not
+            uploaded over a longer time the project will be deleted.
           </span>
           <span v-else-if="project.visibility === 'needsChanges'">
             <a
               v-if="permissions.includes(permission.EditPage)"
               class="btn btn-success pull-right"
               :href="fullSlug + '/manage/sendforapproval'"
-            >Send for approval</a>
+              >Send for approval</a
+            >
             <strong>This project requires changes:</strong>
-            <span v-html="renderVisibilityChange('Unknown')" /> <!-- eslint-disable-line vue/no-v-html -->
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <span v-html="renderVisibilityChange('Unknown')" />
           </span>
           <span v-else-if="project.visibility === 'needsApproval'">
             You have sent the project for review
           </span>
           <span v-else-if="project.visibility === 'softDelete'">
-            Project deleted by {{ projectData.lastVisibilityChangeUser }}
-            <span v-html="renderVisibilityChange('')" /> <!-- eslint-disable-line vue/no-v-html -->
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            Project deleted by {{ projectData.lastVisibilityChangeUser }} <span v-html="renderVisibilityChange('')" />
           </span>
         </div>
       </div>
@@ -30,11 +33,11 @@
       <div class="col-md-6">
         <div v-if="project" class="project-header">
           <div class="project-path">
-            <router-link :to="{name: 'user_projects', params: {user: project.namespace.owner}}">
+            <router-link :to="{ name: 'user_projects', params: { user: project.namespace.owner } }">
               {{ project.namespace.owner }}
             </router-link>
             /
-            <router-link v-slot="{ href, navigate }" :to="{name: 'project_home'}">
+            <router-link v-slot="{ href, navigate }" :to="{ name: 'project_home' }">
               <a class="project-name" :href="href" @click="navigate">{{ project.name }}</a>
             </router-link>
           </div>
@@ -60,11 +63,20 @@
               <div class="btn-group" role="group" aria-label="Stars">
                 <button class="btn btn-default btn-star" @click="toggleStarred">
                   <font-awesome-icon :icon="starredIcon" />
-                  <span :class="{starred: project.user_actions.starred }">
+                  <span :class="{ starred: project.user_actions.starred }">
                     {{ project.user_actions.starred ? 'Unstar' : 'Star' }}
                   </span>
                 </button>
-                <a :href="routes.project.Projects.showStargazers(project.namespace.owner, project.namespace.slug, null).absoluteURL()" class="btn btn-default">
+                <a
+                  :href="
+                    routes.project.Projects.showStargazers(
+                      project.namespace.owner,
+                      project.namespace.slug,
+                      null
+                    ).absoluteURL()
+                  "
+                  class="btn btn-default"
+                >
                   {{ formatStats(project.stats.stars) }}
                 </a>
               </div>
@@ -72,11 +84,20 @@
               <div class="btn-group" role="group" aria-label="Watchers">
                 <button class="btn btn-default btn-watch" @click="toggleWatching">
                   <font-awesome-icon :icon="watchingIcon" />
-                  <span :class="{watching: project.user_actions.watching}">
+                  <span :class="{ watching: project.user_actions.watching }">
                     {{ project.user_actions.watching ? 'Unwatch' : 'Watch' }}
                   </span>
                 </button>
-                <a :href="routes.project.Projects.showWatchers(project.namespace.owner, project.namespace.slug, null).absoluteURL()" class="btn btn-default">
+                <a
+                  :href="
+                    routes.project.Projects.showWatchers(
+                      project.namespace.owner,
+                      project.namespace.slug,
+                      null
+                    ).absoluteURL()
+                  "
+                  class="btn btn-default"
+                >
                   {{ formatStats(project.stats.watchers) }}
                 </a>
               </div>
@@ -96,29 +117,24 @@
               <font-awesome-icon :icon="['fas', 'flag']" /> Flag
             </button>
 
-            <div
-              id="modal-flag"
-              class="modal fade"
-              tabindex="-1"
-              role="dialog"
-              aria-labelledby="label-flag"
-            >
+            <div id="modal-flag" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="label-flag">
               <div class="modal-dialog" role="document">
                 <div class="modal-content">
                   <div class="modal-header">
-                    <button
-                      type="button"
-                      class="close"
-                      data-dismiss="modal"
-                      aria-label="Close"
-                    >
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                       <span aria-hidden="true">&times;</span>
                     </button>
                     <h4 id="label-flag" class="modal-title">
                       Flag project
                     </h4>
                   </div>
-                  <form id="flagForm" :action="routes.project.Projects.flag(project.namespace.owner, project.namespace.slug).absoluteURL()" method="post">
+                  <form
+                    id="flagForm"
+                    :action="
+                      routes.project.Projects.flag(project.namespace.owner, project.namespace.slug).absoluteURL()
+                    "
+                    method="post"
+                  >
                     <CSRFField />
                     <div class="modal-body">
                       <ul class="list-group list-flags">
@@ -133,7 +149,7 @@
                               type="radio"
                               value="none-selected"
                               name="flag-reason"
-                            >
+                            />
                           </span>
                         </li>
                         <li v-for="reason in flagReason.values" :key="reason.value" class="list-group-item">
@@ -145,7 +161,7 @@
                               type="radio"
                               :value="reason.value"
                               name="flag-reason"
-                            >
+                            />
                           </span>
                         </li>
                       </ul>
@@ -157,7 +173,7 @@
                         maxlength="255"
                         required
                         placeholder="Comment&hellip;"
-                      >
+                      />
                     </div>
                     <div class="modal-footer">
                       <button type="button" class="btn btn-default" data-dismiss="modal" @click="clearFlag">
@@ -173,7 +189,9 @@
             </div>
           </template>
 
-          <template v-if="permissions.includes(permission.ModNotesAndFlags) || permissions.includes(permission.ViewLogs)">
+          <template
+            v-if="permissions.includes(permission.ModNotesAndFlags) || permissions.includes(permission.ViewLogs)"
+          >
             <button
               id="admin-actions"
               class="btn btn-alert dropdown-toggle"
@@ -187,17 +205,29 @@
             </button>
             <ul v-if="project" class="dropdown-menu" aria-labelledby="admin-actions">
               <li v-if="permissions.includes(permission.ModNotesAndFlags)">
-                <a :href="routes.project.Projects.showFlags(project.namespace.owner, project.namespace.slug).absoluteURL()">
+                <a
+                  :href="
+                    routes.project.Projects.showFlags(project.namespace.owner, project.namespace.slug).absoluteURL()
+                  "
+                >
                   Flag history ({{ projectData.flagCount }})
                 </a>
               </li>
               <li v-if="permissions.includes(permission.ModNotesAndFlags)">
-                <a :href="routes.project.Projects.showNotes(project.namespace.owner, project.namespace.slug).absoluteURL()">
+                <a
+                  :href="
+                    routes.project.Projects.showNotes(project.namespace.owner, project.namespace.slug).absoluteURL()
+                  "
+                >
                   Staff notes ({{ projectData.noteCount }})
                 </a>
               </li>
               <li v-if="permissions.includes(permission.ViewLogs)">
-                <a :href="routes.Application.showLog(null, null, project.plugin_id, null, null, null, null).absoluteURL()">
+                <a
+                  :href="
+                    routes.Application.showLog(null, null, project.plugin_id, null, null, null, null).absoluteURL()
+                  "
+                >
                   User Action Logs
                 </a>
               </li>
@@ -217,26 +247,30 @@
         <div class="navbar navbar-default project-navbar pull-left">
           <div class="navbar-inner">
             <ul class="nav navbar-nav">
-              <router-link v-slot="{ href, navigate, isExactActive }" :to="{name: 'project_home'}">
+              <router-link v-slot="{ href, navigate, isExactActive }" :to="{ name: 'project_home' }">
                 <li :class="[isExactActive && 'active']">
                   <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'book']" /> Docs</a>
                 </li>
               </router-link>
 
-              <router-link v-slot="{ href, navigate, isActive }" :to="{name: 'versions'}">
+              <router-link v-slot="{ href, navigate, isActive }" :to="{ name: 'versions' }">
                 <li :class="[isActive && 'active']">
                   <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'download']" /> Versions</a>
                 </li>
               </router-link>
 
               <!-- TODO only show if topic -->
-              <router-link v-slot="{ href, navigate, isActive }" :to="{name: 'discussion'}">
+              <router-link v-slot="{ href, navigate, isActive }" :to="{ name: 'discussion' }">
                 <li :class="[isActive && 'active']">
                   <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'users']" /> Discuss</a>
                 </li>
               </router-link>
 
-              <router-link v-if="permissions.includes(permission.EditSubjectSettings)" v-slot="{ href, navigate, isActive }" :to="{name: 'settings'}">
+              <router-link
+                v-if="permissions.includes(permission.EditSubjectSettings)"
+                v-slot="{ href, navigate, isActive }"
+                :to="{ name: 'settings' }"
+              >
                 <li :class="[isActive && 'active']">
                   <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'cog']" /> Settings</a>
                 </li>
@@ -249,7 +283,9 @@
                   rel="noopener"
                   :href="routes.Application.linkOut(project.settings.homepage).absoluteURL()"
                 >
-                  <font-awesome-icon :icon="['fas', 'home']" /> Homepage <font-awesome-icon :icon="['fas', 'external-link-alt']" /></a>
+                  <font-awesome-icon :icon="['fas', 'home']" /> Homepage
+                  <font-awesome-icon :icon="['fas', 'external-link-alt']"
+                /></a>
               </li>
 
               <li v-if="project && project.settings.issues" id="issues">
@@ -259,7 +295,9 @@
                   rel="noopener"
                   :href="routes.Application.linkOut(project.settings.issues).absoluteURL()"
                 >
-                  <font-awesome-icon :icon="['fas', 'bug']" /> Issues <font-awesome-icon :icon="['fas', 'external-link-alt']" /></a>
+                  <font-awesome-icon :icon="['fas', 'bug']" /> Issues
+                  <font-awesome-icon :icon="['fas', 'external-link-alt']"
+                /></a>
               </li>
 
               <li v-if="project && project.settings.sources" id="source">
@@ -269,7 +307,8 @@
                   rel="noopener"
                   :href="routes.Application.linkOut(project.settings.sources).absoluteURL()"
                 >
-                  <font-awesome-icon :icon="['fas', 'code']" /> Source <font-awesome-icon :icon="['fas', 'external-link-alt']" />
+                  <font-awesome-icon :icon="['fas', 'code']" /> Source
+                  <font-awesome-icon :icon="['fas', 'external-link-alt']" />
                 </a>
               </li>
 
@@ -280,7 +319,8 @@
                   rel="noopener"
                   :href="routes.Application.linkOut(project.settings.support).absoluteURL()"
                 >
-                  <font-awesome-icon :icon="['fas', 'question-circle']" /> Support <font-awesome-icon :icon="['fas', 'external-link-alt']" />
+                  <font-awesome-icon :icon="['fas', 'question-circle']" /> Support
+                  <font-awesome-icon :icon="['fas', 'external-link-alt']" />
                 </a>
               </li>
             </ul>
@@ -292,7 +332,6 @@
 </template>
 
 <script>
-
 import markdownIt from 'markdown-it'
 import markdownItAnchor from 'markdown-it-anchor'
 import markdownItWikilinks from 'markdown-it-wikilinks'
@@ -305,20 +344,23 @@ import CSRFField from './CSRFField'
 
 const md = markdownIt({
   linkify: true,
-  typographer: true
-}).use(markdownItAnchor).use(markdownItWikilinks({ relativeBaseURL: location.pathname + '/pages/', uriSuffix: '' })).use(markdownItTaskLists)
+  typographer: true,
+})
+  .use(markdownItAnchor)
+  .use(markdownItWikilinks({ relativeBaseURL: location.pathname + '/pages/', uriSuffix: '' }))
+  .use(markdownItTaskLists)
 
 export default {
   components: {
-    CSRFField
+    CSRFField,
   },
   props: {
     noButtons: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
-  data () {
+  data() {
     return {
       reported: false,
       flagError: null,
@@ -326,110 +368,122 @@ export default {
       reportComment: '',
       projectData: {
         flagCount: -1,
-        noteCount: -1
-      }
+        noteCount: -1,
+      },
     }
   },
   computed: {
-    fullSlug () {
+    fullSlug() {
       return this.project.namespace.owner + '/' + this.project.slug
     },
-    routes () {
+    routes() {
       return jsRoutes.controllers
     },
-    starredIcon () {
-      return [
-        this.project.user_actions.starred ? 'fas' : 'far',
-        'star'
-      ]
+    starredIcon() {
+      return [this.project.user_actions.starred ? 'fas' : 'far', 'star']
     },
-    watchingIcon () {
-      return [
-        'fas',
-        this.project.user_actions.watching ? 'eye-slash' : 'eye'
-      ]
+    watchingIcon() {
+      return ['fas', this.project.user_actions.watching ? 'eye-slash' : 'eye']
     },
-    isMember () {
-      return this.currentUser && this.members.filter(m => m.user === this.currentUser.name).length > 0
+    isMember() {
+      return (
+        this.currentUser &&
+        this.members.filter((m) => {
+          return m.user === this.currentUser.name
+        }).length > 0
+      )
     },
-    permission () {
+    permission() {
       return Permission
     },
-    flagReason () {
+    flagReason() {
       return FlagReason
     },
     ...mapState('global', {
-      currentUser: 'currentUser'
+      currentUser: 'currentUser',
     }),
-    ...mapState('project', ['project', 'permissions', 'members'])
+    ...mapState('project', ['project', 'permissions', 'members']),
   },
   watch: {
-    project (val) {
+    project(val) {
       API.request('projects/' + val.plugin_id + '/_projectData').then((res) => {
         this.projectData = res
       })
-    }
+    },
   },
   methods: {
-    renderVisibilityChange (orElse) {
+    renderVisibilityChange(orElse) {
       if (this.projectData && this.projectData.lastVisibilityChange) {
         return md.render(this.projectData.lastVisibilityChange.comment)
       } else {
         return orElse
       }
     },
-    clearFlag () {
+    clearFlag() {
       this.reportReason = 'none-selected'
       this.reportComment = ''
     },
-    sendFlag () {
+    sendFlag() {
       $.ajax({
         type: 'POST',
         url: this.routes.project.Projects.flag(this.project.namespace.owner, this.project.namespace.slug).absoluteURL(),
-        data: $('#flagForm').serialize()
-      }).done((res) => {
-        this.reported = true
-        $('#modal-flag').modal('toggle')
-        this.clearFlag()
-      }).fail((xhr) => {
-        $('#modal-flag').modal('toggle')
-        this.flagError = xhr.responseText
-        // TODO: Handle error
+        data: $('#flagForm').serialize(),
       })
+        .done((res) => {
+          this.reported = true
+          $('#modal-flag').modal('toggle')
+          this.clearFlag()
+        })
+        .fail((xhr) => {
+          $('#modal-flag').modal('toggle')
+          this.flagError = xhr.responseText
+          // TODO: Handle error
+        })
     },
-    toggleStarred () {
+    toggleStarred() {
       $.ajax({
         type: 'POST',
-        url: this.routes.project.Projects.toggleStarred(this.project.namespace.owner, this.project.namespace.slug).absoluteURL(),
+        url: this.routes.project.Projects.toggleStarred(
+          this.project.namespace.owner,
+          this.project.namespace.slug
+        ).absoluteURL(),
         data: {
-          csrfToken: window.csrf
-        }
-      }).done((res) => {
-        this.$store.commit('project/toggleStarred')
-      }).fail((xhr) => {
-        // TODO: Handle error
+          csrfToken: window.csrf,
+        },
       })
+        .done((res) => {
+          this.$store.commit('project/toggleStarred')
+        })
+        .fail((xhr) => {
+          // TODO: Handle error
+        })
     },
-    toggleWatching () {
+    toggleWatching() {
       const newWatching = !this.project.user_actions.watching
       $.ajax({
         type: 'POST',
-        url: this.routes.project.Projects.setWatching(this.project.namespace.owner, this.project.namespace.slug, newWatching).absoluteURL(),
+        url: this.routes.project.Projects.setWatching(
+          this.project.namespace.owner,
+          this.project.namespace.slug,
+          newWatching
+        ).absoluteURL(),
         data: {
-          csrfToken: window.csrf
-        }
-      }).done((res) => {
-        this.$store.commit({
-          type: 'project/setWatching',
-          watching: newWatching
-        })
-      }).fail((xhr) => {
-        // TODO: Handle error
+          csrfToken: window.csrf,
+        },
       })
+        .done((res) => {
+          this.$store.commit({
+            type: 'project/setWatching',
+            watching: newWatching,
+          })
+        })
+        .fail((xhr) => {
+          // TODO: Handle error
+        })
     },
-    formatStats (number) {
+    formatStats(number) {
       return numberWithCommas(number)
-    }
-  }
+    },
+  },
 }
 </script>

@@ -1,12 +1,20 @@
 <template>
   <div>
     <div class="input-group input-group-sm">
-      <input v-model="query" type="text" class="form-control" placeholder="Add User…">
+      <input v-model="query" type="text" class="form-control" placeholder="Add User…" />
     </div>
     <div v-if="users.length" class="open">
       <ul class="dropdown-menu">
         <li v-for="user in users" :key="user.name">
-          <a href="#" @click="() => {$emit('add-user', user); reset()}">
+          <a
+            href="#"
+            @click="
+              () => {
+                $emit('add-user', user)
+                reset()
+              }
+            "
+          >
             <icon :src="avatarUrl(user.name)" extra-classes="user-avatar-xs" />
             {{ user.name }}
           </a>
@@ -24,26 +32,26 @@ import Icon from './Icon'
 
 export default {
   components: {
-    Icon
+    Icon,
   },
   props: {
     exclude: {
       type: Array,
-      default () {
+      default() {
         return []
-      }
-    }
+      },
+    },
   },
-  data () {
+  data() {
     return {
       query: '',
-      users: []
+      users: [],
     }
   },
   watch: {
-    query () {
+    query() {
       this.updateUser()
-    }
+    },
   },
   methods: {
     updateUser: debounce(function () {
@@ -51,18 +59,17 @@ export default {
         this.users = []
       } else {
         API.request('users?q=' + this.query + '&limit=' + 5).then((res) => {
-          this.users = res.result.filter(u => !this.exclude.includes(u.name))
+          this.users = res.result.filter((u) => !this.exclude.includes(u.name))
         })
       }
     }, 250),
-    avatarUrl (name) {
+    avatarUrl(name) {
       return avatarUrl(name)
     },
-    reset () {
+    reset() {
       this.query = ''
       this.users = []
-    }
-  }
+    },
+  },
 }
-
 </script>

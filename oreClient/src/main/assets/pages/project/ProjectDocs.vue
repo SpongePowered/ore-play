@@ -3,12 +3,7 @@
     <div class="col-md-9">
       <div class="row">
         <div class="col-md-12">
-          <editor
-            :enabled="permissions.includes('edit_page')"
-            :raw="description"
-            subject="Page"
-            @saved="savePage"
-          />
+          <editor :enabled="permissions.includes('edit_page')" :raw="description" subject="Page" @saved="savePage" />
         </div>
       </div>
     </div>
@@ -33,17 +28,32 @@
         </div>
 
         <ul v-if="project" class="list-group promoted-list">
-          <li v-for="version in project.promoted_versions" :key="version.version" class="list-group-item row row-no-gutters" style="line-height: 2.4em;">
+          <li
+            v-for="version in project.promoted_versions"
+            :key="version.version"
+            class="list-group-item row row-no-gutters"
+            style="line-height: 2.4em;"
+          >
             <div class="col-lg-8 col-12">
               <router-link
                 v-slot="{ href, navigate }"
-                :to="{name: 'version', params: {project, permissions, 'version': version.version}}"
+                :to="{ name: 'version', params: { project, permissions, version: version.version } }"
               >
                 <a :href="href" @click="navigate">{{ version.version }}</a>
               </router-link>
             </div>
             <div class="col-lg-4 col-12">
-              <a class="pull-right btn btn-primary" :href="routes.Versions.download(project.namespace.owner, project.namespace.slug, version.version, null).absoluteURL()">
+              <a
+                class="pull-right btn btn-primary"
+                :href="
+                  routes.Versions.download(
+                    project.namespace.owner,
+                    project.namespace.slug,
+                    version.version,
+                    null
+                  ).absoluteURL()
+                "
+              >
                 <font-awesome-icon :icon="['fas', 'download']" /> Download
               </a>
             </div>
@@ -66,13 +76,7 @@
               <font-awesome-icon :icon="['fas', 'plus']" />
             </button>
 
-            <div
-              id="edit-page"
-              class="modal fade"
-              tabindex="-1"
-              role="dialog"
-              aria-labelledby="page-label"
-            >
+            <div id="edit-page" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="page-label">
               <div class="modal-dialog" role="document">
                 <div class="modal-content">
                   <div class="modal-header">
@@ -91,7 +95,7 @@
                       v-if="pagePutError"
                       id="page-label-error"
                       class="modal-title"
-                      style="display: none; color: red"
+                      style="display: none; color: red;"
                     >
                       Error updating page {{ pagePutError }}
                     </h4>
@@ -109,7 +113,7 @@
                           class="form-control"
                           type="text"
                           name="page-name"
-                        >
+                        />
                       </div>
                       <div class="clearfix" />
                     </div>
@@ -138,7 +142,10 @@
                     <div class="setting setting-no-border">
                       <div class="setting-description">
                         <h4>Navigational</h4>
-                        <p>Makes the page only useful for nagivation. <b>This will delete all content currently on the page.</b></p>
+                        <p>
+                          Makes the page only useful for nagivation.
+                          <b>This will delete all content currently on the page.</b>
+                        </p>
                       </div>
                       <div class="setting-content">
                         <div class="form-check">
@@ -149,25 +156,25 @@
                             type="checkbox"
                             name="page-navigational"
                             aria-label="Navigational"
-                          >
+                          />
                         </div>
                       </div>
                       <div class="clearfix" />
                     </div>
                   </div>
                   <div class="modal-footer">
-                    <button
-                      type="button"
-                      class="btn btn-default"
-                      data-dismiss="modal"
-                      @click="resetPutPage"
-                    >
+                    <button type="button" class="btn btn-default" data-dismiss="modal" @click="resetPutPage">
                       Close
                     </button>
                     <button v-if="!newPage" type="button" class="btn btn-danger" @click="deletePage">
                       Delete
                     </button>
-                    <button :disabled="!requestPage.name || requestPage.name.includes('/')" type="button" class="btn btn-primary" @click="updateCreatePage">
+                    <button
+                      :disabled="!requestPage.name || requestPage.name.includes('/')"
+                      type="button"
+                      class="btn btn-primary"
+                      @click="updateCreatePage"
+                    >
                       Continue
                     </button>
                   </div>
@@ -180,13 +187,17 @@
         <page-list :pages="groupedPages" :include-home="true" @edit-page="startEditPage" />
       </div>
 
-      <member-list :permissions="permissions" :members="members" role-category="project" :settings-route="{name: 'settings'}" />
+      <member-list
+        :permissions="permissions"
+        :members="members"
+        role-category="project"
+        :settings-route="{ name: 'settings' }"
+      />
     </div>
   </div>
 </template>
 
 <script>
-
 import isEqual from 'lodash/isEqual'
 import NProgress from 'nprogress'
 import { mapState } from 'vuex'
@@ -202,28 +213,28 @@ export default {
   components: {
     PageList,
     Editor,
-    MemberList
+    MemberList,
   },
   props: {
     page: {
       type: [Array, String],
-      required: true
-    }
+      required: true,
+    },
   },
-  data () {
+  data() {
     return {
       description: '',
       pages: [],
       requestPage: {},
-      pagePutError: null
+      pagePutError: null,
     }
   },
   computed: {
-    routes () {
+    routes() {
       return jsRoutes.controllers.project
     },
-    groupedPages () {
-      const nonHome = this.pages.filter(p => p.slug.length !== 1 || p.slug[0] !== 'Home')
+    groupedPages() {
+      const nonHome = this.pages.filter((p) => p.slug.length !== 1 || p.slug[0] !== 'Home')
       const acc = {}
 
       for (const page of nonHome) {
@@ -254,58 +265,55 @@ export default {
 
       return acc
     },
-    newPage () {
+    newPage() {
       return typeof this.requestPage.existing === 'undefined'
     },
-    splitPage () {
+    splitPage() {
       return Array.isArray(this.page) ? this.page : this.page.split('/')
     },
-    joinedPage () {
+    joinedPage() {
       return Array.isArray(this.page) ? this.page.join('/') : this.page
     },
-    currentPage () {
-      return this.pages.filter(p => isEqual(p.slug, this.splitPage))[0]
+    currentPage() {
+      return this.pages.filter((p) => isEqual(p.slug, this.splitPage))[0]
     },
-    ...mapState('project', [
-      'project',
-      'permissions',
-      'members'
-    ])
+    ...mapState('project', ['project', 'permissions', 'members']),
   },
   watch: {
-    $route () {
+    $route() {
       this.updatePage(false)
     },
-    project (val, oldVal) {
+    project(val, oldVal) {
       if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
         this.updatePage(true)
       }
-    }
+    },
   },
-  created () {
+  created() {
     if (this.project) {
       this.updatePage(true)
     }
   },
   methods: {
-    updatePage (fetchPages) {
+    updatePage(fetchPages) {
       NProgress.start()
-      API.request('projects/' + this.project.plugin_id + '/_pages/' + this.joinedPage).then((response) => {
-        if (response.content === null) {
+      API.request('projects/' + this.project.plugin_id + '/_pages/' + this.joinedPage)
+        .then((response) => {
+          if (response.content === null) {
+            this.description = ''
+          } else {
+            this.description = response.content
+          }
+          NProgress.done()
+        })
+        .catch((error) => {
           this.description = ''
-        } else {
-          this.description = response.content
-        }
-        NProgress.done()
-      }).catch((error) => {
-        this.description = ''
 
-        if (error === 404) {
-          // TODO
-        } else {
-
-        }
-      })
+          if (error === 404) {
+            // TODO
+          } else {
+          }
+        })
 
       if (fetchPages) {
         API.request('projects/' + this.project.plugin_id + '/_pages').then((pageList) => {
@@ -313,16 +321,16 @@ export default {
         })
       }
     },
-    parseDate (rawDate) {
+    parseDate(rawDate) {
       return moment(rawDate).format('MMM DD[,] YYYY')
     },
-    parseCategory (category) {
+    parseCategory(category) {
       return Category.fromId(category).name
     },
-    resetPutPage () {
+    resetPutPage() {
       this.requestPage = {}
     },
-    updateCreatePage () {
+    updateCreatePage() {
       const page = this.requestPage
 
       if (page.name.includes('/')) {
@@ -342,56 +350,60 @@ export default {
         const pageSlug = page.parent ? page.parent + '/' + page.name : page.name
         action = API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'PUT', {
           name: page.name,
-          content
+          content,
         })
       } else {
         const pageSlug = page.oldParent ? page.oldParent + '/' + page.oldName : page.oldName
         action = API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'PATCH', {
           name: page.name,
           content,
-          parent: page.parent
+          parent: page.parent,
         })
       }
 
-      action.then((res) => {
-        $('#edit-page').modal('toggle')
-        this.resetPutPage()
-        this.updatePage(true)
-      }).catch((err) => {
-        // TODO: Better error handling here
+      action
+        .then((res) => {
+          $('#edit-page').modal('toggle')
+          this.resetPutPage()
+          this.updatePage(true)
+        })
+        .catch((err) => {
+          // TODO: Better error handling here
 
-        this.pagePutError = err
-      })
+          this.pagePutError = err
+        })
     },
-    savePage (newContent) {
+    savePage(newContent) {
       API.request('projects/' + this.project.plugin_id + '/_pages/' + this.joinedPage, 'PUT', {
         name: this.currentPage.name[this.currentPage.name.length - 1],
-        content: newContent
+        content: newContent,
       }).then((res) => {
         this.description = newContent
       }) // TODO: Handle error here
     },
-    deletePage () {
+    deletePage() {
       const page = this.requestPage
       const pageSlug = page.parent ? page.parent + '/' + page.name : page.name
       // TODO
 
-      API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'DELETE').then((res) => {
-        $('#edit-page').modal('toggle')
-        this.resetPutPage()
+      API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'DELETE')
+        .then((res) => {
+          $('#edit-page').modal('toggle')
+          this.resetPutPage()
 
-        if (pageSlug === this.joinedPage) {
-          this.$router.push({ name: 'home', params: { project: this.project, permissions: this.permissions } })
-        } else {
-          this.updatePage(true)
-        }
-      }).catch((err) => {
-        // TODO: Better error handling here
+          if (pageSlug === this.joinedPage) {
+            this.$router.push({ name: 'home', params: { project: this.project, permissions: this.permissions } })
+          } else {
+            this.updatePage(true)
+          }
+        })
+        .catch((err) => {
+          // TODO: Better error handling here
 
-        this.pagePutError = err
-      })
+          this.pagePutError = err
+        })
     },
-    startEditPage (page) {
+    startEditPage(page) {
       this.$set(this.requestPage, 'existing', true)
       this.$set(this.requestPage, 'oldName', page.name[page.name.length - 1])
       this.$set(this.requestPage, 'name', this.requestPage.oldName)
@@ -399,21 +411,23 @@ export default {
       this.$set(this.requestPage, 'parent', this.requestPage.oldParent)
       this.$set(this.requestPage, 'navigational', page.navigational)
 
-      API.request('projects/' + this.project.plugin_id + '/_pages/' + page.slug.join('/')).then((response) => {
-        this.$set(this.requestPage, 'content', response.content)
-        $('#edit-page').modal('toggle')
-      }).catch((error) => {
-        if (error === 404) {
-          this.$set(this.requestPage, 'existing', undefined)
+      API.request('projects/' + this.project.plugin_id + '/_pages/' + page.slug.join('/'))
+        .then((response) => {
+          this.$set(this.requestPage, 'content', response.content)
           $('#edit-page').modal('toggle')
-        } else {
-          // TODO
-        }
-      })
+        })
+        .catch((error) => {
+          if (error === 404) {
+            this.$set(this.requestPage, 'existing', undefined)
+            $('#edit-page').modal('toggle')
+          } else {
+            // TODO
+          }
+        })
     },
-    formatStats (number) {
+    formatStats(number) {
       return numberWithCommas(number)
-    }
-  }
+    },
+  },
 }
 </script>

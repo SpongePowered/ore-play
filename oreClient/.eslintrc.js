@@ -1,15 +1,27 @@
 module.exports = {
+  root: true,
   env: {
     browser: true,
+  },
+  parserOptions: {
+    parser: 'babel-eslint'
   },
   extends: [
     'standard',
     'plugin:import/errors',
     'plugin:import/warnings',
-    'plugin:vue/recommended'
+    'plugin:vue/recommended',
+    'prettier',
+    'prettier/babel',
+    'prettier/vue',
+    'prettier/standard',
+    'plugin:prettier/recommended',
   ],
   plugins: [
-    'vue'
+    'vue',
+    'babel',
+    'standard',
+    'prettier'
   ],
   globals: {
     '$': "readonly",
@@ -21,7 +33,7 @@ module.exports = {
     'import/first': 'error',
     'import/no-mutable-exports': 'error',
     'import/no-unresolved': 'off',
-    'arrow-parens': ['error', 'as-needed', { 'requireForBlockBody': true }],
+    'arrow-parens': 'off',
     'generator-star-spacing': 'off',
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'warn',
     'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'warn',
@@ -41,7 +53,11 @@ module.exports = {
       'x-invalid-end-tag': false
     }],
     'vue/max-attributes-per-line': ['error', {
-      'singleline': 5
+      'singleline': 5,
+      'multiline': {
+        'max': 1,
+        'allowFirstLine': true
+      }
     }]
   }
 }

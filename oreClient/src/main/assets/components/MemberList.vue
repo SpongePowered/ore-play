@@ -10,12 +10,7 @@
     >
       <div class="modal-dialog" role="document">
         <div class="modal-content">
-          <button
-            type="button"
-            class="close"
-            data-dismiss="modal"
-            aria-label="Close"
-          >
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
             <span aria-hidden="true">&times;</span>
           </button>
           <h4 id="label-user-delete" class="modal-title">
@@ -83,15 +78,13 @@
         <template v-for="member in updatedMembers">
           <li :key="member.user" class="list-group-item">
             <icon :name="member.user" :src="avatarUrl(member.user)" extra-classes="user-avatar-xs" />
-            <router-link class="username" :to="{name: 'user_projects', params: {user: member.user}}">
+            <router-link class="username" :to="{ name: 'user_projects', params: { user: member.user } }">
               {{ member.user }}
             </router-link>
 
-            <template
-              v-if="editable && permissions.includes('manage_subject_members') && member.role.isAssignable"
-            >
+            <template v-if="editable && permissions.includes('manage_subject_members') && member.role.isAssignable">
               <a href="#" @click="removeUser(member.user)">
-                <font-awesome-icon style="padding-left:5px" :icon="['fas', 'trash']" />
+                <font-awesome-icon style="padding-left: 5px;" :icon="['fas', 'trash']" />
               </a>
 
               <role-select
@@ -110,8 +103,8 @@
         <!-- User search -->
         <li v-if="permissions.includes('manage_subject_members') && editable" class="list-group-item">
           <user-search
-            :exclude="Object.values(updatedMembers).map(m => m.user)"
-            style="width: 100%"
+            :exclude="Object.values(updatedMembers).map((m) => m.user)"
+            style="width: 100%;"
             @add-user="addNewMember"
           />
         </li>
@@ -132,84 +125,84 @@ export default {
   components: {
     Icon,
     UserSearch,
-    RoleSelect
+    RoleSelect,
   },
   props: {
     roleCategory: {
       type: String,
-      required: true
+      required: true,
     },
     members: {
       type: Array,
-      required: true
+      required: true,
     },
     permissions: {
       type: Array,
-      required: true
+      required: true,
     },
     editable: {
       type: Boolean,
-      default: false
+      default: false,
     },
     newRole: {
       type: String,
-      default: null
+      default: null,
     },
     settingsRoute: {
       type: Object,
-      default: null
+      default: null,
     },
     endpoint: {
       type: String,
-      default: null
+      default: null,
     },
     commitLocation: {
       type: String,
-      default: null
-    }
+      default: null,
+    },
   },
-  data () {
+  data() {
     return {
       newUserRole: this.newRole,
       updatedMembers: this.memberArrayToObj(this.members),
       madeChanges: false,
       updateError: null,
-      spinIcon: false
+      spinIcon: false,
     }
   },
   computed: {
-    roles () {
+    roles() {
       return Role
-    }
+    },
   },
   watch: {
-    members (val) {
+    members(val) {
       if (!this.madeChanges) {
         this.updatedMembers = this.memberArrayToObj(val)
       }
     },
-    madeChanges () {
+    madeChanges() {
       $('[data-toggle="tooltip"]').tooltip()
-    }
+    },
   },
-  created () {
+  created() {
     $('[data-toggle="tooltip"]').tooltip()
   },
   methods: {
     avatarUrl,
-    memberArrayToObj (arr) {
+    memberArrayToObj(arr) {
       const acc = {}
       for (const member of arr) {
         acc[member.user] = {
           user: member.user,
-          role: Role.byId(member.role.name)
+          role: Role.byId(member.role.name),
         }
         acc[member.user].role.is_accepted = member.role.is_accepted
       }
 
       return acc
     },
-    memberObjToArray (obj) {
+    memberObjToArray(obj) {
       const acc = []
 
       for (const { user, role } of Object.values(obj)) {
@@ -218,27 +211,27 @@ export default {
 
       return acc
     },
-    resetNewUserRole () {
+    resetNewUserRole() {
       this.newUserRole = 'Project_Support'
     },
-    addNewMember (user) {
+    addNewMember(user) {
       this.$set(this.updatedMembers, user.name, { user: user.name, role: Role.byId(this.newUserRole) })
       this.resetNewUserRole()
       this.madeChanges = true
     },
-    removeUser (user) {
+    removeUser(user) {
       delete this.updatedMembers[user]
       this.madeChanges = true
     },
-    setMemberRole (user, role) {
+    setMemberRole(user, role) {
       this.$set(this.updatedMembers[user], 'role', Role.byId(role))
       this.madeChanges = true
     },
-    resetEdit () {
+    resetEdit() {
       this.updatedMembers = this.memberArrayToObj(this.members)
       this.madeChanges = false
     },
-    saveMembers () {
+    saveMembers() {
       this.spinIcon = true
       const memberArr = this.memberObjToArray(this.updatedMembers)
       API.request(this.endpoint, 'POST', memberArr).then((res) => {
@@ -247,12 +240,12 @@ export default {
         if (this.commitLocation) {
           this.$store.commit({
             type: this.commitLocation,
-            members: res
+            members: res,
           })
           this.resetEdit()
         }
       })
-    }
-  }
+    },
+  },
 }
 </script>

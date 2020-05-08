@@ -10,44 +10,48 @@ import ProjectHeader from './../../components/ProjectHeader'
 
 export default {
   components: {
-    ProjectHeader
+    ProjectHeader,
   },
   props: {
     pluginId: {
       type: String,
-      default: null
+      default: null,
     },
     owner: {
       type: String,
-      default: null
+      default: null,
     },
     slug: {
       type: String,
-      default: null
+      default: null,
     },
     fetchedProject: {
       type: Object,
       required: false,
-      default: null
-    }
+      default: null,
+    },
   },
   watch: {
-    $route () {
+    $route() {
       this.distpatchUpdate()
-    }
+    },
   },
-  created () {
+  created() {
     this.distpatchUpdate()
   },
   methods: {
-    distpatchUpdate () {
-      if (this.fetchedProject && this.fetchedProject.namespace.owner === this.owner && this.fetchedProject.namespace.slug === this.slug) {
+    distpatchUpdate() {
+      if (
+        this.fetchedProject &&
+        this.fetchedProject.namespace.owner === this.owner &&
+        this.fetchedProject.namespace.slug === this.slug
+      ) {
         this.$store.dispatch('project/setActiveProjectFromFetched', this.fetchedProject)
       } else {
         const dispatchProject = this.pluginId ? this.pluginId : { owner: this.owner, slug: this.slug }
         this.$store.dispatch('project/setActiveProject', dispatchProject)
       }
-    }
-  }
+    },
+  },
 }
 </script>

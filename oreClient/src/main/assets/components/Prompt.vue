@@ -14,30 +14,29 @@
 </template>
 
 <script>
-
 export default {
   props: {
     prompt: {
       type: Object,
-      required: true
+      required: true,
     },
     idClass: {
       type: String,
-      default: ''
+      default: '',
     },
     position: {
       type: String,
-      default: 'right'
-    }
+      default: 'right',
+    },
   },
   methods: {
-    acknowledgePrompt () {
+    acknowledgePrompt() {
       $.ajax({
         type: 'post',
-        url: jsRoutes.controllers.Users.markPromptRead(prompt.id).absoluteURL()
+        url: jsRoutes.controllers.Users.markPromptRead(prompt.id).absoluteURL(),
       })
       $('.prompt').fadeOut('fast')
-    }
-  }
+    },
+  },
 }
 </script>

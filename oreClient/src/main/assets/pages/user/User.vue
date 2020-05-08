@@ -10,26 +10,26 @@ import UserHeader from '../../components/UserHeader'
 
 export default {
   components: {
-    UserHeader
+    UserHeader,
   },
   props: {
     user: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
   watch: {
-    $route () {
+    $route() {
       this.distpatchUpdate()
-    }
+    },
   },
-  created () {
+  created() {
     this.distpatchUpdate()
   },
   methods: {
-    distpatchUpdate () {
+    distpatchUpdate() {
       this.$store.dispatch('user/setActiveUser', this.user)
-    }
-  }
+    },
+  },
 }
 </script>

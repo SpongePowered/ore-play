@@ -1,10 +1,11 @@
 <template>
   <div class="tags" :class="{ 'has-addons': data }">
     <span
-      :style="{ color: color.foreground, background: color.background,
-                'border-color': color.background }"
+      :style="{ color: color.foreground, background: color.background, 'border-color': color.background }"
       class="tag"
-    > {{ name }} </span>
+    >
+      {{ name }}
+    </span>
     <span v-if="data" class="tag">{{ data }}</span>
   </div>
 </template>
@@ -14,16 +15,16 @@ export default {
   props: {
     name: {
       type: String,
-      required: true
+      required: true,
     },
     data: {
       type: String,
-      default: null
+      default: null,
     },
     color: {
       type: Object,
-      required: true
-    }
-  }
+      required: true,
+    },
+  },
 }
 </script>

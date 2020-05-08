@@ -10,14 +10,14 @@
           </h1>
           <span
             class="channel channel-head"
-            :style="{'background-color': stability.fromId(versionObj.tags.stability).color}"
+            :style="{ 'background-color': stability.fromId(versionObj.tags.stability).color }"
           >
             {{ stability.fromId(versionObj.tags.stability).title }}
           </span>
           <span
             v-if="versionObj.tags.release_type"
             class="channel channel-head"
-            :style="{'background-color': releaseType.fromId(versionObj.tags.release_type).color}"
+            :style="{ 'background-color': releaseType.fromId(versionObj.tags.release_type).color }"
           >
             {{ releaseType.fromId(versionObj.tags.release_type).title }}
           </span>
@@ -41,7 +41,7 @@
 
         <!-- User info -->
         <p class="user date pull-left">
-          <router-link :to="{name: 'user_projects', params: {user: project.namespace.owner}}">
+          <router-link :to="{ name: 'user_projects', params: { user: project.namespace.owner } }">
             <strong>{{ project.namespace.owner }}</strong>
           </router-link>
           released this version on {{ prettifyDate(versionObj.created_at) }}
@@ -54,31 +54,43 @@
             <div>
               <template v-if="isReviewStateChecked">
                 <i
-                  v-if="permissions.includes('reviewer') && versionObj.review_state.approved_by && versionObj.review_state.approved_at"
+                  v-if="
+                    permissions.includes('reviewer') &&
+                    versionObj.review_state.approved_by &&
+                    versionObj.review_state.approved_at
+                  "
                   class="minor"
                 >
-                  <strong> {{ versionObj.review_state.approved_by }} </strong> approved this version
-                  on <strong> {{ prettifyDate(versionObj.review_state.approved_at) }} </strong>
+                  <strong> {{ versionObj.review_state.approved_by }} </strong> approved this version on
+                  <strong> {{ prettifyDate(versionObj.review_state.approved_at) }} </strong>
                 </i>
                 <font-awesome-icon
                   :icon="['far', 'check-circle']"
                   size="lg"
                   data-toggle="tooltip"
                   data-placement="left"
-                  :title="versionObj.review_state = 'partially_reviewed' ? 'Partially Approved' : 'Approved'"
+                  :title="(versionObj.review_state = 'partially_reviewed' ? 'Partially Approved' : 'Approved')"
                 />
               </template>
             </div>
           </div>
 
           <div class="version-buttons pull-right">
-            <div><span class="date">{{ formatBytes(versionObj.file_info.size_bytes) }}</span></div>
+            <div>
+              <span class="date">{{ formatBytes(versionObj.file_info.size_bytes) }}</span>
+            </div>
 
             <div>
               <a
                 v-if="permissions.includes('reviewer')"
-                :href="routes.Reviews.showReviews(project.namespace.owner, project.namespace.slug, versionObj.name).absoluteURL()"
-                :class="{btn: true, 'btn-info': isReviewStateChecked, 'btn-success': !isReviewStateChecked}"
+                :href="
+                  routes.Reviews.showReviews(
+                    project.namespace.owner,
+                    project.namespace.slug,
+                    versionObj.name
+                  ).absoluteURL()
+                "
+                :class="{ btn: true, 'btn-info': isReviewStateChecked, 'btn-success': !isReviewStateChecked }"
               >
                 <template v-if="isReviewStateChecked">Review logs</template>
                 <font-awesome-icon :icon="['fas', 'play']" />
@@ -108,13 +120,7 @@
                   <font-awesome-icon :icon="['fas', 'trash']" />
                   Delete
                 </a>
-                <button
-                  v-else
-                  type="button"
-                  class="btn btn-danger"
-                  data-toggle="modal"
-                  data-target="#modal-delete"
-                >
+                <button v-else type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
                   <font-awesome-icon :icon="['fas', 'trash']" />
                   Delete
                 </button>
@@ -122,7 +128,14 @@
 
               <div class="btn-group btn-download">
                 <a
-                  :href="routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null).absoluteURL()"
+                  :href="
+                    routes.project.Versions.download(
+                      project.namespace.owner,
+                      project.namespace.slug,
+                      versionObj.name,
+                      null
+                    ).absoluteURL()
+                  "
                   title="Download the latest recommended version"
                   data-toggle="tooltip"
                   data-placement="bottom"
@@ -143,15 +156,33 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-right">
                   <li>
-                    <a :href="routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null).absoluteURL()">Download</a>
+                    <a
+                      :href="
+                        routes.project.Versions.download(
+                          project.namespace.owner,
+                          project.namespace.slug,
+                          versionObj.name,
+                          null
+                        ).absoluteURL()
+                      "
+                      >Download</a
+                    >
                   </li>
                   <li>
                     <a
                       href="#"
                       class="copy-url"
-                      :data-clipboard-text="config.app.baseUrl + routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null).absoluteURL()"
-                    >Copy
-                      URL</a>
+                      :data-clipboard-text="
+                        config.app.baseUrl +
+                        routes.project.Versions.download(
+                          project.namespace.owner,
+                          project.namespace.slug,
+                          versionObj.name,
+                          null
+                        ).absoluteURL()
+                      "
+                      >Copy URL</a
+                    >
                   </li>
                 </ul>
               </div>
@@ -160,14 +191,14 @@
                 <btn-hide
                   :current-visibility="versionObj.visibility"
                   :endpoint="'projects/' + project.plugin_id + '/versions/' + versionObj.name + '/visibility'"
-                  :callback="visibility => versionObj.visibility = visibility"
+                  :callback="(visibility) => (versionObj.visibility = visibility)"
                 />
               </template>
 
               <div
                 v-if="permissions.includes('view_logs')"
                 class="dropdown dropdown-menu-right"
-                style="display: inline-block"
+                style="display: inline-block;"
               >
                 <button
                   id="admin-version-actions"
@@ -182,25 +213,26 @@
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
                   <li>
-                    <a :href="routes.Application.showLog(null, null, null, versionObj.name, null, null, null).absoluteURL()">User
-                      Action Logs</a>
+                    <a
+                      :href="
+                        routes.Application.showLog(null, null, null, versionObj.name, null, null, null).absoluteURL()
+                      "
+                      >User Action Logs</a
+                    >
                   </li>
                   <template v-if="permissions.includes('reviewer')">
                     <li v-if="versionObj.visibility === 'softDelete'">
-                      <a
-                        href="#"
-                        data-toggle="modal"
-                        data-target="#modal-restore"
-                      >Undo
-                        delete</a>
+                      <a href="#" data-toggle="modal" data-target="#modal-restore">Undo delete</a>
                     </li>
-                    <li v-if="permissions.includes('hard_delete_version') && (publicVersions > 1 || versionObj.visibility === 'softDelete')">
-                      <a
-                        href="#"
-                        data-toggle="modal"
-                        data-target="#modal-harddelete"
-                        style="color: darkred"
-                      >Hard delete</a>
+                    <li
+                      v-if="
+                        permissions.includes('hard_delete_version') &&
+                        (publicVersions > 1 || versionObj.visibility === 'softDelete')
+                      "
+                    >
+                      <a href="#" data-toggle="modal" data-target="#modal-harddelete" style="color: darkred;">
+                        Hard delete
+                      </a>
                     </li>
                   </template>
                 </ul>
@@ -242,29 +274,33 @@
           </div>
           <ul class="list-group">
             <li
-              v-for="platform in platforms.getPlatforms(dependencyObs.map(d => d.pluginId))"
+              v-for="platform in platforms.getPlatforms(dependencyObs.map((d) => d.pluginId))"
               :key="platform.id"
               class="list-group-item"
             >
               <a :href="platform.url">
                 <strong>{{ platform.shortName }}</strong>
               </a>
-              <p
-                v-if="dependencyObs.filter(d => d.pluginId === platform.id)[0].version"
-                class="version-string"
-              >
-                {{ dependencyObs.filter(d => d.pluginId === platform.id)[0].version }}
+              <p v-if="dependencyObs.filter((d) => d.pluginId === platform.id)[0].version" class="version-string">
+                {{ dependencyObs.filter((d) => d.pluginId === platform.id)[0].version }}
               </p>
             </li>
 
             <li
-              v-for="depend in dependencyObs.filter(d => !platforms.isPlatformDependency(d))"
+              v-for="depend in dependencyObs.filter((d) => !platforms.isPlatformDependency(d))"
               :key="depend.project.plugin_id"
               class="list-group-item"
             >
               <router-link
                 v-if="depend.project"
-                :to="{name: 'project_home', params: { pluginId: depend.project.plugin_id, fetchedProject: depend.project, ...depend.project.namespace}}"
+                :to="{
+                  name: 'project_home',
+                  params: {
+                    pluginId: depend.project.plugin_id,
+                    fetchedProject: depend.project,
+                    ...depend.project.namespace,
+                  },
+                }"
               >
                 <strong>{{ depend.project.name }}</strong>
               </router-link>
@@ -294,27 +330,29 @@
             </h3>
           </div>
           <ul class="list-group">
-            <li class="list-group-item" style="padding-bottom: 20px">
+            <li class="list-group-item" style="padding-bottom: 20px;">
               <div class="form-inline">
                 <label for="setStability">Stability</label>
                 <select id="setStability" v-model="editStability" class="form-control pull-right">
                   <option v-for="stabilityObj in stability.values" :key="stabilityObj.id" :value="stabilityObj.id">
-                    {{
-                      stabilityObj.title }}
+                    {{ stabilityObj.title }}
                   </option>
                 </select>
               </div>
             </li>
-            <li class="list-group-item" style="padding-bottom: 20px">
+            <li class="list-group-item" style="padding-bottom: 20px;">
               <div class="form-inline">
                 <label for="setReleaseType">Release Type</label>
                 <select id="setReleaseType" v-model="editReleaseType" class="form-control pull-right">
                   <option :value="null">
                     None
                   </option>
-                  <option v-for="releaseTypeObj in releaseType.values" :key="releaseTypeObj.id" :value="releaseTypeObj.id">
-                    {{
-                      releaseTypeObj.title }}
+                  <option
+                    v-for="releaseTypeObj in releaseType.values"
+                    :key="releaseTypeObj.id"
+                    :value="releaseTypeObj.id"
+                  >
+                    {{ releaseTypeObj.title }}
                   </option>
                 </select>
               </div>
@@ -330,7 +368,7 @@
             <button
               class="btn btn-success"
               aria-label="Add platform"
-              @click="editPlatforms.push({platform: 'spongeapi', platform_version: ''})"
+              @click="editPlatforms.push({ platform: 'spongeapi', platform_version: '' })"
             >
               <font-awesome-icon :icon="['fas', 'plus']" />
             </button>
@@ -357,14 +395,10 @@
                   v-model="editPlatforms[index].platform_version"
                   class="form-control"
                   type="text"
-                >
+                />
               </div>
 
-              <button
-                class="btn btn-danger"
-                aria-label="Remove platform"
-                @click="editPlatforms.splice(index, 1)"
-              >
+              <button class="btn btn-danger" aria-label="Remove platform" @click="editPlatforms.splice(index, 1)">
                 Remove
               </button>
             </li>
@@ -384,13 +418,7 @@
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <button
-              type="button"
-              class="close"
-              data-dismiss="modal"
-              aria-label="Cancel"
-              @click="modalComment = ''"
-            >
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel" @click="modalComment = ''">
               <span aria-hidden="true">&times;</span>
             </button>
             <h4 id="label-delete" class="modal-title">
@@ -398,24 +426,13 @@
             </h4>
           </div>
           <div class="modal-body">
-            Are you sure you want to delete this version? This action cannot be undone. You will not be able
-            to reuse this version string later.
-            Please explain why you want to delete it.
-            <textarea
-              v-model="modalComment"
-              name="comment"
-              class="textarea-delete-comment form-control"
-              rows="3"
-            />
+            Are you sure you want to delete this version? This action cannot be undone. You will not be able to reuse
+            this version string later. Please explain why you want to delete it.
+            <textarea v-model="modalComment" name="comment" class="textarea-delete-comment form-control" rows="3" />
           </div>
           <div class="modal-footer">
             <div class="form-inline">
-              <button
-                type="button"
-                class="btn btn-default"
-                data-dismiss="modal"
-                @click="modalComment = ''"
-              >
+              <button type="button" class="btn btn-default" data-dismiss="modal" @click="modalComment = ''">
                 Close
               </button>
               <input
@@ -424,7 +441,7 @@
                 value="Delete"
                 class="btn btn-danger"
                 @click="setVisibility('softDelete')"
-              >
+              />
             </div>
           </div>
         </div>
@@ -442,13 +459,7 @@
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <button
-              type="button"
-              class="close"
-              data-dismiss="modal"
-              aria-label="Cancel"
-              @click="modalComment = ''"
-            >
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel" @click="modalComment = ''">
               <span aria-hidden="true">&times;</span>
             </button>
             <h4 id="label-restore" class="modal-title">
@@ -456,21 +467,11 @@
             </h4>
           </div>
           <div class="modal-body">
-            <textarea
-              v-model="modalComment"
-              name="comment"
-              class="textarea-delete-comment form-control"
-              rows="3"
-            />
+            <textarea v-model="modalComment" name="comment" class="textarea-delete-comment form-control" rows="3" />
           </div>
           <div class="modal-footer">
             <div class="form-inline">
-              <button
-                type="button"
-                class="btn btn-default"
-                data-dismiss="modal"
-                @click="modalComment = ''"
-              >
+              <button type="button" class="btn btn-default" data-dismiss="modal" @click="modalComment = ''">
                 Close
               </button>
               <input
@@ -479,7 +480,7 @@
                 value="Restore deleted"
                 class="btn btn-success"
                 @click="setVisibility('public')"
-              >
+              />
             </div>
           </div>
         </div>
@@ -497,13 +498,7 @@
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <button
-              type="button"
-              class="close"
-              data-dismiss="modal"
-              aria-label="Cancel"
-              @click="modalComment = ''"
-            >
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel" @click="modalComment = ''">
               <span aria-hidden="true">&times;</span>
             </button>
             <h4 id="label-harddelete" class="modal-title">
@@ -511,21 +506,11 @@
             </h4>
           </div>
           <div class="modal-body">
-            <textarea
-              v-model="modalComment"
-              name="comment"
-              class="textarea-delete-comment form-control"
-              rows="3"
-            />
+            <textarea v-model="modalComment" name="comment" class="textarea-delete-comment form-control" rows="3" />
           </div>
           <div class="modal-footer">
             <div class="form-inline">
-              <button
-                type="button"
-                class="btn btn-default"
-                data-dismiss="modal"
-                @click="modalComment = ''"
-              >
+              <button type="button" class="btn btn-default" data-dismiss="modal" @click="modalComment = ''">
                 Close
               </button>
               <input
@@ -534,7 +519,7 @@
                 value="Hard delete"
                 class="btn btn-danger"
                 @click="hardDeleteVersion"
-              >
+              />
             </div>
           </div>
         </div>
@@ -545,7 +530,6 @@
 </template>
 
 <script>
-
 import { mapState } from 'vuex'
 import NProgress from 'nprogress'
 import uniqWith from 'lodash/uniqWith'
@@ -561,7 +545,9 @@ import { clearFromDefaults } from '../../utils'
 
 const clipboardManager = new ClipboardJS('.copy-url')
 clipboardManager.on('success', function (e) {
-  const element = $('.btn-download').tooltip({ title: 'Copied!', placement: 'bottom', trigger: 'manual' }).tooltip('show')
+  const element = $('.btn-download')
+    .tooltip({ title: 'Copied!', placement: 'bottom', trigger: 'manual' })
+    .tooltip('show')
   setTimeout(function () {
     element.tooltip('destroy')
   }, 2200)
@@ -570,19 +556,19 @@ clipboardManager.on('success', function (e) {
 export default {
   components: {
     Editor,
-    BtnHide
+    BtnHide,
   },
   props: {
     version: {
       type: String,
-      required: true
+      required: true,
     },
     fetchedVersionObj: {
       type: Object,
-      default: null
-    }
+      default: null,
+    },
   },
-  data () {
+  data() {
     return {
       versionObj: null,
       versionDescription: null,
@@ -592,48 +578,45 @@ export default {
       editStability: 'stable',
       editReleaseType: null,
       editPlatforms: [],
-      spinIcon: false
+      spinIcon: false,
     }
   },
   computed: {
-    routes () {
+    routes() {
       return jsRoutes.controllers
     },
-    isReviewStateChecked () {
+    isReviewStateChecked() {
       return this.versionObj.review_state === 'partially_reviewed' || this.versionObj.review_state === 'reviewed'
     },
-    publicVersions () {
+    publicVersions() {
       return 10 // TODO
     },
-    config () {
+    config() {
       return config
     },
-    platforms () {
+    platforms() {
       return Platform
     },
-    stability () {
+    stability() {
       return Stability
     },
-    releaseType () {
+    releaseType() {
       return ReleaseType
     },
-    ...mapState('project', [
-      'project',
-      'permissions'
-    ])
+    ...mapState('project', ['project', 'permissions']),
   },
   watch: {
     $route: 'updateVersion',
-    project (val, oldVal) {
+    project(val, oldVal) {
       if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
         this.updateVersion()
       }
     },
-    versionObj () {
+    versionObj() {
       this.resetEdit()
-    }
+    },
   },
-  created () {
+  created() {
     if (this.fetchedVersionObj && this.fetchedVersionObj.name === this.version) {
       this.versionObj = this.fetchedVersionObj
     }
@@ -643,7 +626,7 @@ export default {
     }
   },
   methods: {
-    updateVersion () {
+    updateVersion() {
       let futureVersion
 
       if (!this.versionObj || this.versionObj.name !== this.version) {
@@ -654,48 +637,53 @@ export default {
         futureVersion = Promise.resolve(this.versionObj)
       }
 
-      futureVersion.then((v) => {
-        NProgress.done()
-        this.versionObj = v
+      futureVersion
+        .then((v) => {
+          NProgress.done()
+          this.versionObj = v
 
-        for (const dependency of v.dependencies) {
-          const depObj = { pluginId: dependency.plugin_id, version: dependency.version, project: null }
+          for (const dependency of v.dependencies) {
+            const depObj = { pluginId: dependency.plugin_id, version: dependency.version, project: null }
 
-          if (Platform.isPlatformDependency(depObj)) {
-            this.dependencyObs.push(depObj)
-          } else {
-            API.request('projects/' + dependency.plugin_id).then((d) => {
-              depObj.project = d
+            if (Platform.isPlatformDependency(depObj)) {
               this.dependencyObs.push(depObj)
-            }).catch((error) => {
-              if (error === 404) {
-                this.dependencyObs.push(depObj)
-              } else {
-                // TODO
-              }
-            })
+            } else {
+              API.request('projects/' + dependency.plugin_id)
+                .then((d) => {
+                  depObj.project = d
+                  this.dependencyObs.push(depObj)
+                })
+                .catch((error) => {
+                  if (error === 404) {
+                    this.dependencyObs.push(depObj)
+                  } else {
+                    // TODO
+                  }
+                })
+            }
           }
-        }
-      }).catch((error) => {
-        this.versionObj = null
+        })
+        .catch((error) => {
+          this.versionObj = null
 
-        if (error === 404) {
-          // TODO
-        } else {
-
-        }
-      })
+          if (error === 404) {
+            // TODO
+          } else {
+          }
+        })
 
       API.request('projects/' + this.project.plugin_id + '/versions/' + this.version + '/changelog').then((o) => {
         this.versionDescription = o.changelog
       })
     },
-    prettifyDate (date) {
+    prettifyDate(date) {
       return moment(date).format('LL') // TODO
     },
     // https://stackoverflow.com/a/18650828/7207457
-    formatBytes (bytes, decimals = 2) {
-      if (bytes === 0) { return '0 Bytes' }
+    formatBytes(bytes, decimals = 2) {
+      if (bytes === 0) {
+        return '0 Bytes'
+      }
 
       const k = 1024
       const dm = decimals < 0 ? 0 : decimals
@@ -705,17 +693,17 @@ export default {
 
       return parseFloat((bytes / k ** i).toFixed(dm)) + ' ' + sizes[i]
     },
-    saveDescription (newDescription) {
+    saveDescription(newDescription) {
       API.request('projects/' + this.project.plugin_id + '/versions/' + this.version + '/changelog', 'PUT', {
-        changelog: newDescription
+        changelog: newDescription,
       }).then((res) => {
         this.versionDescription = newDescription
       })
     },
-    setVisibility (visibility) {
+    setVisibility(visibility) {
       API.request('projects/' + this.project.plugin_id + '/versions/' + this.versionObj.name + '/visibility', 'POST', {
         visibility,
-        comment: this.modalComment
+        comment: this.modalComment,
       }).then((res) => {
         $('#modal-restore').modal('hide')
         $('#modal-delete').modal('hide')
@@ -723,48 +711,56 @@ export default {
         this.versionObj.visibility = visibility
       })
     },
-    hardDeleteVersion () {
+    hardDeleteVersion() {
       API.request('projects/' + this.project.plugin_id + '/versions/' + this.versionObj.name, 'DELETE').then((res) => {
         $('#modal-harddelete').modal('hide')
 
         this.$router.push({ name: 'versions' })
       })
     },
-    simplifyPlatform (platform) {
+    simplifyPlatform(platform) {
       return {
         platform: platform.platform,
-        platform_version: platform.platform_version
+        platform_version: platform.platform_version,
       }
     },
-    resetEdit () {
+    resetEdit() {
       this.editStability = this.versionObj.tags.stability
       this.editReleaseType = this.versionObj.tags.release_type
       this.editPlatforms = this.versionObj.tags.platforms.map(this.simplifyPlatform)
     },
-    cancelEdit () {
+    cancelEdit() {
       this.editVersion = false
       this.resetEdit()
     },
-    submitVersion () {
+    submitVersion() {
       const current = {
         stability: this.versionObj.tags.stability,
-        release_type: this.versionObj.tags.release_type
+        release_type: this.versionObj.tags.release_type,
       }
 
       let patchVersion = {
         stability: this.editStability,
         release_type: this.editReleaseType,
-        platforms: uniqWith(this.editPlatforms, isEqual).map(obj => !obj.platform_version.length ? {
-          ...obj,
-          platform_version: null
-        } : obj)
+        platforms: uniqWith(this.editPlatforms, isEqual).map((obj) =>
+          !obj.platform_version.length
+            ? {
+                ...obj,
+                platform_version: null,
+              }
+            : obj
+        ),
       }
 
       const currentPlatforms = this.versionObj.tags.platforms
 
-      function allSamePlatforms () {
+      function allSamePlatforms() {
         for (const platform of patchVersion.platforms) {
-          if (!currentPlatforms.some(p => p.platform === platform.platform && p.platform_version === platform.platform_version)) {
+          if (
+            !currentPlatforms.some(
+              (p) => p.platform === platform.platform && p.platform_version === platform.platform_version
+            )
+          ) {
             return false
           }
         }
@@ -780,7 +776,11 @@ export default {
 
       this.spinIcon = true
       if (Object.entries(patchVersion).length) {
-        API.request('projects/' + this.project.plugin_id + '/versions/' + this.versionObj.name, 'PATCH', patchVersion).then((res) => {
+        API.request(
+          'projects/' + this.project.plugin_id + '/versions/' + this.versionObj.name,
+          'PATCH',
+          patchVersion
+        ).then((res) => {
           this.spinIcon = false
           this.editVersion = false
           this.versionObj = res
@@ -793,7 +793,7 @@ export default {
           this.resetEdit()
         }, 150)
       }
-    }
-  }
+    },
+  },
 }
 </script>
