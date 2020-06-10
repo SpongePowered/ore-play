@@ -64,7 +64,7 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{CancelableFuture, Runtime, Schedule, Task, UIO, ZEnv, ZIO}
+import zio.{CancelableFuture, Exit, Runtime, Schedule, Task, UIO, ZEnv, ZIO}
 
 class OreApplicationLoader extends ApplicationLoader {
 
@@ -94,6 +94,8 @@ class OreComponents(context: ApplicationLoader.Context)
   use(prefix) //Gets around unused warning
   eager(applicationEvolutions)
 
+  val logger = Logger("Bootstrap")
+
   override lazy val httpFilters: Seq[EssentialFilter] = {
     val filters              = super.httpFilters ++ enabledFilters
     val enabledFiltersConfig = configuration.get[Seq[String]]("play.filters.enabled")
@@ -102,7 +104,7 @@ class OreComponents(context: ApplicationLoader.Context)
     val notEnabledFilters = enabledFiltersConfig.diff(enabledFiltersCode)
 
     if (notEnabledFilters.nonEmpty) {
-      Logger("Bootstrap").warn(s"Found filters enabled in the config but not in code: $notEnabledFilters")
+      logger.warn(s"Found filters enabled in the config but not in code: $notEnabledFilters")
     }
 
     filters
@@ -270,14 +272,18 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val channelsProvider: Provider[Channels]                 = () => channels
   lazy val reviewsProvider: Provider[Reviews]                   = () => reviews
 
-  def waitTilEvolutionsDone(action: UIO[Unit]): Unit = {
+  def runWhenEvolutionsDone(action: UIO[Unit]): Unit = {
     val isDone    = ZIO.effectTotal(applicationEvolutions.upToDate)
     val waitCheck = Schedule.doUntilM[Unit](_ => isDone) && Schedule.fixed(zio.duration.Duration.fromNanos(100))
 
-    runtime.unsafeRunSync(ZIO.unit.repeat(waitCheck).andThen(action))
+    runtime.unsafeRunAsync(ZIO.unit.repeat(waitCheck).andThen(action)) {
+      case Exit.Success(_) => ()
+      case Exit.Failure(cause) =>
+        logger.error(s"Failed to run action after evolutions done.\n${cause.prettyPrint}")
+    }
   }
 
-  waitTilEvolutionsDone(ZIO.effectTotal {
+  runWhenEvolutionsDone(ZIO.effectTotal {
     eager(projectTask)
     eager(userTask)
     eager(dbUpdateTask)
