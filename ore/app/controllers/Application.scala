@@ -162,6 +162,8 @@ final class Application(forms: OreForms)(
     */
   def removeTrail(path: String): Action[AnyContent] = Action(MovedPermanently(s"/$path"))
 
+  def faviconRedirect(): Action[AnyContent] = Action(Redirect(assetsFinder.path("images/favicon.ico")))
+
   /**
     * Show the activities page for a user
     */
