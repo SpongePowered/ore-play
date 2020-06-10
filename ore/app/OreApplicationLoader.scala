@@ -65,7 +65,8 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{Exit, Runtime, Schedule, Task, UIO, ZEnv, ZIO}
+import zio.zmx.Diagnostics
+import zio.{ExecutionStrategy, Exit, Runtime, Schedule, Task, UIO, ZEnv, ZIO, ZManaged}
 
 class OreApplicationLoader extends ApplicationLoader {
 
@@ -93,6 +94,7 @@ class OreComponents(context: ApplicationLoader.Context)
 
   use(prefix) //Gets around unused warning
   eager(applicationEvolutions)
+  eager(zmxDiagnostics)
 
   val logger = Logger("Bootstrap")
 
@@ -143,6 +145,10 @@ class OreComponents(context: ApplicationLoader.Context)
   implicit lazy val impActorSystem: ActorSystem = actorSystem
 
   implicit lazy val runtime: Runtime[ZEnv] = Runtime.default
+
+  lazy val zmxDiagnostics: Diagnostics = applicationManaged(
+    zio.zmx.Diagnostics.live("localhost", config.diagnostics.zmx.port).build
+  )
 
   type ParUIO[A]  = zio.interop.ParIO[Any, Nothing, A]
   type ParTask[A] = zio.interop.ParIO[Any, Throwable, A]
@@ -293,8 +299,26 @@ class OreComponents(context: ApplicationLoader.Context)
 
   def use[A](@unused value: A): Unit = ()
 
+  def manualRelease[R, E, A](managed: ZManaged[R, E, A]): ZIO[R, E, (A, UIO[Any])] =
+    ZManaged.ReleaseMap.make.flatMap { releaseMap =>
+      managed.zio.provideSome[R]((_, releaseMap)).map {
+        case (_, a) =>
+          (a, releaseMap.releaseAll(Exit.unit, ExecutionStrategy.Sequential))
+      }
+    }
+
   def applicationResource[A](resource: Resource[Task, A]): A = {
     val (a, finalize) = runtime.unsafeRunSync(resource.allocated).toEither.toTry.get
+
+    applicationLifecycle.addStopHook(() => runtime.unsafeRunToFuture(finalize))
+
+    a
+  }
+
+  def applicationManaged[A](managed: ZManaged[ZEnv, Throwable, A]): A = {
+    managed.preallocate
+
+    val (a, finalize) = runtime.unsafeRunSync(manualRelease(managed)).toEither.toTry.get
 
     applicationLifecycle.addStopHook(() => runtime.unsafeRunToFuture(finalize))
 

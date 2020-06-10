@@ -180,6 +180,14 @@ final class OreConfig(config: Configuration) {
     val nioBlockingFibers: Int = raw.get[Int]("nio-blocking-fibers")
   }
 
+  object diagnostics extends ConfigCategory {
+    val raw: Configuration = root.get[Configuration]("diagnostics")
+    object zmx extends ConfigCategory {
+      val raw: Configuration = diagnostics.raw.get[Configuration]("zmx")
+      val port: Int          = raw.get[Int]("port")
+    }
+  }
+
   app.load()
   app.fakeUser.load()
   play.load()
@@ -199,6 +207,8 @@ final class OreConfig(config: Configuration) {
   security.sso.load()
   mail.load()
   performance.load()
+  diagnostics.load()
+  diagnostics.zmx.load()
 
   /**
     * The default color used for Channels.

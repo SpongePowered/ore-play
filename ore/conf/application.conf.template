@@ -215,6 +215,15 @@ slick.dbs.default {
         user = ${?JDBC_DATABASE_USERNAME}
         password = ""
         password = ${?JDBC_DATABASE_PASSWORD}
+        connectionPool = "HikariCP"
+        registerMbeans = true
+        poolName = "ore-db"
+    }
+}
+
+diagnostics {
+    zmx {
+        port = 9002
     }
 }
 

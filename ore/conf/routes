@@ -21,6 +21,9 @@ GET     /admin/log                                                  @controllers
 
 GET     /statusz                                                    @controllers.ApiV1Controller.showStatusZ()
 
+GET     /pantopticon/actor-tree                                     @controllers.Application.actorTree(timeoutMs: Long ?= 2000)
+GET     /pantopticon/actor-count                                    @controllers.Application.actorCount(timeoutMs: Long ?= 2000)
+
 # ---------- API (v1) ----------
 +nocsrf
 POST    /api/sync_sso                                               @controllers.ApiV1Controller.syncSso()

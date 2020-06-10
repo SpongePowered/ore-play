@@ -64,6 +64,7 @@ object Deps {
 
   val zio     = "dev.zio" %% "zio"              % Version.zio
   val zioCats = "dev.zio" %% "zio-interop-cats" % Version.zioCats
+  val zioZmx  = "dev.zio" %% "zio-zmx"          % "0.0.3"
 
   val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.12.3"
 
@@ -71,6 +72,8 @@ object Deps {
   val scalaCacheCatsEffect = "com.github.cb372" %% "scalacache-cats-effect" % Version.scalaCache
 
   val macwire = "com.softwaremill.macwire" %% "macros" % Version.macWire % "provided"
+
+  val periscopeAkka = "io.scalac" %% "akka-periscope-core" % "0.2.0"
 
   private def flexmarkDep(module: String) = {
     val artifactId = if (module.isEmpty) "flexmark" else s"flexmark-$module"
