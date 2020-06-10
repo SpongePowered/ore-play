@@ -752,7 +752,7 @@ class Versions(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
         .subflatMap(identity)
         .toRight(NotFound)
         .toZIO
-        .flatMap(sendVersion(request.project, _, token))
+        .flatMap(sendVersion(request.project, _, token, confirm = false))
     }
   }
 
