@@ -1,7 +1,5 @@
 package db.impl
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.inject.ApplicationLifecycle
 
 import db.impl.access.ProjectBase
@@ -17,8 +15,7 @@ import zio.clock.Clock
 import zio.{Schedule, RIO, Task, UIO, ZIO, duration}
 
 class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
-    implicit ec: ExecutionContext,
-    projects: ProjectBase[Task],
+    implicit projects: ProjectBase[Task],
     service: ModelService[Task]
 ) {
 

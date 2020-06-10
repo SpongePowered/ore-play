@@ -3,8 +3,6 @@ package ore.models.project
 import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.inject.ApplicationLifecycle
 
 import ore.OreConfig
@@ -20,8 +18,7 @@ import zio.{Schedule, UIO, duration}
   * Task that is responsible for publishing New projects
   */
 class ProjectTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
-    implicit ec: ExecutionContext,
-    service: ModelService[UIO]
+    implicit service: ModelService[UIO]
 ) {
 
   private val Logger = scalalogging.Logger("ProjectTask")

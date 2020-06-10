@@ -31,8 +31,6 @@ import doobie.enum.JdbcType
 import doobie.implicits._
 import doobie.postgres.implicits._
 import doobie.util.meta.Meta
-import doobie.util.param.Param.Elem
-import doobie.util.pos.Pos
 import enumeratum.values._
 import org.postgresql.util.{PGInterval, PGobject}
 import shapeless._
@@ -115,11 +113,6 @@ trait DoobieOreProtocol {
           failure
         )
     }
-  }
-
-  //Based on https://github.com/tpolecat/doobie/pull/1045
-  object betterinterpolator {
-    implicit def makeBetterInterpolator(sc: StringContext): BetterSqlInterpolator = new BetterSqlInterpolator(sc)
   }
 
   implicit val offsetDateTimeMeta: Meta[java.time.OffsetDateTime] =
@@ -306,37 +299,3 @@ trait DoobieOreProtocol {
     }
 }
 object DoobieOreProtocol extends DoobieOreProtocol
-
-class BetterSqlInterpolator(private val sc: StringContext) extends AnyVal {
-  import BetterSqlInterpolator.SingleFragment
-  import cats.instances.list._
-  import cats.syntax.all._
-
-  private def mkFragment(parts: List[SingleFragment], token: Boolean, pos: Pos): Fragment = {
-    val last = if (token) Fragment(" ", Nil, None) else Fragment.empty
-
-    sc.parts.toList
-      .map(sql => SingleFragment(Fragment(sql, Nil, Some(pos))))
-      .zipAll(parts, SingleFragment.empty, SingleFragment(last))
-      .flatMap { case (a, b) => List(a.fr, b.fr) }
-      .combineAll
-  }
-
-  def bfr(a: SingleFragment*)(implicit pos: Pos): doobie.Fragment = mkFragment(a.toList, token = true, pos)
-
-  def bsql(a: SingleFragment*)(implicit pos: Pos): doobie.Fragment = mkFragment(a.toList, token = false, pos)
-
-  def bfr0(a: SingleFragment*)(implicit pos: Pos): doobie.Fragment = mkFragment(a.toList, token = false, pos)
-}
-object BetterSqlInterpolator {
-  final case class SingleFragment(fr: Fragment) extends AnyVal
-  object SingleFragment {
-    val empty: SingleFragment = SingleFragment(Fragment.empty)
-
-    implicit def fromPut[A](a: A)(implicit put: Put[A]): SingleFragment =
-      SingleFragment(Fragment("?", Elem.Arg(a, put) :: Nil, None))
-    implicit def fromPutOption[A](a: Option[A])(implicit put: Put[A]): SingleFragment =
-      SingleFragment(Fragment("?", Elem.Opt(a, put) :: Nil, None))
-    implicit def fromFragment(fr: Fragment): SingleFragment = SingleFragment(fr)
-  }
-}

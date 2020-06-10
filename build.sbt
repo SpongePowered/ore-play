@@ -29,6 +29,7 @@ lazy val externalCommon = project.settings(
     Deps.akkaHttpCore,
     Deps.akkaStream,
     Deps.akkaTyped,
+    Deps.akkaSerializationJackson,
     Deps.scalaLogging,
     Deps.simulacrum
   )

@@ -8,7 +8,7 @@ import sbt._
 
 object Settings {
 
-  val scalaVer = "2.13.1"
+  val scalaVer = "2.13.2"
 
   val commonSettings = Seq(
     version := "2.0.0-M2.1",

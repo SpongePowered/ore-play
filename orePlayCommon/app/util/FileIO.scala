@@ -32,7 +32,7 @@ trait FileIO[F[_]] { self =>
   def imapK[G[_]](
       f: F ~> G,
       g: G ~> F
-  )(implicit F: Bracket[F, Throwable], GD: Defer[G], GA: Applicative[G]): FileIO[G] =
+  )(implicit GD: Defer[G], GA: Applicative[G]): FileIO[G] =
     new FileIO[G] {
       override def list(path: Path): Resource[G, LazyList[Path]] = self.list(path).mapK(f)
 

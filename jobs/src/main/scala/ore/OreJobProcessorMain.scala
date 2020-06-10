@@ -40,7 +40,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
   private val blocker =
     Blocker.liftExecutionContext(this.environment.get[Blocking.Service].blockingExecutor.asEC)
 
-  override def run(args: List[String]): ZManaged[ZEnv, Nothing, Int] = {
+  override def run(args: List[String]): ZManaged[ZEnv, Nothing, ExitCode] = {
     def log(f: scalalogging.Logger => Unit): ZManaged[Any, Nothing, Unit] = ZManaged.fromEffect(UIO(f(Logger)))
 
     val transactorL       = (slickDbLayer ++ doobieInterpreterLayer ++ connectECLayer) >>> transactorLayer
@@ -50,11 +50,11 @@ object OreJobProcessorMain extends zio.ManagedApp {
     val oreDiscourseL     = (discourseApiL ++ configLayer ++ taskModelServiceL) >>> oreDiscourseLayer
     val oreEnvL           = uioModelServiceL ++ configLayer ++ oreDiscourseL
 
-    val all: ZManaged[OreEnv with Has[SlickDb], Nothing, Int] = for {
+    val all: ZManaged[OreEnv with Has[SlickDb], Nothing, ExitCode] = for {
       maxConnections <- ZManaged.access[Has[SlickDb]](_.get.source.maxConnections.getOrElse(32))
       _              <- log(_.info("Init finished. Starting"))
       _              <- runApp(maxConnections)
-    } yield 0
+    } yield ExitCode.success
 
     all.provideCustomLayer(oreEnvL ++ slickDbLayer).catchAll(ZManaged.succeed(_))
   }
@@ -91,14 +91,14 @@ object OreJobProcessorMain extends zio.ManagedApp {
       )
     }
 
-  private def logErrorManaged(msg: String)(e: Throwable): ZManaged[Any, Nothing, Int] = {
+  private def logErrorManaged(msg: String)(e: Throwable): ZManaged[Any, Nothing, ExitCode] = {
     Logger.error(msg, e)
-    ZManaged.succeed(-1)
+    ZManaged.succeed(ExitCode.failure)
   }
 
-  private def logErrorInt(msg: String)(e: Throwable): UIO[Int] = {
+  private def logErrorExitCode(msg: String)(e: Throwable): UIO[ExitCode] = {
     Logger.error(msg, e)
-    ZIO.succeed(-1)
+    ZIO.succeed(ExitCode.failure)
   }
 
   private def logErrorUIO(msg: String)(e: Throwable): UIO[Unit] = {
@@ -106,7 +106,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
     ZIO.succeed(())
   }
 
-  private val slickDbLayer: ZLayer[Any, Int, Has[SlickDb]] =
+  private val slickDbLayer: ZLayer[Any, ExitCode, Has[SlickDb]] =
     ZManaged
       .makeEffect(Database.forConfig("jobs-db", classLoader = this.getClass.getClassLoader))(_.close())
       .flatMapError(logErrorManaged("Failed to connect to db"))
@@ -155,19 +155,19 @@ object OreJobProcessorMain extends zio.ManagedApp {
       }
       .toLayer
 
-  private val configLayer: ZLayer[Any, Int, Has[OreJobsConfig]] =
+  private val configLayer: ZLayer[Any, ExitCode, Has[OreJobsConfig]] =
     ZManaged
       .fromEither(OreJobsConfig.load)
       .flatMapError { es =>
         Logger.error(
           s"Failed to load config:${es.toList.map(e => s"${e.description} -> ${e.location.fold("")(_.description)}").mkString("\n  ", "\n  ", "")}"
         )
-        ZManaged.succeed(-1)
+        ZManaged.succeed(ExitCode.failure)
       }
       .toLayer
 
-  private val discourseApiLayer: ZLayer[Config with Has[ActorSystem], Int, Has[DiscourseApi[Task]]] =
-    ZLayer.fromServicesM[OreJobsConfig, ActorSystem, Any, Int, DiscourseApi[Task]] {
+  private val discourseApiLayer: ZLayer[Config with Has[ActorSystem], ExitCode, Has[DiscourseApi[Task]]] =
+    ZLayer.fromServicesM[OreJobsConfig, ActorSystem, Any, ExitCode, DiscourseApi[Task]] {
       (config: OreJobsConfig, system: ActorSystem) =>
         implicit val impSystem: ActorSystem = system
         val cfg                             = config.discourse.api
@@ -180,11 +180,11 @@ object OreJobProcessorMain extends zio.ManagedApp {
             cfg.breaker.reset,
             cfg.breaker.timeout
           )
-        ).flatMapError(logErrorInt("Failed to create forums client"))
+        ).flatMapError(logErrorExitCode("Failed to create forums client"))
     }
 
   private val oreDiscourseLayer
-      : ZLayer[Has[DiscourseApi[Task]] with Has[OreJobsConfig] with Has[ModelService[Task]], Int, Discourse] = {
+      : ZLayer[Has[DiscourseApi[Task]] with Has[OreJobsConfig] with Has[ModelService[Task]], ExitCode, Discourse] = {
     def readFile(file: String): Task[String] = {
       fs2.io
         .readInputStream(ZIO(this.getClass.getClassLoader.getResourceAsStream(file)), 1024, blocker)
@@ -193,7 +193,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
         .string
     }
 
-    ZLayer.fromServicesM[DiscourseApi[Task], OreJobsConfig, ModelService[Task], Any, Int, OreDiscourseApi[Task]] {
+    ZLayer.fromServicesM[DiscourseApi[Task], OreJobsConfig, ModelService[Task], Any, ExitCode, OreDiscourseApi[Task]] {
       (discourseClient, config, service) =>
         val cfg                                     = config.discourse
         implicit val impService: ModelService[Task] = service
@@ -211,7 +211,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
           cfg.api.admin
         )
 
-        f.flatMapError(logErrorInt("Failed to create ore discourse client"))
+        f.flatMapError(logErrorExitCode("Failed to create ore discourse client"))
     }
   }
 }

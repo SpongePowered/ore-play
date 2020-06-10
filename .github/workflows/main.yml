@@ -48,7 +48,7 @@ jobs:
       - name: Cache sbt Coursier cache
         uses: actions/cache@v1
         with:
-          path: ~/.coursier/cache
+          path: ~/.cache/coursier
           key: ${{ runner.os }}-sbt-coursier-cache-${{ hashFiles('**.sbt', 'project/**/*.scala') }}
           restore-keys: ${{ runner.os }}-sbt-coursier-cache
 

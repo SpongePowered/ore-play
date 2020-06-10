@@ -18,6 +18,7 @@ import play.api.routing.Router
 import play.api.{
   ApplicationLoader,
   BuiltInComponentsFromContext,
+  Configuration,
   LoggerConfigurator,
   OptionalSourceMapper,
   Application => PlayApplication
@@ -64,7 +65,7 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{CancelableFuture, Exit, Runtime, Schedule, Task, UIO, ZEnv, ZIO}
+import zio.{Exit, Runtime, Schedule, Task, UIO, ZEnv, ZIO}
 
 class OreApplicationLoader extends ApplicationLoader {
 
@@ -85,7 +86,6 @@ class OreComponents(context: ApplicationLoader.Context)
     with SlickComponents
     with SlickEvolutionsComponents
     with EvolutionsComponents {
-  import OreComponents.zioDefer
 
   val prefix                                = "/"
   override lazy val router: Router          = wire[_root_.router.Routes]
@@ -313,8 +313,4 @@ object OreComponents {
     new FunctionK[ZIO[R, Throwable, *], ZIO[R, Nothing, *]] {
       override def apply[A](fa: ZIO[R, Throwable, A]): ZIO[R, Nothing, A] = fa.orDie
     }
-
-  implicit def zioDefer[R, E]: Defer[ZIO[R, E, *]] = new Defer[ZIO[R, E, *]] {
-    override def defer[A](fa: => ZIO[R, E, A]): ZIO[R, E, A] = ZIO.effectSuspendTotal(fa)
-  }
 }
