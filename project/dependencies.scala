@@ -23,7 +23,7 @@ object Version {
   val scalaLogging = "3.9.2"
 
   val simulacrum = "0.19.0"
-  val macWire    = "2.3.6"
+  val macWire    = "2.3.7"
   val scalaCache = "0.28.0"
   val flexmark   = "0.62.2"
 
@@ -68,7 +68,7 @@ object Deps {
   val zioCats = "dev.zio" %% "zio-interop-cats" % Version.zioCats
   val zioZmx  = "dev.zio" %% "zio-zmx"          % "0.0.3"
 
-  val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.12.3"
+  val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.13.0"
 
   val scalaCache           = "com.github.cb372" %% "scalacache-caffeine"    % Version.scalaCache
   val scalaCacheCatsEffect = "com.github.cb372" %% "scalacache-cats-effect" % Version.scalaCache
