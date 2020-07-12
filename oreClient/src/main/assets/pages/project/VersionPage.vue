@@ -28,13 +28,13 @@
               class="btn btn-info"
               @click="editVersion = true"
             >
-              <font-awesome-icon :icon="['fas', 'pencil-alt']" />
+              <FontAwesomeIcon :icon="['fas', 'pencil-alt']" />
             </button>
             <button v-if="editVersion" class="btn btn-info" @click="submitVersion">
-              <font-awesome-icon :icon="['fas', spinIcon ? 'spinner' : 'paper-plane']" :spin="spinIcon" />
+              <FontAwesomeIcon :icon="['fas', spinIcon ? 'spinner' : 'paper-plane']" :spin="spinIcon" />
             </button>
             <button v-if="editVersion" class="btn btn-danger" @click="cancelEdit">
-              <font-awesome-icon :icon="['fas', 'times']" />
+              <FontAwesomeIcon :icon="['fas', 'times']" />
             </button>
           </div>
         </div>
@@ -64,7 +64,7 @@
                   <strong> {{ versionObj.review_state.approved_by }} </strong> approved this version on
                   <strong> {{ prettifyDate(versionObj.review_state.approved_at) }} </strong>
                 </i>
-                <font-awesome-icon
+                <FontAwesomeIcon
                   :icon="['far', 'check-circle']"
                   size="lg"
                   data-toggle="tooltip"
@@ -93,7 +93,7 @@
                 :class="{ btn: true, 'btn-info': isReviewStateChecked, 'btn-success': !isReviewStateChecked }"
               >
                 <template v-if="isReviewStateChecked">Review logs</template>
-                <font-awesome-icon :icon="['fas', 'play']" />
+                <FontAwesomeIcon :icon="['fas', 'play']" />
                 Start review
               </a>
 
@@ -106,7 +106,7 @@
                   data-placement="top"
                   title="This version has already been deleted"
                 >
-                  <font-awesome-icon :icon="['fas', 'trash']" />
+                  <FontAwesomeIcon :icon="['fas', 'trash']" />
                   Delete
                 </a>
                 <a
@@ -117,11 +117,11 @@
                   data-placement="top"
                   title="Every project must have at least one version"
                 >
-                  <font-awesome-icon :icon="['fas', 'trash']" />
+                  <FontAwesomeIcon :icon="['fas', 'trash']" />
                   Delete
                 </a>
                 <button v-else type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
-                  <font-awesome-icon :icon="['fas', 'trash']" />
+                  <FontAwesomeIcon :icon="['fas', 'trash']" />
                   Delete
                 </button>
               </template>
@@ -141,7 +141,7 @@
                   data-placement="bottom"
                   class="btn btn-primary"
                 >
-                  <font-awesome-icon :icon="['fas', 'download']" />
+                  <FontAwesomeIcon :icon="['fas', 'download']" />
                   Download
                 </a>
                 <button
@@ -249,7 +249,7 @@
         <div class="row">
           <div v-if="!isReviewStateChecked" class="col-md-12">
             <div class="alert-review alert alert-info" role="alert">
-              <font-awesome-icon :icon="['fas', 'info-circle']" />
+              <FontAwesomeIcon :icon="['fas', 'info-circle']" />
               This version has not been reviewed by our moderation staff and may not be safe for download.
             </div>
           </div>
@@ -306,7 +306,7 @@
               </router-link>
               <div v-else class="minor">
                 {{ depend.pluginId }}
-                <font-awesome-icon
+                <FontAwesomeIcon
                   :icon="['fas', 'question-circle']"
                   title="This plugin is not available for download on Ore"
                   data-toggle="tooltip"
@@ -370,7 +370,7 @@
               aria-label="Add platform"
               @click="editPlatforms.push({ platform: 'spongeapi', platform_version: '' })"
             >
-              <font-awesome-icon :icon="['fas', 'plus']" />
+              <FontAwesomeIcon :icon="['fas', 'plus']" />
             </button>
           </div>
           <ul class="list-group">

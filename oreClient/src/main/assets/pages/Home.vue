@@ -34,13 +34,13 @@
           <input v-model="q" type="text" class="form-control" :placeholder="queryPlaceholder" @keydown="resetPage" />
           <span v-if="q.length > 0" class="input-group-btn">
             <button class="btn btn-default" type="button" @click="q = ''">
-              <font-awesome-icon :icon="['fas', 'times']" />
+              <FontAwesomeIcon :icon="['fas', 'times']" />
             </button>
           </span>
         </div>
         <div v-if="!isDefault" class="clearSelection">
           <a @click="reset">
-            <font-awesome-icon :icon="['fas', 'window-close']" />
+            <FontAwesomeIcon :icon="['fas', 'window-close']" />
             Clear current search query, categories, platform, and sort</a
           >
         </div>
@@ -50,7 +50,7 @@
           :project-count.sync="projectCount"
           @prevPage="page--"
           @nextPage="page++"
-          @jumpToPage="page = $event"
+          @jump-to-page="page = $event"
         />
       </div>
       <div class="col-md-3">
@@ -69,7 +69,7 @@
                 Categories
               </h3>
               <a v-if="categories.length > 0" class="category-reset" @click="categories = []">
-                <font-awesome-icon class="white" :icon="['fas', 'times']" />
+                <FontAwesomeIcon class="white" :icon="['fas', 'times']" />
               </a>
             </div>
 
@@ -81,7 +81,7 @@
                 :class="{ active: categories.includes(category.id) }"
                 @click="changeCategory(category)"
               >
-                <font-awesome-icon fixed-width :icon="['fas', category.icon]" />
+                <FontAwesomeIcon fixed-width :icon="['fas', category.icon]" />
                 <strong>{{ category.name }}</strong>
               </a>
             </div>

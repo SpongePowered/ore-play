@@ -54,7 +54,7 @@
                   ).absoluteURL()
                 "
               >
-                <font-awesome-icon :icon="['fas', 'download']" /> Download
+                <FontAwesomeIcon :icon="['fas', 'download']" /> Download
               </a>
             </div>
           </li>
@@ -73,7 +73,7 @@
               data-target="#edit-page"
               title="New"
             >
-              <font-awesome-icon :icon="['fas', 'plus']" />
+              <FontAwesomeIcon :icon="['fas', 'plus']" />
             </button>
 
             <div id="edit-page" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="page-label">

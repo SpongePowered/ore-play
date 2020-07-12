@@ -1,7 +1,7 @@
 <template>
   <div>
     <div v-show="loading">
-      <font-awesome-icon spin :icon="['fas', 'spinner']" />
+      <FontAwesomeIcon spin :icon="['fas', 'spinner']" />
       <span>Loading projects for you...</span>
     </div>
     <div v-show="!loading">
@@ -37,19 +37,19 @@
                     <div class="col-sm-6 hidden-xs">
                       <div class="info minor">
                         <span class="stat" title="Views">
-                          <font-awesome-icon :icon="['fas', 'eye']" />
+                          <FontAwesomeIcon :icon="['fas', 'eye']" />
                           {{ formatStats(project.stats.views) }}
                         </span>
                         <span class="stat" title="Download">
-                          <font-awesome-icon :icon="['fas', 'download']" />
+                          <FontAwesomeIcon :icon="['fas', 'download']" />
                           {{ formatStats(project.stats.downloads) }}
                         </span>
                         <span class="stat" title="Stars">
-                          <font-awesome-icon :icon="['fas', 'star']" /> {{ formatStats(project.stats.stars) }}
+                          <FontAwesomeIcon :icon="['fas', 'star']" /> {{ formatStats(project.stats.stars) }}
                         </span>
 
                         <span :title="categoryFromId(project.category).name" class="stat">
-                          <font-awesome-icon :icon="['fas', categoryFromId(project.category).icon]" />
+                          <FontAwesomeIcon :icon="['fas', categoryFromId(project.category).icon]" />
                         </span>
                       </div>
                     </div>
@@ -78,13 +78,13 @@
         <Pagination
           :current="current"
           :total="total"
-          @jumpTo="$emit('jumpToPage', $event)"
-          @next="$emit('nextPage')"
-          @prev="$emit('prevPage')"
+          @jump-to="$emit('jump-to-page', $event)"
+          @next="$emit('next-page')"
+          @prev="$emit('prev-page')"
         />
       </div>
       <div v-else class="list-group-item empty-project-list">
-        <font-awesome-icon :icon="['far', 'sad-tear']" size="2x" />
+        <FontAwesomeIcon :icon="['far', 'sad-tear']" size="2x" />
         <span>Oops! No projects found...</span>
       </div>
     </div>

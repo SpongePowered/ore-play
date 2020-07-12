@@ -9,7 +9,7 @@
       aria-expanded="false"
       style="color: black;"
     >
-      <font-awesome-icon :icon="['fas', spinIcon ? 'spinner' : 'eye']" :spin="spinIcon" />
+      <FontAwesomeIcon :icon="['fas', spinIcon ? 'spinner' : 'eye']" :spin="spinIcon" />
       Visibility actions
       <span class="caret" />
     </button>
@@ -17,7 +17,7 @@
       <li v-for="visibility in visibilities.values" :key="visibility.name">
         <a href="#" class="btn-visibility-change" @click="handleVisibilityClick(visibility)">
           {{ visibilityMessage(visibility.name) }}
-          <font-awesome-icon
+          <FontAwesomeIcon
             v-if="currentVisibility === visibility.name"
             :icon="['fas', 'check']"
             style="color: black;"
@@ -55,7 +55,7 @@
               class="btn btn-visibility-comment-submit btn-primary"
               @click="sendVisibilityChange(selectedVisibility)"
             >
-              <font-awesome-icon :icon="['fas', 'pencil-alt']" />
+              <FontAwesomeIcon :icon="['fas', 'pencil-alt']" />
               Submit
             </button>
           </div>

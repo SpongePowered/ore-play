@@ -49,11 +49,11 @@
       <div class="col-md-6">
         <div v-if="!noButtons" class="pull-right project-controls">
           <span v-if="reported" class="flag-msg">
-            <font-awesome-icon :icon="['fas', 'thumbs-up']" />
+            <FontAwesomeIcon :icon="['fas', 'thumbs-up']" />
             Flag submitted for review
           </span>
           <span v-if="flagError" class="flag-msg">
-            <font-awesome-icon :icon="['fas', 'thumbs-down']" />
+            <FontAwesomeIcon :icon="['fas', 'thumbs-down']" />
             Error when submitting flag for review:
             {{ flagError }}
           </span>
@@ -62,7 +62,7 @@
             <template v-if="!isMember && currentUser">
               <div class="btn-group" role="group" aria-label="Stars">
                 <button class="btn btn-default btn-star" @click="toggleStarred">
-                  <font-awesome-icon :icon="starredIcon" />
+                  <FontAwesomeIcon :icon="starredIcon" />
                   <span :class="{ starred: project.user_actions.starred }">
                     {{ project.user_actions.starred ? 'Unstar' : 'Star' }}
                   </span>
@@ -83,7 +83,7 @@
 
               <div class="btn-group" role="group" aria-label="Watchers">
                 <button class="btn btn-default btn-watch" @click="toggleWatching">
-                  <font-awesome-icon :icon="watchingIcon" />
+                  <FontAwesomeIcon :icon="watchingIcon" />
                   <span :class="{ watching: project.user_actions.watching }">
                     {{ project.user_actions.watching ? 'Unwatch' : 'Watch' }}
                   </span>
@@ -104,17 +104,17 @@
             </template>
             <template v-else>
               <span class="minor stat-static">
-                <font-awesome-icon :icon="starredIcon" />
+                <FontAwesomeIcon :icon="starredIcon" />
                 {{ project.stats.stars }}
               </span>
               <span class="minor stat-static">
-                <font-awesome-icon :icon="watchingIcon" />
+                <FontAwesomeIcon :icon="watchingIcon" />
                 {{ project.stats.watchers }}
               </span>
             </template>
 
             <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
-              <font-awesome-icon :icon="['fas', 'flag']" /> Flag
+              <FontAwesomeIcon :icon="['fas', 'flag']" /> Flag
             </button>
 
             <div id="modal-flag" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="label-flag">
@@ -233,7 +233,7 @@
               </li>
               <li>
                 <a :href="'https://forums.spongepowered.org/users/' + project.namespace.owner">
-                  Owner on forum <font-awesome-icon :icon="['fas', 'external-link-alt']" aria-hidden="true" />
+                  Owner on forum <FontAwesomeIcon :icon="['fas', 'external-link-alt']" aria-hidden="true" />
                 </a>
               </li>
             </ul>
@@ -249,20 +249,20 @@
             <ul class="nav navbar-nav">
               <router-link v-slot="{ href, navigate, isExactActive }" :to="{ name: 'project_home' }">
                 <li :class="[isExactActive && 'active']">
-                  <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'book']" /> Docs</a>
+                  <a :href="href" @click="navigate"><FontAwesomeIcon :icon="['fas', 'book']" /> Docs</a>
                 </li>
               </router-link>
 
               <router-link v-slot="{ href, navigate, isActive }" :to="{ name: 'versions' }">
                 <li :class="[isActive && 'active']">
-                  <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'download']" /> Versions</a>
+                  <a :href="href" @click="navigate"><FontAwesomeIcon :icon="['fas', 'download']" /> Versions</a>
                 </li>
               </router-link>
 
               <!-- TODO only show if topic -->
               <router-link v-slot="{ href, navigate, isActive }" :to="{ name: 'discussion' }">
                 <li :class="[isActive && 'active']">
-                  <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'users']" /> Discuss</a>
+                  <a :href="href" @click="navigate"><FontAwesomeIcon :icon="['fas', 'users']" /> Discuss</a>
                 </li>
               </router-link>
 
@@ -272,7 +272,7 @@
                 :to="{ name: 'settings' }"
               >
                 <li :class="[isActive && 'active']">
-                  <a :href="href" @click="navigate"><font-awesome-icon :icon="['fas', 'cog']" /> Settings</a>
+                  <a :href="href" @click="navigate"><FontAwesomeIcon :icon="['fas', 'cog']" /> Settings</a>
                 </li>
               </router-link>
 
@@ -283,8 +283,8 @@
                   rel="noopener"
                   :href="routes.Application.linkOut(project.settings.homepage).absoluteURL()"
                 >
-                  <font-awesome-icon :icon="['fas', 'home']" /> Homepage
-                  <font-awesome-icon :icon="['fas', 'external-link-alt']"
+                  <FontAwesomeIcon :icon="['fas', 'home']" /> Homepage
+                  <FontAwesomeIcon :icon="['fas', 'external-link-alt']"
                 /></a>
               </li>
 
@@ -295,8 +295,8 @@
                   rel="noopener"
                   :href="routes.Application.linkOut(project.settings.issues).absoluteURL()"
                 >
-                  <font-awesome-icon :icon="['fas', 'bug']" /> Issues
-                  <font-awesome-icon :icon="['fas', 'external-link-alt']"
+                  <FontAwesomeIcon :icon="['fas', 'bug']" /> Issues
+                  <FontAwesomeIcon :icon="['fas', 'external-link-alt']"
                 /></a>
               </li>
 
@@ -307,8 +307,8 @@
                   rel="noopener"
                   :href="routes.Application.linkOut(project.settings.sources).absoluteURL()"
                 >
-                  <font-awesome-icon :icon="['fas', 'code']" /> Source
-                  <font-awesome-icon :icon="['fas', 'external-link-alt']" />
+                  <FontAwesomeIcon :icon="['fas', 'code']" /> Source
+                  <FontAwesomeIcon :icon="['fas', 'external-link-alt']" />
                 </a>
               </li>
 
@@ -319,8 +319,8 @@
                   rel="noopener"
                   :href="routes.Application.linkOut(project.settings.support).absoluteURL()"
                 >
-                  <font-awesome-icon :icon="['fas', 'question-circle']" /> Support
-                  <font-awesome-icon :icon="['fas', 'external-link-alt']" />
+                  <FontAwesomeIcon :icon="['fas', 'question-circle']" /> Support
+                  <FontAwesomeIcon :icon="['fas', 'external-link-alt']" />
                 </a>
               </li>
             </ul>

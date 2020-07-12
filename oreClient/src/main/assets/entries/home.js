@@ -18,7 +18,7 @@ import { store } from '../stores/index'
 import UserProjects from '../pages/user/UserProjects'
 
 Vue.use(VueRouter)
-Vue.component('font-awesome-icon', FontAwesomeIcon)
+Vue.component('FontAwesomeIcon', FontAwesomeIcon)
 
 store.dispatch('global/loadUser')
 

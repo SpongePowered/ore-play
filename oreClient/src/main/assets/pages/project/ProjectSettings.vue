@@ -199,7 +199,7 @@
             </div>
 
             <button name="save" class="btn btn-success" @click="sendProjectUpdate(dataToSend)">
-              <font-awesome-icon :icon="saveChangesIcon" :spin="sendingChanges" /> Save changes
+              <FontAwesomeIcon :icon="saveChangesIcon" :spin="sendingChanges" /> Save changes
             </button>
           </div>
         </div>
@@ -235,7 +235,7 @@
                         :disabled="!selectedLogo"
                         @click.prevent="updateIcon"
                       >
-                        <font-awesome-icon :icon="['fas', 'upload']" /> Upload
+                        <FontAwesomeIcon :icon="['fas', 'upload']" /> Upload
                       </button>
                     </div>
                   </div>
@@ -249,7 +249,7 @@
                 <h4>Deployment key</h4>
                 <p>
                   Generate a unique deployment key to enable build deployment from Gradle
-                  <a href="#"><font-awesome-icon :icon="['fas', 'question-circle']" /></a>
+                  <a href="#"><FontAwesomeIcon :icon="['fas', 'question-circle']" /></a>
                 </p>
                 <input class="form-control input-key" type="text" :value="deployKey ? deployKey.key : ''" readonly />
               </div>
@@ -257,7 +257,7 @@
                 <template v-if="deployKey !== null">
                   <button class="btn btn-danger btn-block" @click="revokeDeployKey">
                     <span class="spinner" :style="{ display: showDeployKeySpinner ? 'inline' : 'none' }">
-                      <font-awesome-icon :icon="['fas', 'spinner']" spin />
+                      <FontAwesomeIcon :icon="['fas', 'spinner']" spin />
                     </span>
                     <span class="text">Revoke key</span>
                   </button>
@@ -265,7 +265,7 @@
                 <template v-else>
                   <button class="btn btn-info btn-block" @click="generateDeployKey">
                     <span class="spinner" :style="{ display: showDeployKeySpinner ? 'inline' : 'none' }">
-                      <font-awesome-icon :icon="['fas', 'spinner']" spin />
+                      <FontAwesomeIcon :icon="['fas', 'spinner']" spin />
                     </span>
                     <span class="text">Generate key</span>
                   </button>
@@ -479,7 +479,7 @@
     </div>
   </div>
   <div v-else>
-    <font-awesome-icon :icon="['fas', 'spinner']" spin />
+    <FontAwesomeIcon :icon="['fas', 'spinner']" spin />
     Loading
   </div>
 </template>

@@ -4,9 +4,9 @@
     :offset="(page - 1) * limit"
     :limit="limit"
     :use-vue-router="false"
-    @prevPage="page--"
-    @nextPage="page++"
-    @jumpToPage="page = $event"
+    @prev-page="page--"
+    @next-page="page++"
+    @jump-to-page="page = $event"
   />
 </template>
 

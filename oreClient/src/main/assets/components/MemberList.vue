@@ -44,7 +44,7 @@
         <div v-if="permissions.includes('manage_subject_members')" class="pull-right">
           <router-link v-if="!editable && settingsRoute" v-slot="{ href, navigate }" :to="settingsRoute">
             <a v-if="!editable" :href="href" class="btn yellow btn-xs" @click="navigate">
-              <font-awesome-icon :icon="['fas', 'pencil-alt']" />
+              <FontAwesomeIcon :icon="['fas', 'pencil-alt']" />
             </a>
           </router-link>
 
@@ -57,7 +57,7 @@
             aria-label="Save Users"
             @click="saveMembers"
           >
-            <font-awesome-icon :icon="['fas', spinIcon ? 'spinner' : 'paper-plane']" :spin="spinIcon" />
+            <FontAwesomeIcon :icon="['fas', spinIcon ? 'spinner' : 'paper-plane']" :spin="spinIcon" />
           </button>
           <button
             v-show="editable && madeChanges"
@@ -68,7 +68,7 @@
             aria-label="Discard changes"
             @click="resetEdit"
           >
-            <font-awesome-icon :icon="['fas', 'times']" />
+            <FontAwesomeIcon :icon="['fas', 'times']" />
           </button>
         </div>
       </div>
@@ -84,7 +84,7 @@
 
             <template v-if="editable && permissions.includes('manage_subject_members') && member.role.isAssignable">
               <a href="#" @click="removeUser(member.user)">
-                <font-awesome-icon style="padding-left: 5px;" :icon="['fas', 'trash']" />
+                <FontAwesomeIcon style="padding-left: 5px;" :icon="['fas', 'trash']" />
               </a>
 
               <role-select

@@ -69,7 +69,7 @@ export default {
     },
     jump(page) {
       if (page > 0 <= this.total) {
-        this.$emit('jumpTo', page)
+        this.$emit('jump-to', page)
       }
     },
   },

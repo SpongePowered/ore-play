@@ -19,7 +19,7 @@
               <span v-if="project.promoted_versions.length" class="minor">{{
                 project.promoted_versions[0].version
               }}</span>
-              <font-awesome-icon
+              <FontAwesomeIcon
                 :icon="['fas', categories.fromId(project.category).icon]"
                 fixed-width
                 :title="categories.fromId(project.category).name"

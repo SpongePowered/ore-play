@@ -5,7 +5,7 @@
       :class="expandedChildren ? 'page-collapse' : 'page-expand'"
       @click="expandedChildren = !expandedChildren"
     >
-      <font-awesome-icon :icon="['far', expandedChildren ? 'minus-square' : 'plus-square']" />
+      <FontAwesomeIcon :icon="['far', expandedChildren ? 'minus-square' : 'plus-square']" />
     </a>
     <router-link
       v-if="!page.navigational"
@@ -20,7 +20,7 @@
 
     <div v-if="permissions.includes('edit_page')" class="pull-right">
       <a href="#" @click="$emit('edit-page', page)">
-        <font-awesome-icon style="padding-left: 5px;" :icon="['fas', 'edit']" />
+        <FontAwesomeIcon style="padding-left: 5px;" :icon="['fas', 'edit']" />
       </a>
     </div>
 

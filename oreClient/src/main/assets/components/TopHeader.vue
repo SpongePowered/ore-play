@@ -6,34 +6,34 @@
         <router-link class="logo" :to="{ name: 'home' }">
           <img src="../images/spongie-mark.svg" alt="Sponge logo" />
           <span>Sponge</span>
-          <font-awesome-icon :icon="['fas', 'chevron-down']" fixed-width />
+          <FontAwesomeIcon :icon="['fas', 'chevron-down']" fixed-width />
         </router-link>
 
         <div id="sp-logo-menu">
           <ul id="sp-logo-dropdown">
             <li>
               <a href="https://www.spongepowered.org">
-                <font-awesome-icon :icon="['fas', 'home']" fixed-width /> Homepage
+                <FontAwesomeIcon :icon="['fas', 'home']" fixed-width /> Homepage
               </a>
             </li>
             <li>
               <a href="https://forums.spongepowered.org">
-                <font-awesome-icon :icon="['fas', 'comments']" fixed-width /> Forums
+                <FontAwesomeIcon :icon="['fas', 'comments']" fixed-width /> Forums
               </a>
             </li>
             <li>
               <a href="https://github.com/SpongePowered">
-                <font-awesome-icon :icon="['fas', 'code']" fixed-width /> Code
+                <FontAwesomeIcon :icon="['fas', 'code']" fixed-width /> Code
               </a>
             </li>
             <li>
               <a href="https://docs.spongepowered.org">
-                <font-awesome-icon :icon="['fas', 'book']" fixed-width /> Docs
+                <FontAwesomeIcon :icon="['fas', 'book']" fixed-width /> Docs
               </a>
             </li>
             <li>
               <a href="https://jd.spongepowered.org">
-                <font-awesome-icon :icon="['fas', 'graduation-cap']" fixed-width /> Javadocs
+                <FontAwesomeIcon :icon="['fas', 'graduation-cap']" fixed-width /> Javadocs
               </a>
             </li>
             <li class="active">
@@ -43,12 +43,12 @@
             </li>
             <li>
               <a href="https://www.spongepowered.org/downloads">
-                <font-awesome-icon :icon="['fas', 'download']" fixed-width /> Downloads
+                <FontAwesomeIcon :icon="['fas', 'download']" fixed-width /> Downloads
               </a>
             </li>
             <li>
               <a href="https://www.spongepowered.org/chat">
-                <font-awesome-icon :icon="['fas', 'comment']" fixed-width /> Chat
+                <FontAwesomeIcon :icon="['fas', 'comment']" fixed-width /> Chat
               </a>
             </li>
           </ul>
@@ -58,17 +58,17 @@
       <ul class="nav navbar-nav navbar-collapse collapse navbar-right">
         <li v-if="currentUser" class="dropdown nav-icon new-controls">
           <a href="#" class="drop-down-toggle" data-toggle="dropdown">
-            <font-awesome-icon class="icon" :icon="['fas', 'plus']" fixed-width />
+            <FontAwesomeIcon class="icon" :icon="['fas', 'plus']" fixed-width />
             <span class="caret" />
           </a>
           <ul class="user-dropdown dropdown-menu" aria-label="Create new&hellip;">
             <li>
               <router-link :to="{ name: 'new_project' }">
-                <font-awesome-icon class="mr-1" :icon="['fas', 'book']" fixed-width />
+                <FontAwesomeIcon class="mr-1" :icon="['fas', 'book']" fixed-width />
                 <span>New project</span>
               </router-link>
               <a :href="routes.Organizations.showCreator().absoluteURL()">
-                <font-awesome-icon class="mr-1" :icon="['fas', 'users']" fixed-width />
+                <FontAwesomeIcon class="mr-1" :icon="['fas', 'users']" fixed-width />
                 <span>New organization</span>
               </a>
             </li>
@@ -77,7 +77,7 @@
 
         <li class="nav-icon authors-icon" data-toggle="tooltip" data-placement="bottom" title="View project creators.">
           <a :href="routes.Users.showAuthors(null, null).absoluteURL()">
-            <font-awesome-icon class="icon" :icon="['fas', 'users']" />
+            <FontAwesomeIcon class="icon" :icon="['fas', 'users']" />
           </a>
         </li>
 
@@ -89,7 +89,7 @@
           title="View Sponge staff."
         >
           <a :href="routes.Users.showStaff(null, null).absoluteURL()">
-            <font-awesome-icon class="icon" :icon="['fas', 'user-tie']" />
+            <FontAwesomeIcon class="icon" :icon="['fas', 'user-tie']" />
           </a>
         </li>
 
@@ -108,14 +108,14 @@
           <ul class="user-dropdown dropdown-menu" aria-label="dropdownMenu1">
             <li v-if="currentUser">
               <router-link :to="{ name: 'user_projects', params: { user: currentUser.name } }">
-                <font-awesome-icon class="mr-1" :icon="['fas', 'user']" />
+                <FontAwesomeIcon class="mr-1" :icon="['fas', 'user']" />
                 <span>{{ currentUser.name }}</span>
               </router-link>
             </li>
 
             <li v-if="currentUser">
               <a :href="routes.Users.showNotifications(null, null).absoluteURL()">
-                <font-awesome-icon class="mr-1" :icon="['fas', 'bell']" />
+                <FontAwesomeIcon class="mr-1" :icon="['fas', 'bell']" />
                 <span>
                   Notifications
                   <span v-if="headerData && headerData.hasUnreadNotifications" class="unread" />
@@ -125,7 +125,7 @@
 
             <li v-if="permissions.includes('mod_notes_and_flags')">
               <a :href="routes.Application.showFlags().absoluteURL()">
-                <font-awesome-icon class="mr-1" :icon="['fas', 'flag']" />
+                <FontAwesomeIcon class="mr-1" :icon="['fas', 'flag']" />
                 <span>
                   Flags
                   <span v-if="headerData && headerData.unresolvedFlags" class="unread" />
@@ -135,7 +135,7 @@
 
             <li v-if="permissions.includes('mod_notes_and_flags')">
               <a :href="routes.Application.showProjectVisibility().absoluteURL()">
-                <font-awesome-icon class="mr-1" :icon="['fas', 'thumbs-up']" />
+                <FontAwesomeIcon class="mr-1" :icon="['fas', 'thumbs-up']" />
                 <span>
                   Project approvals
                   <span v-if="headerData && headerData.hasProjectApprovals" class="unread" />
@@ -145,7 +145,7 @@
 
             <li v-if="permissions.includes('reviewer')">
               <a :href="routes.Application.showQueue().absoluteURL()">
-                <font-awesome-icon class="mr-1" :icon="['far', 'thumbs-up']" />
+                <FontAwesomeIcon class="mr-1" :icon="['far', 'thumbs-up']" />
                 <span>
                   Version approvals
                   <span v-if="headerData && headerData.hasReviewQueue" class="unread" />
@@ -155,21 +155,21 @@
 
             <li v-if="permissions.includes('view_stats')">
               <a :href="routes.Application.showStats(null, null).absoluteURL()">
-                <font-awesome-icon class="mr-1" :icon="['fas', 'chart-area']" />
+                <FontAwesomeIcon class="mr-1" :icon="['fas', 'chart-area']" />
                 <span>Stats</span>
               </a>
             </li>
 
             <li v-if="permissions.includes('view_health')">
               <a :href="routes.Application.showHealth().absoluteURL()">
-                <font-awesome-icon class="mr-1" :icon="['fas', 'heartbeat']" />
+                <FontAwesomeIcon class="mr-1" :icon="['fas', 'heartbeat']" />
                 <span>Ore Health Report</span>
               </a>
             </li>
 
             <li v-if="permissions.includes('view_logs')">
               <a :href="routes.Application.showLog(null, null, null, null, null, null, null).absoluteURL()">
-                <font-awesome-icon class="mr-1" :icon="['fas', 'list']" />
+                <FontAwesomeIcon class="mr-1" :icon="['fas', 'list']" />
                 <span>User action log</span>
               </a>
             </li>
@@ -177,7 +177,7 @@
             <li role="separator" class="divider" />
             <li>
               <a :href="routes.Users.logOut().absoluteURL()">
-                <font-awesome-icon class="mr-1" :icon="['fas', 'sign-out-alt']" />
+                <FontAwesomeIcon class="mr-1" :icon="['fas', 'sign-out-alt']" />
                 <span>Sign out</span>
               </a>
             </li>

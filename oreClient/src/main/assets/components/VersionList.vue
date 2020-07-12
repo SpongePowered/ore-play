@@ -8,7 +8,7 @@
       </div>
     </div>
     <div v-show="loading">
-      <font-awesome-icon :icon="['fas', 'spinner']" spin />
+      <FontAwesomeIcon :icon="['fas', 'spinner']" spin />
       <span>Loading versions for you...</span>
     </div>
     <div v-show="!loading">
@@ -49,12 +49,12 @@
                 <div class="col-xs-4">
                   <div class="row">
                     <div class="col-xs-12">
-                      <font-awesome-icon :icon="['fas', 'calendar']" fixed-width />
+                      <FontAwesomeIcon :icon="['fas', 'calendar']" fixed-width />
                       <span class="text-bold">Uploaded: </span>
                       {{ formatDate(version.created_at) }}
                     </div>
                     <div class="col-xs-12">
-                      <font-awesome-icon :icon="['far', 'file']" fixed-width />
+                      <FontAwesomeIcon :icon="['far', 'file']" fixed-width />
                       <span class="text-bold">Size: </span>
                       {{ formatSize(version.file_info.size_bytes) }}
                     </div>
@@ -63,12 +63,12 @@
                 <div class="col-xs-4">
                   <div class="row">
                     <div class="col-xs-12">
-                      <font-awesome-icon :icon="['fas', 'user-tag']" fixed-width />
+                      <FontAwesomeIcon :icon="['fas', 'user-tag']" fixed-width />
                       <span class="text-bold">Author: </span>
                       {{ version.author }}
                     </div>
                     <div class="col-xs-12">
-                      <font-awesome-icon :icon="['fas', 'download']" fixed-width />
+                      <FontAwesomeIcon :icon="['fas', 'download']" fixed-width />
                       <span class="text-bold">Downloads: </span>
                       {{ formatStats(version.stats.downloads) }}
                     </div>
@@ -81,7 +81,7 @@
                       :to="{ name: 'version', params: { version: version.name, fetchedVersionObj: version } }"
                     >
                       <a :href="href" class="btn btn-default mb-0" @click="navigate">
-                        <font-awesome-icon :icon="['fas', 'info-circle']" />
+                        <FontAwesomeIcon :icon="['fas', 'info-circle']" />
                         Changelog
                       </a>
                     </router-link>
@@ -96,7 +96,7 @@
                         ).absoluteURL()
                       "
                       class="btn btn-primary mb-0"
-                      ><font-awesome-icon :icon="['fas', 'download']" /> Download</a
+                      ><FontAwesomeIcon :icon="['fas', 'download']" /> Download</a
                     >
                   </div>
                 </div>
@@ -106,7 +106,7 @@
         </template>
       </div>
 
-      <Pagination :current="current" :total="total" @prev="page--" @next="page++" @jumpTo="page = $event" />
+      <Pagination :current="current" :total="total" @prev="page--" @next="page++" @jump-to="page = $event" />
     </div>
   </div>
 </template>
