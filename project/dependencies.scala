@@ -106,7 +106,7 @@ object Deps {
     jdbc % Test,
     //specs2 % Test,
     "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0"        % Test,
-    "org.scalatestplus"      %% "junit-4-12"         % "3.1.2.0"      % Test,
+    "org.scalatestplus"      %% "junit-4-12"         % "3.2.0.0"      % Test,
     "org.tpolecat"           %% "doobie-scalatest"   % Version.doobie % Test
   )
 }
