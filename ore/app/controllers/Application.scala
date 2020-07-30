@@ -491,7 +491,7 @@ final class Application(forms: OreForms, val errorHandler: HttpErrorHandler)(
   def actorTree(timeoutMs: Long): Action[AnyContent] = Action.async { request =>
     implicit val timeout: Timeout = Timeout(timeoutMs, TimeUnit.MILLISECONDS)
 
-    import _root_.io.scalac.panopticon.akka.tree.build
+    import _root_.io.scalac.periscope.akka.tree.build
 
     if (isLocalHost(request.remoteAddress)) {
       build(actorSystem).map(tree => Ok(tree.asJson).as(ContentTypes.JSON))
@@ -503,7 +503,7 @@ final class Application(forms: OreForms, val errorHandler: HttpErrorHandler)(
   def actorCount(timeoutMs: Long): Action[AnyContent] = Action.async { request =>
     implicit val timeout: Timeout = Timeout(timeoutMs, TimeUnit.MILLISECONDS)
 
-    import _root_.io.scalac.panopticon.akka.counter.count
+    import _root_.io.scalac.periscope.akka.counter.count
 
     if (isLocalHost(request.remoteAddress)) {
       count(actorSystem).map(res => Ok(Json.obj("result" := res)))

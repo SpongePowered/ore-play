@@ -4,26 +4,26 @@ import sbt._
 
 object Version {
   val cats        = "2.1.1"
-  val catsEffect  = "2.1.3"
+  val catsEffect  = "2.1.4"
   val catsTagless = "0.11"
 
-  val zio     = "1.0.0-RC20"
-  val zioCats = "2.1.3.0-RC15"
+  val zio     = "1.0.0-RC21-2"
+  val zioCats = "2.1.4.0-RC17"
 
   val slick     = "3.3.2"
-  val slickPg   = "0.19.0"
+  val slickPg   = "0.19.1"
   val playSlick = "5.0.0"
   val doobie    = "0.9.0"
 
   val circe           = "0.13.0"
   val circeDerivation = "0.13.0-M4"
 
-  val akka         = "2.6.6"
+  val akka         = "2.6.8"
   val akkaHttp     = "10.1.12"
   val scalaLogging = "3.9.2"
 
   val simulacrum = "0.19.0"
-  val macWire    = "2.3.6"
+  val macWire    = "2.3.7"
   val scalaCache = "0.28.0"
   val flexmark   = "0.62.2"
 }
@@ -64,16 +64,16 @@ object Deps {
 
   val zio     = "dev.zio" %% "zio"              % Version.zio
   val zioCats = "dev.zio" %% "zio-interop-cats" % Version.zioCats
-  val zioZmx  = "dev.zio" %% "zio-zmx"          % "0.0.3"
+  val zioZmx  = "dev.zio" %% "zio-zmx"          % "0.0.4"
 
-  val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.12.3"
+  val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.13.0"
 
   val scalaCache           = "com.github.cb372" %% "scalacache-caffeine"    % Version.scalaCache
   val scalaCacheCatsEffect = "com.github.cb372" %% "scalacache-cats-effect" % Version.scalaCache
 
   val macwire = "com.softwaremill.macwire" %% "macros" % Version.macWire % "provided"
 
-  val periscopeAkka = "io.scalac" %% "akka-periscope-core" % "0.2.0"
+  val periscopeAkka = "io.scalac" %% "akka-periscope-core" % "0.4.0"
 
   private def flexmarkDep(module: String) = {
     val artifactId = if (module.isEmpty) "flexmark" else s"flexmark-$module"
@@ -102,7 +102,7 @@ object Deps {
     jdbc % Test,
     //specs2 % Test,
     "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0"        % Test,
-    "org.scalatestplus"      %% "junit-4-12"         % "3.1.2.0"      % Test,
+    "org.scalatestplus"      %% "junit-4-12"         % "3.2.0.0"      % Test,
     "org.tpolecat"           %% "doobie-scalatest"   % Version.doobie % Test
   )
 }

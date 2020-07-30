@@ -613,7 +613,7 @@ class Projects(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
           } else IO.unit
 
         val projectVisibility = if (newVisibility.showModal) {
-          val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
+          val comment = this.forms.NeedsChanges.bindFromRequest().get.trim
           request.project.setVisibility(newVisibility, comment, request.user.id)
         } else {
           request.project.setVisibility(newVisibility, "", request.user.id)

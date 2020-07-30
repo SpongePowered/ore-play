@@ -60,7 +60,7 @@ class Pages(forms: OreForms, stats: StatTracker[UIO])(
     * Return the best guess of the page
     */
   def findPage(project: Model[Project], page: String): IO[Unit, Model[Page]] = pageParts(page) match {
-    case parent :: child :: Nil => service.runDBIO(childPageQuery((parent, child)).result.headOption).get
+    case parent :: child :: Nil => service.runDBIO(childPageQuery((parent, child)).result.headOption).get.orElseFail(())
     case single :: Nil =>
       project
         .pages(ModelView.now(Page))
@@ -89,6 +89,7 @@ class Pages(forms: OreForms, stats: StatTracker[UIO])(
         res.tupleLeft(pages)
       }
       .get
+      .orElseFail(())
 
   /**
     * Displays the specified page.
