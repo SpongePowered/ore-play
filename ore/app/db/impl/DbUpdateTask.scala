@@ -10,7 +10,6 @@ import ore.util.OreMDC
 
 import cats.syntax.all._
 import com.typesafe.scalalogging
-import doobie.`enum`.TransactionIsolation
 import zio.clock.Clock
 import zio.{Schedule, RIO, Task, UIO, ZIO, duration}
 
@@ -43,23 +42,14 @@ class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: 
 
   private val homepageTask = runningTask(projects.refreshHomePage(Logger), homepageSchedule)
 
-  private def runManyInTransaction(updates: Seq[doobie.Update0]) = {
+  private def runMany(updates: Seq[doobie.Update0]) = {
     import cats.instances.list._
-    import doobie._
-
-    service
-      .runDbCon(
-        for {
-          _ <- HC.setTransactionIsolation(TransactionIsolation.TransactionRepeatableRead)
-          _ <- updates.toList.traverse_(_.run)
-        } yield ()
-      )
-      .retry(Schedule.forever)
+    service.runDbCon(updates.toList.traverse_(_.run))
   }
 
   private val statsTask = runningTask(
-    runManyInTransaction(StatTrackerQueries.processProjectViews) *>
-      runManyInTransaction(StatTrackerQueries.processVersionDownloads),
+    runMany(StatTrackerQueries.processProjectViews) *>
+      runMany(StatTrackerQueries.processVersionDownloads),
     statSchedule
   )
 
