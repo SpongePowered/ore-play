@@ -470,7 +470,7 @@ final class Application(forms: OreForms, val errorHandler: HttpErrorHandler)(
          |Disallow: /*/*/versions/*/new
          |Disallow: /*/*/versions/*/confirm
 
-         |Sitemap: ${config.app.baseUrl}/sitemap.xml
+         |Sitemap: ${config.application.baseUrl}/sitemap.xml
          |""".stripMargin
     ).as("text/plain")
   }

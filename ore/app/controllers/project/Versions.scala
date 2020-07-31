@@ -575,9 +575,10 @@ class Versions(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
         .flatMap { version =>
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
-          val token      = UUID.randomUUID().toString
-          val expiration = OffsetDateTime.now().plus(this.config.security.unsafeDownloadMaxAge, ChronoUnit.MILLIS)
-          val address    = InetString(StatTracker.remoteAddress)
+          val token = UUID.randomUUID().toString
+          val expiration =
+            OffsetDateTime.now().plus(this.config.ore.projects.unsafeDownloadMaxAge.toMillis, ChronoUnit.MILLIS)
+          val address = InetString(StatTracker.remoteAddress)
           // remove old warning attached to address that are expired (or duplicated for version)
           val removeWarnings = service.deleteWhere(DownloadWarning) { warning =>
             (warning.address === address || warning.expiration < OffsetDateTime

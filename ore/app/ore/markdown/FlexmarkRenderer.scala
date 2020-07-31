@@ -101,7 +101,7 @@ object FlexmarkRenderer {
             controllers.routes.Application.linkOut(urlString).toString
           }
         } else {
-          val trustedUrlHosts = this.config.app.trustedUrlHosts
+          val trustedUrlHosts = this.config.application.trustedUrlHosts
           val checkSubdomain = (trusted: String) =>
             trusted(0) == '.' && (host.endsWith(trusted) || host == trusted.substring(1))
           if (host == null || trustedUrlHosts.exists(trusted => trusted == host || checkSubdomain(trusted))) { // scalafix:ok

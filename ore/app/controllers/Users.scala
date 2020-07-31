@@ -42,7 +42,7 @@ class Users(
     messagesApi: MessagesApi
 ) extends OreBaseController {
 
-  private val baseUrl = this.config.app.baseUrl
+  private val baseUrl = this.config.application.baseUrl
 
   /**
     * Redirect to auth page for SSO authentication.
@@ -115,7 +115,7 @@ class Users(
   }
 
   private def redirectBack(url: String, user: Model[User]) =
-    Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.sessionMaxAge.toSeconds.toInt)
+    Redirect(this.baseUrl + url).authenticatedAs(user, this.config.ore.session.maxAge.toSeconds.toInt)
 
   /**
     * Clears the current session.
@@ -123,7 +123,7 @@ class Users(
     * @return Home page
     */
   def logOut(): Action[AnyContent] = Action {
-    Redirect(config.security.api.url + "/accounts/logout/")
+    Redirect(config.auth.api.url + "/accounts/logout/")
       .clearingSession()
       .flashing("noRedirect" -> "true")
   }

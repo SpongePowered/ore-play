@@ -13,7 +13,7 @@ import ore.db.{DbRef, ObjId}
   */
 final class FakeUser(config: OreConfig) {
 
-  private lazy val conf = config.app.fakeUser
+  private lazy val conf = config.application.fakeUser
 
   /**
     * True if FakeUser should be used.
