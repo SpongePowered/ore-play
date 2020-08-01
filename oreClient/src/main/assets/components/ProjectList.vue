@@ -21,18 +21,11 @@
                 <div class="col-xs-12 col-sm-11">
                   <div class="row">
                     <div class="col-sm-6">
-                      <router-link v-if="useVueRouter" v-slot="{ href, navigate }" :to="routerLinkProject(project)">
+                      <router-link v-slot="{ href, navigate }" :to="routerLinkProject(project)">
                         <a :href="href" class="title" @click="navigate">
                           {{ project.name }}
                         </a>
                       </router-link>
-                      <a
-                        v-else
-                        :href="routes.Projects.show(project.namespace.owner, project.namespace.slug, '').absoluteURL()"
-                        class="title"
-                      >
-                        {{ project.name }}
-                      </a>
                     </div>
                     <div class="col-sm-6 hidden-xs">
                       <div class="info minor">
@@ -142,10 +135,6 @@ export default {
     offset: {
       type: Number,
       default: 0,
-    },
-    useVueRouter: {
-      type: Boolean,
-      default: true,
     },
   },
   data() {
