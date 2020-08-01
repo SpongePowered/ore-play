@@ -15,7 +15,7 @@ import pureconfig.generic.auto._
 @RunWith(classOf[JUnitRunner])
 class APIV2QueriesSpec extends DbSpec {
 
-  implicit val config: OreConfig = ConfigSource.fromConfig(configuration.underlying).loadOrThrow[OreConfig]
+  implicit val config: OreConfig = ConfigSource.default.loadOrThrow[OreConfig]
 
   test("GetApiAuthInfo") {
     check(APIV2Queries.getApiAuthInfo(""))

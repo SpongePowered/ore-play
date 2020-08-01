@@ -15,7 +15,7 @@ import pureconfig.generic.auto._
 @RunWith(classOf[JUnitRunner])
 class SearchRegressionSpec extends AsyncDbSpec {
 
-  implicit val config: OreConfig = ConfigSource.fromConfig(configuration.underlying).loadOrThrow[OreConfig]
+  implicit val config: OreConfig = ConfigSource.default.loadOrThrow[OreConfig]
 
   def sqlTest(frag: Fragment): Future[Assertion] =
     runtime.unsafeRunToFuture(frag.query[Boolean].unique.transact(transactor)).map(assert(_))

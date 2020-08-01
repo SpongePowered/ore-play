@@ -13,7 +13,7 @@ import pureconfig.generic.auto._
 @RunWith(classOf[JUnitRunner])
 class UserQueriesSpec extends DbSpec {
 
-  implicit val config: OreConfig = ConfigSource.fromConfig(configuration.underlying).loadOrThrow[OreConfig]
+  implicit val config: OreConfig = ConfigSource.default.loadOrThrow[OreConfig]
 
   /* Relies on a view and as such can't test NULL stuff reliably
   test("GetProjects") {
