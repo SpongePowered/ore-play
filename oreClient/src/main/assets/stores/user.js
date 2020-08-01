@@ -72,7 +72,7 @@ const actions = {
             })
           })
 
-          API.request('permissions', { organization: user }).then((response) => {
+          API.request('permissions', 'GET', { organization: user }).then((response) => {
             context.commit({
               type: 'setOrgaPermissions',
               orgaPermissions: response.permissions,
