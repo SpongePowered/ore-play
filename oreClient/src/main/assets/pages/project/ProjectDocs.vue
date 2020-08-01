@@ -283,16 +283,14 @@ export default {
     $route() {
       this.updatePage(false)
     },
-    project(val, oldVal) {
-      if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
-        this.updatePage(true)
-      }
+    project: {
+      handler(val, oldVal) {
+        if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
+          this.updatePage(true)
+        }
+      },
+      immediate: true,
     },
-  },
-  created() {
-    if (this.project) {
-      this.updatePage(true)
-    }
   },
   methods: {
     updatePage(fetchPages) {

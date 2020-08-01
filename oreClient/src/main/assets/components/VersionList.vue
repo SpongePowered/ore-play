@@ -185,16 +185,14 @@ export default {
       this.update()
       window.scrollTo(0, 0)
     },
-    project(val, oldVal) {
-      if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
-        this.update()
-      }
+    project: {
+      handler(val, oldVal) {
+        if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
+          this.update()
+        }
+      },
+      immediate: true,
     },
-  },
-  created() {
-    if (this.project) {
-      this.update()
-    }
   },
   methods: {
     update() {

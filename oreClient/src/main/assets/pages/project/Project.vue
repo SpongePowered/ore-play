@@ -32,12 +32,12 @@ export default {
     },
   },
   watch: {
-    $route() {
-      this.distpatchUpdate()
+    $route: {
+      handler() {
+        this.distpatchUpdate()
+      },
+      immediate: true,
     },
-  },
-  created() {
-    this.distpatchUpdate()
   },
   methods: {
     distpatchUpdate() {

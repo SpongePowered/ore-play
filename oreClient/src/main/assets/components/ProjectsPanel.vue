@@ -83,16 +83,14 @@ export default {
     ...mapState('user', ['user']),
   },
   watch: {
-    user(val, oldVal) {
-      if (!oldVal || val.name !== oldVal.name) {
-        this.loadActions(0, 1)
-      }
+    user: {
+      handler(val, oldVal) {
+        if (!oldVal || val.name !== oldVal.name) {
+          this.loadActions(0, 1)
+        }
+      },
+      immediate: true,
     },
-  },
-  created() {
-    if (this.user) {
-      this.loadActions(0, 1)
-    }
   },
   methods: {
     loadActions(increment, set) {

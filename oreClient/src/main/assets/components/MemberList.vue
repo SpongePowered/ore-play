@@ -181,12 +181,12 @@ export default {
         this.updatedMembers = this.memberArrayToObj(val)
       }
     },
-    madeChanges() {
-      $('[data-toggle="tooltip"]').tooltip()
+    madeChanges: {
+      handler() {
+        $('[data-toggle="tooltip"]').tooltip()
+      },
+      immediate: true,
     },
-  },
-  created() {
-    $('[data-toggle="tooltip"]').tooltip()
   },
   methods: {
     avatarUrl,
