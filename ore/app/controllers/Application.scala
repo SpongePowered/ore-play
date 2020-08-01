@@ -1,16 +1,21 @@
 package controllers
 
 import java.io.StringWriter
+import java.net.{InetAddress, NetworkInterface}
 import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
 import java.time.{LocalDate, OffsetDateTime}
 import java.util.Date
+import java.util.concurrent.TimeUnit
 
+import scala.concurrent.Future
 import scala.util.Try
 
+import play.api.http.{ContentTypes, HttpErrorHandler, Writeable}
 import play.api.mvc.{Action, ActionBuilder, AnyContent}
 import play.api.routing.JavaScriptReverseRouter
 
+import controllers.sugar.CircePlayController
 import controllers.sugar.Requests.AuthRequest
 import db.impl.query.AppQueries
 import form.OreForms
@@ -32,18 +37,21 @@ import util.syntax._
 import util.{Sitemap, UserActionLogger}
 import views.{html => views}
 
+import akka.util.{ByteString, Timeout}
 import cats.Order
 import cats.instances.vector._
 import cats.syntax.all._
+import akka.actor.ActorSystem
 import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}
 
 /**
   * Main entry point for application.
   */
-final class Application(forms: OreForms)(
+final class Application(forms: OreForms, val errorHandler: HttpErrorHandler)(
     implicit oreComponents: OreControllerComponents,
-    renderer: MarkdownRenderer
+    renderer: MarkdownRenderer,
+    actorSystem: ActorSystem
 ) extends OreBaseController {
 
   private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))
@@ -178,6 +186,8 @@ final class Application(forms: OreForms)(
     * @return     Redirect to proper route
     */
   def removeTrail(path: String): Action[AnyContent] = Action(MovedPermanently(s"/$path"))
+
+  def faviconRedirect(): Action[AnyContent] = Action(Redirect(assetsFinder.path("images/favicon.ico")))
 
   /**
     * Show the activities page for a user
@@ -480,5 +490,42 @@ final class Application(forms: OreForms)(
          |Sitemap: ${config.app.baseUrl}/sitemap.xml
          |""".stripMargin
     ).as("text/plain")
+  }
+
+  private def isLocalHost(address: String): Boolean = {
+    val ipAddress = InetAddress.getByName(address)
+
+    //https://stackoverflow.com/questions/2406341/how-to-check-if-an-ip-address-is-the-local-host-on-a-multi-homed-system/2406819
+    ipAddress.isAnyLocalAddress || ipAddress.isLoopbackAddress ||
+    Try(NetworkInterface.getByInetAddress(ipAddress) != null).getOrElse(false)
+  }
+
+  import _root_.io.circe.{Json, Encoder}
+  import _root_.io.circe.syntax._
+
+  implicit val jsonWriteable: Writeable[Json] = Writeable(js => ByteString(js.noSpaces), Some(ContentTypes.JSON))
+
+  def actorTree(timeoutMs: Long): Action[AnyContent] = Action.async { request =>
+    implicit val timeout: Timeout = Timeout(timeoutMs, TimeUnit.MILLISECONDS)
+
+    import _root_.io.scalac.panopticon.akka.tree.build
+
+    if (isLocalHost(request.remoteAddress)) {
+      build(actorSystem).map(tree => Ok(tree.asJson).as(ContentTypes.JSON))
+    } else {
+      Future.successful(Forbidden("Not localhost"))
+    }
+  }
+
+  def actorCount(timeoutMs: Long): Action[AnyContent] = Action.async { request =>
+    implicit val timeout: Timeout = Timeout(timeoutMs, TimeUnit.MILLISECONDS)
+
+    import _root_.io.scalac.panopticon.akka.counter.count
+
+    if (isLocalHost(request.remoteAddress)) {
+      count(actorSystem).map(res => Ok(Json.obj("result" := res)))
+    } else {
+      Future.successful(Forbidden("Not localhost"))
+    }
   }
 }

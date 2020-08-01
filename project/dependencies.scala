@@ -4,28 +4,28 @@ import sbt._
 
 object Version {
   val cats        = "2.1.1"
-  val catsEffect  = "2.1.2"
+  val catsEffect  = "2.1.3"
   val catsTagless = "0.11"
 
-  val zio     = "1.0.0-RC18-2"
-  val zioCats = "2.0.0.0-RC12"
+  val zio     = "1.0.0-RC20"
+  val zioCats = "2.1.3.0-RC15"
 
   val slick     = "3.3.2"
   val slickPg   = "0.19.0"
   val playSlick = "5.0.0"
-  val doobie    = "0.8.8"
+  val doobie    = "0.9.0"
 
   val circe           = "0.13.0"
   val circeDerivation = "0.13.0-M4"
 
-  val akka         = "2.6.4"
-  val akkaHttp     = "10.1.11"
+  val akka         = "2.6.6"
+  val akkaHttp     = "10.1.12"
   val scalaLogging = "3.9.2"
 
   val simulacrum = "0.19.0"
-  val macWire    = "2.3.3"
+  val macWire    = "2.3.7"
   val scalaCache = "0.28.0"
-  val flexmark   = "0.60.2"
+  val flexmark   = "0.62.2"
 
   val squeal = "0.0.2"
 }
@@ -53,25 +53,29 @@ object Deps {
   val circeDerivation = "io.circe" %% "circe-derivation-annotations" % Version.circeDerivation
   val circeParser     = "io.circe" %% "circe-parser"                 % Version.circe
 
-  val akkaHttp     = "com.typesafe.akka" %% "akka-http"        % Version.akkaHttp
-  val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core"   % Version.akkaHttp
-  val akkaStream   = "com.typesafe.akka" %% "akka-stream"      % Version.akka
-  val akkaTyped    = "com.typesafe.akka" %% "akka-actor-typed" % Version.akka
+  val akkaHttp                 = "com.typesafe.akka" %% "akka-http"                  % Version.akkaHttp
+  val akkaHttpCore             = "com.typesafe.akka" %% "akka-http-core"             % Version.akkaHttp
+  val akkaStream               = "com.typesafe.akka" %% "akka-stream"                % Version.akka
+  val akkaTyped                = "com.typesafe.akka" %% "akka-actor-typed"           % Version.akka
+  val akkaSerializationJackson = "com.typesafe.akka" %% "akka-serialization-jackson" % Version.akka
 
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % Version.scalaLogging
 
-  val enumeratum      = "com.beachape" %% "enumeratum"       % "1.5.15"
-  val enumeratumSlick = "com.beachape" %% "enumeratum-slick" % "1.5.16"
+  val enumeratum      = "com.beachape" %% "enumeratum"       % "1.6.1"
+  val enumeratumSlick = "com.beachape" %% "enumeratum-slick" % "1.6.0"
 
   val zio     = "dev.zio" %% "zio"              % Version.zio
   val zioCats = "dev.zio" %% "zio-interop-cats" % Version.zioCats
+  val zioZmx  = "dev.zio" %% "zio-zmx"          % "0.0.3"
 
-  val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.12.3"
+  val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.13.0"
 
   val scalaCache           = "com.github.cb372" %% "scalacache-caffeine"    % Version.scalaCache
   val scalaCacheCatsEffect = "com.github.cb372" %% "scalacache-cats-effect" % Version.scalaCache
 
   val macwire = "com.softwaremill.macwire" %% "macros" % Version.macWire % "provided"
+
+  val periscopeAkka = "io.scalac" %% "akka-periscope-core" % "0.2.0"
 
   private def flexmarkDep(module: String) = {
     val artifactId = if (module.isEmpty) "flexmark" else s"flexmark-$module"
@@ -94,14 +98,15 @@ object Deps {
   val pluginMeta = "org.spongepowered" % "plugin-meta" % "0.4.1"
 
   val javaxMail = "javax.mail"     % "mail"            % "1.4.7"
-  val postgres  = "org.postgresql" % "postgresql"      % "42.2.11"
+  val postgres  = "org.postgresql" % "postgresql"      % "42.2.14"
   val logback   = "ch.qos.logback" % "logback-classic" % "1.2.3"
   val sentry    = "io.sentry"      % "sentry-logback"  % "1.7.30"
 
   val playTestDeps = Seq(
     jdbc % Test,
     //specs2 % Test,
-    "org.scalatestplus.play" %% "scalatestplus-play" % "5.0.0"        % Test,
+    "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0"        % Test,
+    "org.scalatestplus"      %% "junit-4-12"         % "3.2.0.0"      % Test,
     "org.tpolecat"           %% "doobie-scalatest"   % Version.doobie % Test
   )
 }

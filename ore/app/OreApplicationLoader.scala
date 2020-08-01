@@ -3,6 +3,7 @@ import scala.language.higherKinds
 import java.sql.Connection
 import javax.inject.Provider
 
+import scala.annotation.unused
 import scala.concurrent.duration.FiniteDuration
 
 import play.api.cache.caffeine.CaffeineCacheComponents
@@ -53,7 +54,7 @@ import akka.actor.ActorSystem
 import cats.arrow.FunctionK
 import cats.effect.{ContextShift, Resource}
 import cats.tagless.syntax.all._
-import cats.{Defer, ~>}
+import cats.~>
 import com.softwaremill.macwire._
 import com.typesafe.scalalogging.Logger
 import doobie.util.transactor.Strategy
@@ -63,7 +64,8 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{CancelableFuture, Runtime, Schedule, Task, UIO, ZEnv, ZIO}
+import zio.zmx.Diagnostics
+import zio.{ExecutionStrategy, Exit, Runtime, Schedule, Task, UIO, ZEnv, ZIO, ZManaged}
 
 class OreApplicationLoader extends ApplicationLoader {
 
@@ -84,7 +86,6 @@ class OreComponents(context: ApplicationLoader.Context)
     with SlickComponents
     with SlickEvolutionsComponents
     with EvolutionsComponents {
-  import OreComponents.zioDefer
 
   val prefix                                = "/"
   override lazy val router: Router          = wire[_root_.router.Routes]
@@ -92,6 +93,9 @@ class OreComponents(context: ApplicationLoader.Context)
 
   use(prefix) //Gets around unused warning
   eager(applicationEvolutions)
+  eager(zmxDiagnostics)
+
+  val logger = Logger("Bootstrap")
 
   override lazy val httpFilters: Seq[EssentialFilter] = {
     val filters              = enabledFilters ++ super.httpFilters
@@ -101,7 +105,7 @@ class OreComponents(context: ApplicationLoader.Context)
     val notEnabledFilters = enabledFiltersConfig.diff(enabledFiltersCode)
 
     if (notEnabledFilters.nonEmpty) {
-      Logger("Bootstrap").warn(s"Found filters enabled in the config but not in code: $notEnabledFilters")
+      logger.warn(s"Found filters enabled in the config but not in code: $notEnabledFilters")
     }
 
     filters
@@ -144,6 +148,10 @@ class OreComponents(context: ApplicationLoader.Context)
   implicit lazy val impActorSystem: ActorSystem = actorSystem
 
   implicit lazy val runtime: Runtime[ZEnv] = Runtime.default
+
+  lazy val zmxDiagnostics: Diagnostics = applicationManaged(
+    zio.zmx.Diagnostics.live("localhost", config.diagnostics.zmx.port).build
+  )
 
   type ParUIO[A]  = zio.interop.ParIO[Any, Nothing, A]
   type ParTask[A] = zio.interop.ParIO[Any, Throwable, A]
@@ -283,14 +291,18 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val organizationsProvider: Provider[Organizations]              = () => organizations
   lazy val reviewsProvider: Provider[Reviews]                          = () => reviews
 
-  def waitTilEvolutionsDone(action: UIO[Unit]): CancelableFuture[Unit] = {
+  def runWhenEvolutionsDone(action: UIO[Unit]): Unit = {
     val isDone    = ZIO.effectTotal(applicationEvolutions.upToDate)
     val waitCheck = Schedule.doUntilM[Unit](_ => isDone) && Schedule.fixed(zio.duration.Duration.fromNanos(100))
 
-    runtime.unsafeRunToFuture(ZIO.unit.repeat(waitCheck).andThen(action))
+    runtime.unsafeRunAsync(ZIO.unit.repeat(waitCheck).andThen(action)) {
+      case Exit.Success(_) => ()
+      case Exit.Failure(cause) =>
+        logger.error(s"Failed to run action after evolutions done.\n${cause.prettyPrint}")
+    }
   }
 
-  waitTilEvolutionsDone(ZIO.effectTotal {
+  runWhenEvolutionsDone(ZIO.effectTotal {
     eager(projectTask)
     eager(userTask)
     eager(dbUpdateTask)
@@ -298,13 +310,28 @@ class OreComponents(context: ApplicationLoader.Context)
 
   def eager[A](module: A): Unit = use(module)
 
-  def use[A](value: A): Unit = {
-    identity(value)
-    ()
-  }
+  def use[A](@unused value: A): Unit = ()
+
+  def manualRelease[R, E, A](managed: ZManaged[R, E, A]): ZIO[R, E, (A, UIO[Any])] =
+    ZManaged.ReleaseMap.make.flatMap { releaseMap =>
+      managed.zio.provideSome[R]((_, releaseMap)).map {
+        case (_, a) =>
+          (a, releaseMap.releaseAll(Exit.unit, ExecutionStrategy.Sequential))
+      }
+    }
 
   def applicationResource[A](resource: Resource[Task, A]): A = {
     val (a, finalize) = runtime.unsafeRunSync(resource.allocated).toEither.toTry.get
+
+    applicationLifecycle.addStopHook(() => runtime.unsafeRunToFuture(finalize))
+
+    a
+  }
+
+  def applicationManaged[A](managed: ZManaged[ZEnv, Throwable, A]): A = {
+    managed.preallocate
+
+    val (a, finalize) = runtime.unsafeRunSync(manualRelease(managed)).toEither.toTry.get
 
     applicationLifecycle.addStopHook(() => runtime.unsafeRunToFuture(finalize))
 
@@ -323,8 +350,4 @@ object OreComponents {
     new FunctionK[ZIO[R, Throwable, *], ZIO[R, Nothing, *]] {
       override def apply[A](fa: ZIO[R, Throwable, A]): ZIO[R, Nothing, A] = fa.orDie
     }
-
-  implicit def zioDefer[R, E]: Defer[ZIO[R, E, *]] = new Defer[ZIO[R, E, *]] {
-    override def defer[A](fa: => ZIO[R, E, A]): ZIO[R, E, A] = ZIO.effectSuspendTotal(fa)
-  }
 }

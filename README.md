@@ -1,6 +1,6 @@
 # Ore
-[![Build Status GH](https://github.com/SpongePowered/Ore/workflows/main)](https://github.com/SpongePowered/Ore/workflows/main/badge.svg)
-[![Build Status](https://travis-ci.com/SpongePowered/Ore.svg?branch=master)](https://travis-ci.com/SpongePowered/Ore)
+![Build Status Ore](https://github.com/SpongePowered/Ore/workflows/Ore%20CI/badge.svg?branch=staging)
+![Build Status Scalafmt](https://github.com/SpongePowered/Ore/workflows/Scalafmt%20Check/badge.svg?branch=staging)
 [![Hydra](https://img.shields.io/badge/%22%22%22%7CHydra-4%20cpus-brightgreen.svg)](https://www.triplequote.com/hydra)
 
 Repository software for Sponge plugins and Forge mods https://ore.spongepowered.org/

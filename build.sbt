@@ -29,6 +29,7 @@ lazy val externalCommon = project.settings(
     Deps.akkaHttpCore,
     Deps.akkaStream,
     Deps.akkaTyped,
+    Deps.akkaSerializationJackson,
     Deps.scalaLogging,
     Deps.simulacrum
   )
@@ -159,7 +160,9 @@ lazy val ore = project
       Deps.circe,
       Deps.circeDerivation,
       Deps.circeParser,
-      Deps.macwire
+      Deps.macwire,
+      Deps.periscopeAkka,
+      Deps.zioZmx
     ),
     libraryDependencies ++= Deps.flexmarkDeps,
     libraryDependencies ++= Seq(

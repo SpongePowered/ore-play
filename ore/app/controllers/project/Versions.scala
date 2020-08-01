@@ -92,17 +92,23 @@ class Versions(stats: StatTracker[UIO])(
     * @param versionString Version string
     * @return Sent file
     */
-  def download(author: String, slug: String, versionString: String, token: Option[String]): Action[AnyContent] =
+  def download(
+      author: String,
+      slug: String,
+      versionString: String,
+      token: Option[String],
+      confirm: Boolean
+  ): Action[AnyContent] =
     ProjectAction(author, slug).asyncF { implicit request =>
       val project = request.project
-      getVersion(project, versionString).flatMap(sendVersion(project, _, token))
+      getVersion(project, versionString).flatMap(sendVersion(project, _, token, confirm))
     }
 
-  private def sendVersion(project: Project, version: Model[Version], token: Option[String])(
+  private def sendVersion(project: Project, version: Model[Version], token: Option[String], confirm: Boolean)(
       implicit req: ProjectRequest[_]
   ): UIO[Result] = {
     checkConfirmation(version, token).flatMap { passed =>
-      if (passed)
+      if (passed || confirm)
         _sendVersion(project, version)
       else
         UIO.succeed(
@@ -371,7 +377,7 @@ class Versions(stats: StatTracker[UIO])(
         .runDBIO(firstPromotedVersion(request.project.id).result.headOption)
         .get
         .orElseFail(NotFound)
-        .flatMap(sendVersion(request.project, _, token))
+        .flatMap(sendVersion(request.project, _, token, confirm = false))
     }
 
   private def firstPromotedVersion(id: DbRef[Project]) =

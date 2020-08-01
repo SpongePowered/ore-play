@@ -1,214 +1,251 @@
 <template>
-    <div>
-        <div v-if="editable && permissions.includes('manage_subject_members')" class="modal fade" id="modal-user-delete"
-             tabindex="-1" role="dialog"
-             aria-labelledby="label-user-delete">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <button type="button" class="close" data-dismiss="modal"
-                            aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                    <h4 class="modal-title" id="label-user-delete">Remove member</h4>
-                </div>
-                <div class="modal-body">Are you sure you want to remove this user?</div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal" @click="userToRemove = null">
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-danger" @click="$emit('remove-user', userToRemove)">
-                        Remove
-                    </button>
-                </div>
-            </div>
+  <div>
+    <div
+      v-if="editable && permissions.includes('manage_subject_members')"
+      id="modal-user-delete"
+      class="modal fade"
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="label-user-delete"
+    >
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <h4 id="label-user-delete" class="modal-title">
+            Remove member
+          </h4>
         </div>
-
-        <div v-if="updateError" class="alert alert-danger member-error">
-            <span>{{ updateError }}</span>
+        <div class="modal-body">
+          Are you sure you want to remove this user?
         </div>
-
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <h3 class="pull-left panel-title">Members</h3>
-
-                <div v-if="permissions.includes('manage_subject_members')" class="pull-right">
-                    <router-link v-if="!editable && settingsRoute" :to="settingsRoute" v-slot="{ href, navigate }">
-                        <a v-if="!editable" :href="href" @click="navigate" class="btn yellow btn-xs">
-                            <font-awesome-icon :icon="['fas', 'pencil-alt']"/>
-                        </a>
-                    </router-link>
-
-                    <button v-show="editable && madeChanges" class="btn btn-default btn-panel btn-xs"
-                            data-toggle="tooltip" data-placement="top" data-title="Save Users"
-                            aria-label="Save Users"
-                            @click="saveMembers">
-                        <font-awesome-icon :icon="['fas', spinIcon ? 'spinner' : 'paper-plane']" :spin="spinIcon"/>
-                    </button>
-                    <button v-show="editable && madeChanges" class="btn btn-default btn-panel btn-xs"
-                            data-toggle="tooltip" data-placement="top" data-title="Discard changes"
-                            aria-label="Discard changes"
-                            @click="resetEdit">
-                        <font-awesome-icon :icon="['fas', 'times']"/>
-                    </button>
-                </div>
-            </div>
-
-            <ul class="list-members list-group">
-                <!-- Member list -->
-                <template v-for="member in updatedMembers">
-                    <li class="list-group-item">
-                        <icon :name="member.user" :src="avatarUrl(member.user)" extra-classes="user-avatar-xs"></icon>
-                        <router-link class="username" :to="{name: 'user_projects', params: {user: member.user}}">
-                            {{ member.user }}
-                        </router-link>
-
-                        <template
-                                v-if="editable && permissions.includes('manage_subject_members') && member.role.isAssignable">
-                            <a href="#" @click="removeUser(member.user)">
-                                <font-awesome-icon style="padding-left:5px" :icon="['fas', 'trash']"/>
-                            </a>
-
-                            <role-select :value="member.role.name" @input="setMemberRole(member.user, $event)"
-                                         role-category="project"/>
-                        </template>
-                        <span v-else class="minor pull-right">
-                            <span v-if="member.role.is_accepted">{{ member.role.title }}</span>
-                            <span v-else class="minor">(Invited as {{ member.role.title }})</span>
-                        </span>
-                    </li>
-                </template>
-
-                <!-- User search -->
-                <li v-if="permissions.includes('manage_subject_members') && editable" class="list-group-item">
-                    <user-search :exclude="Object.values(updatedMembers).map(m => m.user)" style="width: 100%"
-                                 @add-user="addNewMember"/>
-                </li>
-            </ul>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal" @click="userToRemove = null">
+            Close
+          </button>
+          <button type="submit" class="btn btn-danger" @click="$emit('remove-user', userToRemove)">
+            Remove
+          </button>
         </div>
+      </div>
     </div>
+
+    <div v-if="updateError" class="alert alert-danger member-error">
+      <span>{{ updateError }}</span>
+    </div>
+
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="pull-left panel-title">
+          Members
+        </h3>
+
+        <div v-if="permissions.includes('manage_subject_members')" class="pull-right">
+          <router-link v-if="!editable && settingsRoute" v-slot="{ href, navigate }" :to="settingsRoute">
+            <a v-if="!editable" :href="href" class="btn yellow btn-xs" @click="navigate">
+              <FontAwesomeIcon :icon="['fas', 'pencil-alt']" />
+            </a>
+          </router-link>
+
+          <button
+            v-show="editable && madeChanges"
+            class="btn btn-default btn-panel btn-xs"
+            data-toggle="tooltip"
+            data-placement="top"
+            data-title="Save Users"
+            aria-label="Save Users"
+            @click="saveMembers"
+          >
+            <FontAwesomeIcon :icon="['fas', spinIcon ? 'spinner' : 'paper-plane']" :spin="spinIcon" />
+          </button>
+          <button
+            v-show="editable && madeChanges"
+            class="btn btn-default btn-panel btn-xs"
+            data-toggle="tooltip"
+            data-placement="top"
+            data-title="Discard changes"
+            aria-label="Discard changes"
+            @click="resetEdit"
+          >
+            <FontAwesomeIcon :icon="['fas', 'times']" />
+          </button>
+        </div>
+      </div>
+
+      <ul class="list-members list-group">
+        <!-- Member list -->
+        <template v-for="member in updatedMembers">
+          <li :key="member.user" class="list-group-item">
+            <icon :name="member.user" :src="avatarUrl(member.user)" extra-classes="user-avatar-xs" />
+            <router-link class="username" :to="{ name: 'user_projects', params: { user: member.user } }">
+              {{ member.user }}
+            </router-link>
+
+            <template v-if="editable && permissions.includes('manage_subject_members') && member.role.isAssignable">
+              <a href="#" @click="removeUser(member.user)">
+                <FontAwesomeIcon style="padding-left: 5px;" :icon="['fas', 'trash']" />
+              </a>
+
+              <role-select
+                :value="member.role.name"
+                role-category="project"
+                @input="setMemberRole(member.user, $event)"
+              />
+            </template>
+            <span v-else class="minor pull-right">
+              <span v-if="member.role.is_accepted">{{ member.role.title }}</span>
+              <span v-else class="minor">(Invited as {{ member.role.title }})</span>
+            </span>
+          </li>
+        </template>
+
+        <!-- User search -->
+        <li v-if="permissions.includes('manage_subject_members') && editable" class="list-group-item">
+          <user-search
+            :exclude="Object.values(updatedMembers).map((m) => m.user)"
+            style="width: 100%;"
+            @add-user="addNewMember"
+          />
+        </li>
+      </ul>
+    </div>
+  </div>
 </template>
 
 <script>
-    import {avatarUrl} from "../utils";
-    import Icon from "./Icon"
-    import UserSearch from "./UserSearch"
-    import RoleSelect from "./RoleSelect"
-    import {Role} from "../enums";
-    import {API} from "../api";
+import { avatarUrl } from '../utils'
+import { Role } from '../enums'
+import { API } from '../api'
+import Icon from './Icon'
+import UserSearch from './UserSearch'
+import RoleSelect from './RoleSelect'
 
-    export default {
-        components: {
-            Icon,
-            UserSearch,
-            RoleSelect
-        },
-        data() {
-            return {
-                newUserRole: this.newRole,
-                updatedMembers: this.memberArrayToObj(this.members),
-                madeChanges: false,
-                updateError: null,
-                spinIcon: false,
-            }
-        },
-        props: {
-            roleCategory: {
-                type: String,
-                required: true
-            },
-            members: {
-                type: Array,
-                required: true
-            },
-            permissions: {
-                type: Array,
-                required: true
-            },
-            editable: {
-                type: Boolean,
-                default: false
-            },
-            newRole: String,
-            settingsRoute: Object,
-            endpoint: String,
-            commitLocation: String
-        },
-        created() {
-            $('[data-toggle="tooltip"]').tooltip()
-        },
-        watch: {
-            members(val) {
-                if (!this.madeChanges) {
-                    this.updatedMembers = this.memberArrayToObj(val);
-                }
-            },
-            madeChanges() {
-                $('[data-toggle="tooltip"]').tooltip()
-            }
-        },
-        computed: {
-            roles() {
-                return Role;
-            }
-        },
-        methods: {
-            avatarUrl,
-            memberArrayToObj(arr) {
-                let acc = {};
-                for (let member of arr) {
-                    acc[member.user] = {
-                        user: member.user,
-                        role: Role.byId(member.role.name)
-                    }
-                    acc[member.user].role.is_accepted = member.role.is_accepted;
-                }
-
-                return acc;
-            },
-            memberObjToArray(obj) {
-                let acc = [];
-
-                for(let {user, role} of Object.values(obj)) {
-                    acc.push({user, role: role.name})
-                }
-
-                return acc;
-            },
-            resetNewUserRole() {
-                this.newUserRole = 'Project_Support'
-            },
-            addNewMember(user) {
-                this.$set(this.updatedMembers, user.name, {user: user.name, role: Role.byId(this.newUserRole)})
-                this.resetNewUserRole();
-                this.madeChanges = true;
-            },
-            removeUser(user) {
-                delete this.updatedMembers[user];
-                this.madeChanges = true;
-            },
-            setMemberRole(user, role) {
-                this.$set(this.updatedMembers[user], 'role', Role.byId(role));
-                this.madeChanges = true;
-            },
-            resetEdit() {
-                this.updatedMembers = this.memberArrayToObj(this.members);
-                this.madeChanges = false;
-            },
-            saveMembers() {
-                this.spinIcon = true;
-                let memberArr = this.memberObjToArray(this.updatedMembers);
-                API.request(this.endpoint, 'POST', memberArr).then(res => {
-                    this.spinIcon = false;
-
-                    if(this.commitLocation) {
-                        this.$store.commit({
-                            type: this.commitLocation,
-                            members: res
-                        });
-                        this.resetEdit()
-                    }
-                })
-            }
-        }
+export default {
+  components: {
+    Icon,
+    UserSearch,
+    RoleSelect,
+  },
+  props: {
+    roleCategory: {
+      type: String,
+      required: true,
+    },
+    members: {
+      type: Array,
+      required: true,
+    },
+    permissions: {
+      type: Array,
+      required: true,
+    },
+    editable: {
+      type: Boolean,
+      default: false,
+    },
+    newRole: {
+      type: String,
+      default: null,
+    },
+    settingsRoute: {
+      type: Object,
+      default: null,
+    },
+    endpoint: {
+      type: String,
+      default: null,
+    },
+    commitLocation: {
+      type: String,
+      default: null,
+    },
+  },
+  data() {
+    return {
+      newUserRole: this.newRole,
+      updatedMembers: this.memberArrayToObj(this.members),
+      madeChanges: false,
+      updateError: null,
+      spinIcon: false,
     }
+  },
+  computed: {
+    roles() {
+      return Role
+    },
+  },
+  watch: {
+    members(val) {
+      if (!this.madeChanges) {
+        this.updatedMembers = this.memberArrayToObj(val)
+      }
+    },
+    madeChanges() {
+      $('[data-toggle="tooltip"]').tooltip()
+    },
+  },
+  created() {
+    $('[data-toggle="tooltip"]').tooltip()
+  },
+  methods: {
+    avatarUrl,
+    memberArrayToObj(arr) {
+      const acc = {}
+      for (const member of arr) {
+        acc[member.user] = {
+          user: member.user,
+          role: Role.byId(member.role.name),
+        }
+        acc[member.user].role.is_accepted = member.role.is_accepted
+      }
+
+      return acc
+    },
+    memberObjToArray(obj) {
+      const acc = []
+
+      for (const { user, role } of Object.values(obj)) {
+        acc.push({ user, role: role.name })
+      }
+
+      return acc
+    },
+    resetNewUserRole() {
+      this.newUserRole = 'Project_Support'
+    },
+    addNewMember(user) {
+      this.$set(this.updatedMembers, user.name, { user: user.name, role: Role.byId(this.newUserRole) })
+      this.resetNewUserRole()
+      this.madeChanges = true
+    },
+    removeUser(user) {
+      delete this.updatedMembers[user]
+      this.madeChanges = true
+    },
+    setMemberRole(user, role) {
+      this.$set(this.updatedMembers[user], 'role', Role.byId(role))
+      this.madeChanges = true
+    },
+    resetEdit() {
+      this.updatedMembers = this.memberArrayToObj(this.members)
+      this.madeChanges = false
+    },
+    saveMembers() {
+      this.spinIcon = true
+      const memberArr = this.memberObjToArray(this.updatedMembers)
+      API.request(this.endpoint, 'POST', memberArr).then((res) => {
+        this.spinIcon = false
+
+        if (this.commitLocation) {
+          this.$store.commit({
+            type: this.commitLocation,
+            members: res,
+          })
+          this.resetEdit()
+        }
+      })
+    },
+  },
+}
 </script>

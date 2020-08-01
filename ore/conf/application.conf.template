@@ -46,6 +46,8 @@ play {
                 font-src = "'self' data: https://fonts.gstatic.com"
                 frame-src = "https://forums.spongepowered.org"
                 frame-ancestors = "'none'"
+                report-uri = ${?CSP_REPORT_URI}
+                report-to = ${?CSP_REPORT_TO}
             }
         }
 
@@ -211,6 +213,15 @@ slick.dbs.default {
         user = ${?JDBC_DATABASE_USERNAME}
         password = ""
         password = ${?JDBC_DATABASE_PASSWORD}
+        connectionPool = "HikariCP"
+        registerMbeans = true
+        poolName = "ore-db"
+    }
+}
+
+diagnostics {
+    zmx {
+        port = 9002
     }
 }
 

@@ -32,9 +32,10 @@ import doobie.postgres.circe.jsonb.implicits._
 import doobie.implicits.javasql._
 import doobie.implicits.javatime.JavaTimeLocalDateMeta
 import doobie.util.Put
-import io.circe.DecodingFailure
+import doobie.util.fragment.Elem
 import squeal.category._
 import squeal.category.syntax.all._
+import io.circe.DecodingFailure
 import zio.ZIO
 import zio.blocking.Blocking
 
@@ -149,7 +150,7 @@ object APIV2Queries extends DoobieOreProtocol {
              |       p.license_name,
              |       p.license_url,
              |       p.forum_sync
-             |  FROM projects p JOIN project_stats ps ON p.id = ps.id JOIN promoted_versions ppv on p.id = ppv.project_id""".stripMargin
+             |  FROM projects p JOIN project_stats ps ON p.id = ps.id""".stripMargin
 
     val visibilityFrag =
       if (canSeeHidden) None
@@ -315,10 +316,10 @@ object APIV2Queries extends DoobieOreProtocol {
     (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(select) ++ fr"sq").query[Long]
   }
 
-  case class Column[A](name: String, mkElem: A => Param.Elem)
+  case class Column[A](name: String, mkElem: A => Elem)
   object Column {
-    def arg[A](name: String)(implicit put: Put[A]): Column[A]         = Column(name, Param.Elem.Arg(_, put))
-    def opt[A](name: String)(implicit put: Put[A]): Column[Option[A]] = Column(name, Param.Elem.Opt(_, put))
+    def arg[A](name: String)(implicit put: Put[A]): Column[A]         = Column(name, Elem.Arg(_, put))
+    def opt[A](name: String)(implicit put: Put[A]): Column[Option[A]] = Column(name, Elem.Opt(_, put))
   }
 
   private def updateTable[F[_[_]]: ApplicativeKC: FoldableKC](
@@ -513,7 +514,6 @@ object APIV2Queries extends DoobieOreProtocol {
       roles: Seq[Role],
       excludeOrganizations: Boolean
   ): Fragment = {
-    import betterinterpolator._
     val initialFilters = Fragments.whereAndOpt(
       q.map(s => if (s.endsWith("%")) fr"u.name LIKE $s" else fr"u.name LIKE ${s + "%"}"),
       if (excludeOrganizations) Some(fr"r IS NULL OR r.name != 'Organization'") else None,
@@ -523,22 +523,22 @@ object APIV2Queries extends DoobieOreProtocol {
       if (minProjects > 0) Some(fr"sq.power >= $minProjects") else None
     )
 
-    bsql"""|SELECT sq.created_at, sq.name, sq.tagline, sq.join_date, projects, roles
-           |    FROM (SELECT u.name,
-           |                 u.tagline,
-           |                 u.created_at,
-           |                 u.join_date,
-           |                 count(p.plugin_id)                                           AS projects,
-           |                 array_remove(array_agg(DISTINCT r.name), NULL)               AS roles,
-           |                 coalesce((bit_or(r.permission) & ~B'1'::BIT(64))::BIGINT, 0) AS power
-           |              FROM users u
-           |                       LEFT JOIN project_members_all pma ON u.id = pma.user_id
-           |                       LEFT JOIN projects p ON p.id = pma.id
-           |                       LEFT JOIN user_global_roles ugr ON u.id = ugr.user_id
-           |                       LEFT JOIN roles r ON ugr.role_id = r.id
-           |              $initialFilters
-           |              GROUP BY u.name, u.tagline, u.join_date, u.created_at) sq
-           |    $outerFilters""".stripMargin
+    sql"""|SELECT sq.created_at, sq.name, sq.tagline, sq.join_date, projects, roles
+          |    FROM (SELECT u.name,
+          |                 u.tagline,
+          |                 u.created_at,
+          |                 u.join_date,
+          |                 count(p.plugin_id)                                           AS projects,
+          |                 array_remove(array_agg(DISTINCT r.name), NULL)               AS roles,
+          |                 coalesce((bit_or(r.permission) & ~B'1'::BIT(64))::BIGINT, 0) AS power
+          |              FROM users u
+          |                       LEFT JOIN project_members_all pma ON u.id = pma.user_id
+          |                       LEFT JOIN projects p ON p.id = pma.id
+          |                       LEFT JOIN user_global_roles ugr ON u.id = ugr.user_id
+          |                       LEFT JOIN roles r ON ugr.role_id = r.id
+          |              $initialFilters
+          |              GROUP BY u.name, u.tagline, u.join_date, u.created_at) sq
+          |    $outerFilters""".stripMargin
   }
 
   def userSearchQuery(
@@ -764,7 +764,7 @@ object APIV2Queries extends DoobieOreProtocol {
           |       (1::BIT(64) << 9)
           |    FROM organizations o
           |             JOIN users ou ON o.user_id = ou.id
-          |             LEFT JOIN organization_members om ON o.id = om.organization_id AND om.user_id = $uploader
+          |             LEFT JOIN user_organization_roles om ON o.id = om.organization_id AND om.user_id = $uploader
           |             LEFT JOIN global_trust gt ON gt.user_id = om.user_id
           |             LEFT JOIN organization_trust ot ON ot.user_id = om.user_id AND ot.organization_id = o.id
           |    WHERE o.name = $orgName;""".stripMargin.query[(DbRef[User], Boolean)]

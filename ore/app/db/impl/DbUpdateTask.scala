@@ -1,9 +1,8 @@
 package db.impl
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.inject.ApplicationLifecycle
 
+import db.impl.access.ProjectBase
 import db.impl.query.StatTrackerQueries
 import ore.OreConfig
 import ore.db.ModelService
@@ -17,8 +16,7 @@ import zio.clock.Clock
 import zio._
 
 class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
-    implicit ec: ExecutionContext,
-    service: ModelService[Task]
+    implicit service: ModelService[Task]
 ) {
 
   val interval: duration.Duration = duration.Duration.fromScala(config.ore.materializedUpdateInterval)
@@ -38,9 +36,9 @@ class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: 
       .tapInput(_ => UIO(Logger.debug("Processing stats")))
 
   private def runningTask(task: RIO[Clock, Unit], schedule: Schedule[Clock, Any, Int]) = {
-    val safeTask: ZIO[Clock, Unit, Unit] = task.flatMapError(e => UIO(Logger.error("Running DB task failed", e)))
+    val safeTask: ZIO[Clock, Nothing, Unit] = task.catchAll(e => UIO(Logger.error("Running DB task failed", e)))
 
-    runtime.unsafeRun(safeTask.repeat(schedule).fork)
+    runtime.unsafeRunToFuture(safeTask.repeat(schedule))
   }
 
   private val materializedViewsTask = runningTask(
@@ -71,10 +69,7 @@ class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: 
       runManyInTransaction(StatTrackerQueries.processVersionDownloads),
     statSchedule
   )
-  lifecycle.addStopHook { () =>
-    Future {
-      runtime.unsafeRun(materializedViewsTask.interrupt)
-      runtime.unsafeRun(statsTask.interrupt)
-    }
-  }
+
+  lifecycle.addStopHook(() => materializedViewsTask.cancel())
+  lifecycle.addStopHook(() => statsTask.cancel())
 }

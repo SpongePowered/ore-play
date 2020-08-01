@@ -4,6 +4,7 @@
 
 GET     /*path/                                                     @controllers.Application.removeTrail(path)
 GET     /assets/*file                                               controllers.Assets.versioned(path="/public", file: Asset)
+GET     /favicon.ico                                                @controllers.Application.faviconRedirect()
 
 # ---------- Admin ----------
 
@@ -19,6 +20,9 @@ GET     /admin/stats                                                @controllers
 GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[String], projectFilter: Option[String], versionFilter: Option[String], pageFilter: Option[DbRef[Page]], actionFilter: Option[String], subjectFilter: Option[String])
 
 GET     /statusz                                                    @controllers.ApiV1Controller.showStatusZ()
+
+GET     /pantopticon/actor-tree                                     @controllers.Application.actorTree(timeoutMs: Long ?= 2000)
+GET     /pantopticon/actor-count                                    @controllers.Application.actorCount(timeoutMs: Long ?= 2000)
 
 # ---------- API (v1) ----------
 +nocsrf
@@ -66,6 +70,7 @@ GET     /robots.txt                                                 @controllers
 
 # ---------- Projects ----------
 
+GET     /projects/new                                               @controllers.Application.showHome()
 POST    /invite/:id/:status                                         @controllers.project.Projects.setInviteStatus(id: DbRef[ProjectUserRole], status)
 POST    /invite/:id/:status/:behalf                                 @controllers.project.Projects.setInviteStatusOnBehalf(id: DbRef[ProjectUserRole], status: String, behalf: String)
 
@@ -123,7 +128,7 @@ GET     /:author/:slug/versions/:version/confirm                    @controllers
 POST    /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.confirmDownload(author, slug, version, downloadType: Option[Int], token: Option[String], dummy: Option[String])
 
 GET     /:author/:slug/versions/recommended/download                @controllers.project.Versions.downloadRecommended(author, slug, token: Option[String])
-GET     /:author/:slug/versions/:version/download                   @controllers.project.Versions.download(author, slug, version, token: Option[String])
+GET     /:author/:slug/versions/:version/download                   @controllers.project.Versions.download(author, slug, version, token: Option[String], confirm: Boolean ?= false)
 
 GET     /:author/:slug/versions/recommended/jar                     @controllers.project.Versions.downloadRecommendedJar(author, slug, token: Option[String])
 GET     /:author/:slug/versions/:version/jar                        @controllers.project.Versions.downloadJar(author, slug, version, token: Option[String])
