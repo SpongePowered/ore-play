@@ -1,5 +1,7 @@
 package ore.models.project.factory
 
+import java.time.OffsetDateTime
+
 import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
@@ -145,10 +147,11 @@ trait ProjectFactory {
     val name = template.name
     val slug = slugify(name)
     val insertProject = TableQuery[ProjectTable].map(p =>
-      (p.pluginId, p.ownerId, p.ownerName, p.name, p.category, p.description.?, p.visibility)
+      (p.pluginId, p.createdAt, p.ownerId, p.ownerName, p.name, p.category, p.description.?, p.visibility)
     ) += (
       (
         template.pluginId,
+        OffsetDateTime.now(),
         ownerId,
         ownerName,
         name,

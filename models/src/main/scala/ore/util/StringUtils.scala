@@ -19,7 +19,9 @@ object StringUtils {
     * @return     Slug of string
     */
   def slugify(str: String): String =
-    replaceRegex.replaceAllIn(compact(str).toLowerCase(Locale.ROOT).replace(' ', '-'), "").substring(0, 32)
+    replaceRegex
+      .replaceAllIn(compact(str).toLowerCase(Locale.ROOT).replace(' ', '-'), "")
+      .substring(0, Math.min(32, str.length))
 
   /**
     * Returns the specified String with all consecutive spaces removed.
