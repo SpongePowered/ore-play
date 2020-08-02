@@ -5,7 +5,7 @@ import config from './config.json5'
 import { store } from './stores/index'
 
 export class API {
-  static async request(url, method = 'GET', data = {}) {
+  static async request(url, method = 'GET', data = {}, secondTry) {
     const session = await this.getSession()
 
     const isFormData = data instanceof FormData
@@ -30,10 +30,10 @@ export class API {
       return await res.json()
     } else if (res.status === 401) {
       const jsonError = await res.json()
-      if (jsonError.error === 'Api session expired' || jsonError.error === 'Invalid session') {
+      if ((jsonError.error === 'Api session expired' || jsonError.error === 'Invalid session') && !secondTry) {
         // This should never happen but just in case we catch it and invalidate the session to definitely get a new one
         API.invalidateSession()
-        return await API.request(url, method, data)
+        return await API.request(url, method, data, true)
       }
 
       throw res.status
