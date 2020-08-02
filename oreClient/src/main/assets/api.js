@@ -13,6 +13,8 @@ export class API {
 
     const query = isFormData || isBodyRequest || !Object.entries(data).length ? '' : '?' + queryString.stringify(data)
 
+    const body = isBodyRequest ? (isFormData ? data : JSON.stringify(data)) : undefined
+
     const res = await fetch(config.app.baseUrl + '/api/v2/' + url + query, {
       method,
       headers: {
@@ -20,7 +22,7 @@ export class API {
         Authorization: 'OreApi session=' + session,
         'Csrf-Token': typeof csrf !== 'undefined' ? csrf : undefined,
       },
-      data: isBodyRequest && !isFormData ? JSON.stringify(data) : data,
+      body,
       // Technically not needed, but some internal compat stuff assumes cookies will be present
       mode: 'cors',
       credentials: 'include',
