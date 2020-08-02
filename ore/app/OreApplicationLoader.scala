@@ -59,6 +59,8 @@ import com.softwaremill.macwire._
 import com.typesafe.scalalogging.Logger
 import doobie.util.transactor.Strategy
 import doobie.{ExecutionContexts, KleisliInterpreter, Transactor}
+import pureconfig.ConfigSource
+import pureconfig.generic.auto._
 import slick.basic.{BasicProfile, DatabaseConfig}
 import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
@@ -93,7 +95,7 @@ class OreComponents(context: ApplicationLoader.Context)
 
   use(prefix) //Gets around unused warning
   eager(applicationEvolutions)
-  eager(zmxDiagnostics)
+  //eager(zmxDiagnostics)
 
   val logger = Logger("Bootstrap")
 
@@ -159,7 +161,7 @@ class OreComponents(context: ApplicationLoader.Context)
   val taskToUIO: Task ~> UIO = OreComponents.orDieFnK[Any]
   val uioToTask: UIO ~> Task = OreComponents.upcastFnK[UIO, Task]
 
-  implicit lazy val config: OreConfig                              = wire[OreConfig]
+  implicit lazy val config: OreConfig                              = ConfigSource.fromConfig(configuration.underlying).loadOrThrow[OreConfig]
   implicit lazy val env: OreEnv                                    = wire[OreEnv]
   implicit lazy val markdownRenderer: MarkdownRenderer             = wire[FlexmarkRenderer]
   implicit lazy val fileIORaw: FileIO[ZIO[Blocking, Throwable, *]] = ZIOFileIO(config)
@@ -207,7 +209,7 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val statTracker: StatTracker[UIO] = (wire[StatTracker.StatTrackerInstant[Task]]: StatTracker[Task])
     .imapK(taskToUIO)(uioToTask)
   lazy val spongeAuthApiTask: SpongeAuthApi[Task] = {
-    val api = config.security.api
+    val api = config.auth.api
     runtime.unsafeRun(
       AkkaSpongeAuthApi[Task](
         AkkaSpongeAuthApi.AkkaSpongeAuthSettings(
@@ -227,7 +229,7 @@ class OreComponents(context: ApplicationLoader.Context)
       override def cache[A](duration: FiniteDuration)(fa: Task[A]): Task[Task[A]] =
         cacher.cache(duration)(fa).provide(runtime.environment).map(_.provide(runtime.environment))
     }
-    val sso = config.security.sso
+    val sso = config.auth.sso
     runtime.unsafeRun(AkkaSSOApi[Task](sso.loginUrl, sso.signupUrl, sso.verifyUrl, sso.secret, sso.timeout, sso.reset))
   }
   lazy val ssoApi: SSOApi[UIO]                   = ssoApiTask.imapK(taskToUIO)(uioToTask)

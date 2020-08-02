@@ -130,6 +130,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
             .headOption
         )
         .get
+        .orElseFail(())
         .map(ProjectScope)
     case APIScope.OrganizationScope(organizationName) =>
       val q = for {
@@ -141,6 +142,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
       service
         .runDBIO(q.result.headOption)
         .get
+        .orElseFail(())
         .map(OrganizationScope)
   }
 

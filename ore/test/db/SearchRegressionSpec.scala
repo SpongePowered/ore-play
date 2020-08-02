@@ -2,8 +2,6 @@ package db
 
 import scala.concurrent.Future
 
-import play.api.Configuration
-
 import ore.OreConfig
 
 import org.junit.runner.RunWith
@@ -11,13 +9,13 @@ import org.scalatestplus.junit.JUnitRunner
 import doobie._
 import doobie.implicits._
 import org.scalatest.Assertion
+import pureconfig.ConfigSource
+import pureconfig.generic.auto._
 
 @RunWith(classOf[JUnitRunner])
 class SearchRegressionSpec extends AsyncDbSpec {
 
-  implicit val config: OreConfig = new OreConfig(
-    Configuration.load(getClass.getClassLoader, System.getProperties, Map.empty, allowMissingApplicationConf = false)
-  )
+  implicit val config: OreConfig = ConfigSource.default.loadOrThrow[OreConfig]
 
   def sqlTest(frag: Fragment): Future[Assertion] =
     runtime.unsafeRunToFuture(frag.query[Boolean].unique.transact(transactor)).map(assert(_))
