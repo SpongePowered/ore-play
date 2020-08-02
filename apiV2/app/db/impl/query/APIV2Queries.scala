@@ -192,7 +192,7 @@ object APIV2Queries extends DoobieOreProtocol {
         val trimmedQ = q.trim
 
         if (exactSearch) {
-          fr"p.slug = $trimmedQ"
+          fr"lower(p.slug) = lower($trimmedQ)"
         } else {
           if (q.endsWith(" ")) fr"p.search_words @@ websearch_to_tsquery('english', $trimmedQ)"
           else fr"p.search_words @@ websearch_to_tsquery_postfix('english', $trimmedQ)"
