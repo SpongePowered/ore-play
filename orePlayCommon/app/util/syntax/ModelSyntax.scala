@@ -50,7 +50,7 @@ object ModelSyntax extends ModelSyntax {
 
     def avatarUrl(name: String)(implicit config: OreConfig): String =
       if (name == "Spongie") config.sponge.logo
-      else config.security.api.avatarUrl.format(name)
+      else config.auth.api.avatarUrl.format(name)
   }
 
   class PageObjSyntax(private val p: Page.type) extends AnyVal {

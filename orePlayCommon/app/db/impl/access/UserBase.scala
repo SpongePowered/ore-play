@@ -125,7 +125,7 @@ object UserBase {
     }
 
     def createSession(user: Model[User]): F[Model[Session]] = {
-      val maxAge     = config.play.sessionMaxAge
+      val maxAge     = config.ore.session.maxAge
       val expiration = OffsetDateTime.now().plus(maxAge.toMillis, ChronoUnit.MILLIS)
       val token      = UUID.randomUUID().toString
       service.insert(Session(expiration, user.id, token))

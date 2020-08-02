@@ -10,7 +10,6 @@ import ore.util.OreMDC
 
 import cats.syntax.all._
 import com.typesafe.scalalogging
-import doobie.`enum`.TransactionIsolation
 import doobie.implicits._
 import zio.clock.Clock
 import zio._
@@ -19,7 +18,7 @@ class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: 
     implicit service: ModelService[Task]
 ) {
 
-  val interval: duration.Duration = duration.Duration.fromScala(config.ore.materializedUpdateInterval)
+  val interval: duration.Duration = duration.Duration.fromScala(config.ore.homepage.updateInterval)
 
   private val Logger               = scalalogging.Logger.takingImplicit[OreMDC]("DbUpdateTask")
   implicit private val mdc: OreMDC = OreMDC.NoMDC
@@ -50,23 +49,14 @@ class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: 
     materializedViewsSchedule
   )
 
-  private def runManyInTransaction(updates: Seq[doobie.Update0]) = {
+  private def runMany(updates: Seq[doobie.Update0]) = {
     import cats.instances.list._
-    import doobie._
-
-    service
-      .runDbCon(
-        for {
-          _ <- HC.setTransactionIsolation(TransactionIsolation.TransactionRepeatableRead)
-          _ <- updates.toList.traverse_(_.run)
-        } yield ()
-      )
-      .retry(Schedule.forever)
+    service.runDbCon(updates.toList.traverse_(_.run))
   }
 
   private val statsTask = runningTask(
-    runManyInTransaction(StatTrackerQueries.processProjectViews) *>
-      runManyInTransaction(StatTrackerQueries.processVersionDownloads),
+    runMany(StatTrackerQueries.processProjectViews) *>
+      runMany(StatTrackerQueries.processVersionDownloads),
     statSchedule
   )
 
