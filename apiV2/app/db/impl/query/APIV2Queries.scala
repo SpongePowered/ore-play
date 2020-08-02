@@ -775,7 +775,7 @@ object APIV2Queries extends DoobieOreProtocol {
           |        FROM project_pages pp
           |                 JOIN projects p ON pp.project_id = p.id
           |        WHERE p.plugin_id = $pluginId
-          |          AND split_part($page, '/', 1) = pp.slug
+          |          AND lower(split_part($page, '/', 1)) = lower(pp.slug)
           |          AND pp.parent_id IS NULL
           |    UNION
           |    SELECT pr.n + 1, pp.name, pp.slug, pp.contents, pp.id, pp.project_id
@@ -783,11 +783,11 @@ object APIV2Queries extends DoobieOreProtocol {
           |             project_pages pp
           |        WHERE pp.project_id = pr.project_id
           |          AND pp.parent_id = pr.id
-          |          AND split_part($page, '/', pr.n) = pp.slug
+          |          AND lower(split_part($page, '/', pr.n)) = lower(pp.slug)
           |)
           |SELECT pp.project_id, pp.id, pp.name, pp.contents
           |    FROM pages_rec pp
-          |    WHERE pp.slug = split_part($page, '/', array_length(regexp_split_to_array($page, '/'), 1));""".stripMargin
+          |    WHERE lower(pp.slug) = lower(split_part($page, '/', array_length(regexp_split_to_array($page, '/'), 1)));""".stripMargin
       .query[(DbRef[Project], DbRef[Page], String, Option[String])]
 
   def pageList(pluginId: String): Query0[(DbRef[Project], DbRef[Page], List[String], List[String], Boolean)] =
