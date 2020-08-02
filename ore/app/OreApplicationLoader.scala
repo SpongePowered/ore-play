@@ -31,7 +31,7 @@ import controllers._
 import controllers.apiv2.ApiV2Controller
 import controllers.project.{Channels, Pages, Projects, Versions}
 import controllers.sugar.Bakery
-import db.impl.DbUpdateTask
+import db.impl.{DbUpdateTask, OreEvolutionsReader}
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import db.impl.service.OreModelService
 import db.impl.service.OreModelService.F
@@ -151,6 +151,8 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val zmxDiagnostics: Diagnostics = applicationManaged(
     zio.zmx.Diagnostics.live("localhost", config.diagnostics.zmx.port).build
   )
+
+  override lazy val evolutionsReader = new OreEvolutionsReader(environment)
 
   type ParUIO[A]  = zio.interop.ParIO[Any, Nothing, A]
   type ParTask[A] = zio.interop.ParIO[Any, Throwable, A]
