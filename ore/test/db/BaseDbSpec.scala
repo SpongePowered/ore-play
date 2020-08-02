@@ -5,9 +5,11 @@ import javax.sql.DataSource
 
 import scala.concurrent.ExecutionContext
 
+import play.api.Environment
 import play.api.db.Databases
 import play.api.db.evolutions.Evolutions
 
+import db.impl.OreEvolutionsReader
 import ore.db.impl.query.DoobieOreProtocol
 
 import cats.effect.{Blocker, Effect}
@@ -44,7 +46,7 @@ trait BaseDbSpec extends Matchers with Checker[Task] with BeforeAndAfterAll with
       zioContextShift
     )
 
-  override def beforeAll(): Unit = Evolutions.applyEvolutions(database)
+  override def beforeAll(): Unit = Evolutions.applyEvolutions(database, new OreEvolutionsReader(Environment.simple()))
 
   override def afterAll(): Unit = {
     database.shutdown()
