@@ -1,7 +1,7 @@
 {
   alwaysTryLogin: false,
   app: {
-    baseUrl: "localhost:9000"
+    baseUrl: "http://localhost:9000"
   },
   ore: {
     projects: {
