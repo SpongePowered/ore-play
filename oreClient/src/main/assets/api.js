@@ -123,7 +123,7 @@ export class API {
       session = parseJsonOrNull(localStorage.getItem('public_api_session'))
     }
 
-    if (!isNaN(new Date(session.expires).getTime()) && new Date(session.expires) < nowWithPadding) {
+    if (session !== null && !isNaN(new Date(session.expires).getTime()) && new Date(session.expires) < nowWithPadding) {
       session = null
     }
 
