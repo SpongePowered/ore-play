@@ -111,14 +111,12 @@ export default {
     ...mapState('global', ['currentUser', 'memberships']),
   },
   watch: {
-    memberships(newVal, oldVal) {
-      this.updateOwners(newVal)
+    memberships: {
+      handler(newVal, oldVal) {
+        this.updateOwners(newVal)
+      },
+      immediate: true,
     },
-  },
-  created() {
-    if (this.memberships) {
-      this.updateOwners(this.memberships)
-    }
   },
   methods: {
     create() {

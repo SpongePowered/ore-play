@@ -89,7 +89,7 @@
 
               <role-select
                 :value="member.role.name"
-                role-category="project"
+                :role-category="roleCategory"
                 @input="setMemberRole(member.user, $event)"
               />
             </template>
@@ -181,38 +181,31 @@ export default {
         this.updatedMembers = this.memberArrayToObj(val)
       }
     },
-    madeChanges() {
-      $('[data-toggle="tooltip"]').tooltip()
+    madeChanges: {
+      handler() {
+        $('[data-toggle="tooltip"]').tooltip()
+      },
+      immediate: true,
     },
-  },
-  created() {
-    $('[data-toggle="tooltip"]').tooltip()
   },
   methods: {
     avatarUrl,
     memberArrayToObj(arr) {
-      const acc = {}
-      for (const member of arr) {
-        acc[member.user] = {
-          user: member.user,
-          role: Role.byId(member.role.name),
-        }
-        acc[member.user].role.is_accepted = member.role.is_accepted
-      }
-
-      return acc
+      return Object.fromEntries(
+        arr.map((member) => [
+          member.user,
+          {
+            user: member.user,
+            role: { ...Role.byId(member.role.name), is_accepted: member.role.is_accepted },
+          },
+        ])
+      )
     },
     memberObjToArray(obj) {
-      const acc = []
-
-      for (const { user, role } of Object.values(obj)) {
-        acc.push({ user, role: role.name })
-      }
-
-      return acc
+      return Object.values(obj).map(({ user, role }) => ({ user, role: role.name }))
     },
     resetNewUserRole() {
-      this.newUserRole = 'Project_Support'
+      this.newUserRole = this.newRole
     },
     addNewMember(user) {
       this.$set(this.updatedMembers, user.name, { user: user.name, role: Role.byId(this.newUserRole) })

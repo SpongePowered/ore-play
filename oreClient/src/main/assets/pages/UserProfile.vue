@@ -3,7 +3,6 @@
     :owner="user"
     :offset="(page - 1) * limit"
     :limit="limit"
-    :use-vue-router="false"
     @prev-page="page--"
     @next-page="page++"
     @jump-to-page="page = $event"

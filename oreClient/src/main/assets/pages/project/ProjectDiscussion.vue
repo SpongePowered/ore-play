@@ -65,16 +65,14 @@ export default {
     },
   },
   watch: {
-    project(val, oldVal) {
-      if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
-        this.updateData(val.external.discourse.topic_id)
-      }
+    project: {
+      handler(val, oldVal) {
+        if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
+          this.updateData(val.external.discourse.topic_id)
+        }
+      },
+      immediate: true,
     },
-  },
-  created() {
-    if (this.project) {
-      this.updateData(this.project.external.discourse.topic_id)
-    }
   },
   methods: {
     path() {

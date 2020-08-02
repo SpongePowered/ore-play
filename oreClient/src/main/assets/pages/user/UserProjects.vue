@@ -6,7 +6,6 @@
         :owner="user.name"
         :offset="(page - 1) * limit"
         :limit="limit"
-        :use-vue-router="true"
         @prev-page="page--"
         @next-page="page++"
         @jump-to-page="page = $event"

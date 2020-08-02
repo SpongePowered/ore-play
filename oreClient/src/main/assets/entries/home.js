@@ -1,3 +1,5 @@
+import 'regenerator-runtime/runtime.js'
+
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'

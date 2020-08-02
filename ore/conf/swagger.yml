@@ -205,8 +205,8 @@ components:
       title: Version
     models.protocols.APIV2.VersionTagColor:
       title: VersionTagColor
-    models.protocols.APIV2.ProjectMember:
-      title: ProjectMember
+    models.protocols.APIV2.Member:
+      title: Member
     models.protocols.APIV2.PromotedVersionTag:
       title: PromotedVersionTag
     models.protocols.APIV2.VersionStatsAll:
