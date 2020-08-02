@@ -294,6 +294,10 @@ export default {
   },
   methods: {
     updatePage(fetchPages) {
+      if (!this.project) {
+        return
+      }
+
       NProgress.start()
       API.request('projects/' + this.project.plugin_id + '/_pages/' + this.joinedPage)
         .then((response) => {
