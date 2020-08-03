@@ -10,7 +10,7 @@ import ore.db.impl.OrePostgresDriver.api._
   */
 object StringUtils {
 
-  private val replaceRegex = """[^a-z\-_0-9]""".r.unanchored
+  private val replaceRegex = """[^a-z\-_.0-9]""".r.unanchored
 
   /**
     * Returns a URL readable string from the specified string.
@@ -18,10 +18,10 @@ object StringUtils {
     * @param str  String to create slug for
     * @return     Slug of string
     */
-  def slugify(str: String): String =
-    replaceRegex
-      .replaceAllIn(compact(str).toLowerCase(Locale.ROOT).replace(' ', '-'), "")
-      .substring(0, Math.min(32, str.length))
+  def slugify(str: String): String = {
+    val replaced = replaceRegex.replaceAllIn(compact(str).toLowerCase(Locale.ROOT).replace(' ', '-'), "")
+    replaced.substring(0, Math.min(32, replaced.length))
+  }
 
   /**
     * Returns the specified String with all consecutive spaces removed.

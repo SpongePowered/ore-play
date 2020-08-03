@@ -376,7 +376,7 @@
           <ul class="list-group">
             <li v-for="(platform, index) in editPlatforms" :key="index" class="list-group-item">
               <div class="form-group">
-                <label :for="'platformVersion-' + platform.platform ? platform.platform : index">Platform: </label>
+                <label :for="'platformName-' + platform.platform ? platform.platform : index">Platform: </label>
                 <select
                   :id="'platformName-' + platform.platform ? platform.platform : index"
                   v-model="editPlatforms[index].platform"

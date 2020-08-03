@@ -5,7 +5,7 @@ DROP VIEW v_logged_actions;
 ALTER TABLE projects
     DROP COLUMN slug,
     ADD COLUMN slug TEXT NOT NULL GENERATED ALWAYS AS ( left(
-            regexp_replace(translate(lower(name), ' ', '-'), '[^a-z\-_0-9]', '', 'g'), 32) ) STORED,
+            regexp_replace(translate(lower(name), ' ', '-'), '[^a-z\-._0-9]', '', 'g'), 32) ) STORED,
     ADD CONSTRAINT projects_owner_name_slug_key UNIQUE (owner_name, slug);
 
 create view v_logged_actions(id, created_at, user_id, user_name, address, action, context_type, new_state, old_state, p_id, p_plugin_id, p_slug, p_owner_name, pv_id, pv_version_string, pp_id, pp_name, pp_slug, s_id, s_name) as

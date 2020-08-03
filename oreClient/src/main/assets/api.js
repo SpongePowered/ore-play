@@ -15,13 +15,17 @@ export class API {
 
     const body = isBodyRequest ? (isFormData ? data : JSON.stringify(data)) : undefined
 
+    const headers = { Authorization: 'OreApi session=' + session }
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json'
+    }
+    if (typeof csrf !== 'undefined') {
+      headers['Csrf-Token'] = csrf
+    }
+
     const res = await fetch(config.app.baseUrl + '/api/v2/' + url + query, {
       method,
-      headers: {
-        'Content-Type': isFormData ? undefined : 'application/json',
-        Authorization: 'OreApi session=' + session,
-        'Csrf-Token': typeof csrf !== 'undefined' ? csrf : undefined,
-      },
+      headers,
       body,
       // Technically not needed, but some internal compat stuff assumes cookies will be present
       mode: 'cors',
@@ -29,7 +33,9 @@ export class API {
     })
 
     if (res.ok) {
-      return await res.json()
+      if (res.status !== 204) {
+        return await res.json()
+      }
     } else if (res.status === 401) {
       const jsonError = await res.json()
       if ((jsonError.error === 'Api session expired' || jsonError.error === 'Invalid session') && !secondTry) {
