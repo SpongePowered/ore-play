@@ -535,7 +535,6 @@ import NProgress from 'nprogress'
 import uniqWith from 'lodash/uniqWith'
 import isEqual from 'lodash/isEqual'
 import ClipboardJS from 'clipboard'
-import moment from 'moment'
 import Editor from '../../components/Editor'
 import { API } from '../../api'
 import { Platform, ReleaseType, Stability } from '../../enums'
@@ -682,7 +681,7 @@ export default {
       })
     },
     prettifyDate(date) {
-      return moment(date).format('LL') // TODO
+      return new Date(date).toLocaleDateString('default', { year: 'numeric', month: 'long', day: 'numeric' })
     },
     // https://stackoverflow.com/a/18650828/7207457
     formatBytes(bytes, decimals = 2) {

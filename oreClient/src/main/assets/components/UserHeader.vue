@@ -136,7 +136,6 @@
 
 <script>
 import { mapState } from 'vuex'
-import moment from 'moment'
 import { Role, Prompt as PromptEnum } from '../enums'
 import { avatarUrl, genericError } from '../utils'
 import config from '../config.json5'
@@ -181,7 +180,7 @@ export default {
   },
   methods: {
     prettifyDate(rawDate) {
-      return moment(rawDate).format('MMM DD[,] YYYY')
+      return new Date(rawDate).toLocaleDateString('default', { year: 'numeric', month: 'long', day: 'numeric' })
     },
     avatarUrl,
     resetTagline() {

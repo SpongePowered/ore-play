@@ -201,7 +201,6 @@
 import isEqual from 'lodash/isEqual'
 import NProgress from 'nprogress'
 import { mapState } from 'vuex'
-import moment from 'moment'
 import { API } from '../../api'
 import Editor from '../../components/Editor'
 import MemberList from '../../components/MemberList'
@@ -322,7 +321,7 @@ export default {
       }
     },
     parseDate(rawDate) {
-      return moment(rawDate).format('MMM DD[,] YYYY')
+      return new Date(rawDate).toLocaleDateString('default', { year: 'numeric', month: 'long', day: 'numeric' })
     },
     parseCategory(category) {
       return Category.fromId(category).name

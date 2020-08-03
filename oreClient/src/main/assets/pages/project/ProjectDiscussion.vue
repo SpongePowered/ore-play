@@ -41,7 +41,6 @@
 <script>
 import { mapState } from 'vuex'
 import NProgress from 'nprogress'
-import moment from 'moment'
 import config from '../../config.json5'
 import { genericError } from '../../utils'
 
@@ -81,7 +80,7 @@ export default {
       return document.location.pathname
     },
     formatDate(date) {
-      return moment(date).format('MMM D, YYYY')
+      return new Date(date).toLocaleDateString('default', { year: 'numeric', month: 'long', day: 'numeric' })
     },
     updateData(topicId) {
       NProgress.start()

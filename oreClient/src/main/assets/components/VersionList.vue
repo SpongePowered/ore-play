@@ -115,7 +115,6 @@
 import NProgress from 'nprogress'
 import { mapState } from 'vuex'
 import filesize from 'filesize'
-import moment from 'moment'
 import { API } from '../api'
 import { Platform, ReleaseType, Stability, Visibility } from '../enums'
 import { numberWithCommas } from '../utils'
@@ -216,7 +215,7 @@ export default {
       return filesize(size)
     },
     formatDate(date) {
-      return moment(date).format('MMM D, YYYY')
+      return new Date(date).toLocaleDateString('default', { year: 'numeric', month: 'long', day: 'numeric' })
     },
     classForVisibility(visibility) {
       return Visibility.fromName(visibility).class
