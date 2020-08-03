@@ -15,6 +15,7 @@ import VersionPage from '../pages/project/VersionPage'
 import NewVersion from '../pages/project/NewVersion'
 import NewProject from '../pages/project/NewProject'
 import User from '../pages/user/User'
+import _404NotFound from '../pages/404NotFound'
 
 import { store } from '../stores/index'
 import UserProjects from '../pages/user/UserProjects'
@@ -32,6 +33,12 @@ const router = new VueRouter({
       path: '/',
       name: 'home',
       component: Home,
+    },
+    {
+      path: '/404/:routeUri+',
+      name: 'not_found_404',
+      component: _404NotFound,
+      props: true,
     },
     {
       path: '/:user',

@@ -490,7 +490,13 @@ import BtnHide from '../../components/BtnHide'
 import CSRFField from '../../components/CSRFField'
 import MemberList from '../../components/MemberList'
 import Icon from '../../components/Icon'
-import { avatarUrl as avatarUrlUtils, cleanEmptyObject, clearFromDefaults, nullIfEmpty } from '../../utils'
+import {
+  avatarUrl as avatarUrlUtils,
+  cleanEmptyObject,
+  clearFromDefaults,
+  genericError,
+  nullIfEmpty,
+} from '../../utils'
 import { Category } from '../../enums'
 import { API } from '../../api'
 import config from '../../config.json5'
@@ -628,16 +634,14 @@ export default {
               type: 'project/updateProject',
               project: result,
             })
-            this.sendingChanges = false
             this.updateDataFromProject(result, this)
 
             if (changedName || changedOwner) {
               this.$router.replace({ name: 'settings', params: result.namespace })
             }
           })
-          .catch((failed) => {
+          .finally(() => {
             this.sendingChanges = false
-            // TODO
           })
       } else {
         // Some "illusion" of the change being acknowledged is always good
@@ -664,7 +668,7 @@ export default {
           // Makes sure we update the image
           this.iconUrl = iconUrl + '?temp=' + Math.random()
         } else {
-          // TODO
+          genericError(this, 'An error occoured when setting the icon')
         }
       })
     },
@@ -683,7 +687,7 @@ export default {
           // Makes sure we update the image
           this.iconUrl = iconUrl + '?temp=' + Math.random()
         } else {
-          // TODO
+          genericError(this, 'An error occoured when resetting the icon')
         }
       })
     },
@@ -699,7 +703,7 @@ export default {
         } else if (res.status === 404) {
           // Do nothing
         } else {
-          // TODO
+          genericError(this, 'An error occoured when getting the deploy key')
         }
       })
     },
@@ -722,7 +726,7 @@ export default {
             }
           })
         } else {
-          // TODO
+          genericError(this, 'An error occoured when generating the deploy key')
         }
       })
     },
@@ -741,7 +745,7 @@ export default {
         if (res.ok) {
           this.deployKey = null
         } else {
-          // TODO
+          genericError(this, 'An error occoured when revoking the deploy key')
         }
       })
     },

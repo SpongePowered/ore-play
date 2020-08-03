@@ -259,8 +259,11 @@
                 </li>
               </router-link>
 
-              <!-- TODO only show if topic -->
-              <router-link v-slot="{ href, navigate, isActive }" :to="{ name: 'discussion' }">
+              <router-link
+                v-if="project && project.external.discourse.topic_id"
+                v-slot="{ href, navigate, isActive }"
+                :to="{ name: 'discussion' }"
+              >
                 <li :class="[isActive && 'active']">
                   <a :href="href" @click="navigate"><FontAwesomeIcon :icon="['fas', 'users']" /> Discuss</a>
                 </li>
@@ -339,7 +342,7 @@ import markdownItTaskLists from 'markdown-it-task-lists'
 import { mapState } from 'vuex'
 import { API } from '../api'
 import { FlagReason, Permission } from '../enums'
-import { numberWithCommas } from '../utils'
+import { genericError, numberWithCommas } from '../utils'
 import CSRFField from './CSRFField'
 
 const md = markdownIt({
@@ -437,7 +440,6 @@ export default {
         .fail((xhr) => {
           $('#modal-flag').modal('toggle')
           this.flagError = xhr.responseText
-          // TODO: Handle error
         })
     },
     toggleStarred() {
@@ -455,7 +457,7 @@ export default {
           this.$store.commit('project/toggleStarred')
         })
         .fail((xhr) => {
-          // TODO: Handle error
+          genericError(this, 'An error occoured when toggling starred')
         })
     },
     toggleWatching() {
@@ -478,7 +480,7 @@ export default {
           })
         })
         .fail((xhr) => {
-          // TODO: Handle error
+          genericError(this, 'An error occoured when toggling watching')
         })
     },
     formatStats(number) {

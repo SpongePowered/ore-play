@@ -6,9 +6,11 @@ const state = {
   project: null,
   permissions: [],
   members: [],
+  notFound: false,
 }
 const mutations = {
   updateProject(state, payload) {
+    state.notFound = false
     state.project = payload.project
   },
   updatePermissions(state, payload) {
@@ -45,6 +47,9 @@ const mutations = {
     }
 
     Vue.set(state.project.user_actions, 'watching', watching)
+  },
+  projectNotFound(state) {
+    state.notFound = true
   },
 }
 const actions = {
@@ -83,8 +88,7 @@ const actions = {
         if (res.result.length) {
           context.dispatch('setActiveProjectFromFetched', res.result[0])
         } else {
-          // TODO
-          throw new Error('Project not found')
+          context.dispatch('projectNotFound')
         }
       })
     }

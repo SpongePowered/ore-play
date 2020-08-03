@@ -138,7 +138,7 @@
 import { mapState } from 'vuex'
 import moment from 'moment'
 import { Role, Prompt as PromptEnum } from '../enums'
-import { avatarUrl } from '../utils'
+import { avatarUrl, genericError } from '../utils'
 import config from '../config.json5'
 import Prompt from './Prompt'
 import Icon from './Icon'
@@ -211,7 +211,7 @@ export default {
           }
           $('#modal-tagline').modal('hide')
         } else {
-          // TODO
+          genericError(this, 'An error occoured when setting tagline')
         }
       })
     },

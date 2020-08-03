@@ -34,11 +34,10 @@
 
 <script>
 import { mapState } from 'vuex'
-import PageList from './PageList'
 
 export default {
   components: {
-    PageList,
+    'page-list': () => import('./PageList'),
   },
   props: {
     page: {

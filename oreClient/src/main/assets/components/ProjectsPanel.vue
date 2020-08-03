@@ -41,7 +41,6 @@
 </template>
 
 <script>
-// TODO
 import { mapState } from 'vuex'
 import { API } from '../api'
 import { Category } from '../enums'

@@ -69,3 +69,15 @@ export function numberWithCommas(x) {
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return parts.join('.')
 }
+
+export function notFound(self) {
+  self.$router.replace(`/404${self.$route.fullPath}`)
+}
+
+export function genericError(self, error) {
+  self.$store.commit({
+    type: 'addAlert',
+    level: 'error',
+    message: error,
+  })
+}

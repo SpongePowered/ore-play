@@ -6,7 +6,9 @@
 </template>
 
 <script>
+import { mapState } from 'vuex'
 import UserHeader from '../../components/UserHeader'
+import { notFound } from '../../utils'
 
 export default {
   components: {
@@ -18,12 +20,20 @@ export default {
       required: true,
     },
   },
+  computed: {
+    ...mapState('user', ['notFound']),
+  },
   watch: {
     $route: {
       handler() {
         this.distpatchUpdate()
       },
       immediate: true,
+    },
+    notFound(val) {
+      if (val) {
+        notFound(this)
+      }
     },
   },
   methods: {

@@ -7,11 +7,13 @@ const state = {
   membershipProjects: [],
   orgaPermissions: [],
   orgaMembers: [],
+  notFound: false,
 }
 
 const mutations = {
   setUser(state, payload) {
     state.user = payload.user
+    state.notFound = false
   },
   setOrga(state, payload) {
     state.orga = payload.orga
@@ -30,12 +32,16 @@ const mutations = {
     state.membershipProjects = []
     state.orgaPermissions = []
     state.orgaMembers = []
+    state.notFound = false
   },
   updateMembers(state, payload) {
     state.orgaMembers = payload.members
   },
   setTagline(state, payload) {
     state.user.tagline = payload.tagline
+  },
+  userNotFound(state) {
+    state.notFound = true
   },
 }
 
@@ -44,12 +50,18 @@ const actions = {
     if (!context.state.user || context.state.user.name !== user) {
       context.commit('clearUser')
 
-      API.request('users/' + user).then((res) => {
-        context.commit({
-          type: 'setUser',
-          user: res,
+      API.request('users/' + user)
+        .then((res) => {
+          context.commit({
+            type: 'setUser',
+            user: res,
+          })
         })
-      })
+        .catch((error) => {
+          if (error === 404) {
+            context.commit('userNotFound')
+          }
+        })
 
       API.request('users/' + user + '/memberships').then((res) => {
         context.commit({
@@ -80,7 +92,15 @@ const actions = {
           })
         })
         .catch((res) => {
-          if (res !== '404') {
+          if (res !== 404) {
+            context.commit(
+              'addAlert',
+              {
+                level: 'error',
+                message: 'Failed to get organization info for user',
+              },
+              { root: true }
+            )
           }
         })
     }

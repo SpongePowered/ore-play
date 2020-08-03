@@ -6,6 +6,8 @@
 </template>
 
 <script>
+import { mapState } from 'vuex'
+import { notFound } from '../../utils'
 import ProjectHeader from './../../components/ProjectHeader'
 
 export default {
@@ -31,12 +33,20 @@ export default {
       default: null,
     },
   },
+  computed: {
+    ...mapState('project', ['notFound']),
+  },
   watch: {
     $route: {
       handler() {
         this.distpatchUpdate()
       },
       immediate: true,
+    },
+    notFound(val) {
+      if (val) {
+        notFound(this)
+      }
     },
   },
   methods: {

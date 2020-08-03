@@ -207,7 +207,7 @@ import Editor from '../../components/Editor'
 import MemberList from '../../components/MemberList'
 import { Category } from '../../enums'
 import PageList from '../../components/PageList'
-import { numberWithCommas } from '../../utils'
+import { genericError, notFound, numberWithCommas } from '../../utils'
 
 export default {
   components: {
@@ -309,8 +309,9 @@ export default {
           this.description = ''
 
           if (error === 404) {
-            // TODO
+            notFound(this)
           } else {
+            genericError(this, `Could not navigate to the page "${this.joinedPage}"`)
           }
         })
 
@@ -376,14 +377,13 @@ export default {
       API.request('projects/' + this.project.plugin_id + '/_pages/' + this.joinedPage, 'PUT', {
         name: this.currentPage.name[this.currentPage.name.length - 1],
         content: newContent,
-      }).then((res) => {
+      }).then(() => {
         this.description = newContent
-      }) // TODO: Handle error here
+      })
     },
     deletePage() {
       const page = this.requestPage
       const pageSlug = page.parent ? page.parent + '/' + page.name : page.name
-      // TODO
 
       API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'DELETE')
         .then((res) => {

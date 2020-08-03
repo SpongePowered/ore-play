@@ -43,6 +43,7 @@ import { mapState } from 'vuex'
 import NProgress from 'nprogress'
 import moment from 'moment'
 import config from '../../config.json5'
+import { genericError } from '../../utils'
 
 export default {
   data() {
@@ -97,7 +98,7 @@ export default {
           this.discourseData = data
         })
         .fail((xhr) => {
-          // TODO
+          genericError(this, 'An error occoured when loading discussions')
         })
     },
   },

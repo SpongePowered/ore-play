@@ -541,7 +541,7 @@ import { API } from '../../api'
 import { Platform, ReleaseType, Stability } from '../../enums'
 import config from '../../config.json5'
 import BtnHide from '../../components/BtnHide'
-import { clearFromDefaults } from '../../utils'
+import { clearFromDefaults, genericError, notFound } from '../../utils'
 
 const clipboardManager = new ClipboardJS('.copy-url')
 clipboardManager.on('success', function (e) {
@@ -657,7 +657,11 @@ export default {
                   if (error === 404) {
                     this.dependencyObs.push(depObj)
                   } else {
-                    // TODO
+                    this.$store.commit({
+                      type: 'addAlert',
+                      level: 'warning',
+                      message: 'An error occoured when getting the project for the dependency ' + dependency.plugin_id,
+                    })
                   }
                 })
             }
@@ -667,8 +671,9 @@ export default {
           this.versionObj = null
 
           if (error === 404) {
-            // TODO
+            notFound(this)
           } else {
+            genericError(this, 'An error occoured when getting the version')
           }
         })
 
