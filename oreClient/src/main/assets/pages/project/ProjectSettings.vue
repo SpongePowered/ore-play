@@ -650,9 +650,11 @@ export default {
     updateIcon() {
       const form = document.getElementById('form-icon')
       const data = new FormData(form)
-      const iconUrl = '/' + this.project.namespace.owner + '/' + this.project.namespace.slug + '/icon'
+      const iconUrl =
+        config.app.baseUrl + '/' + this.project.namespace.owner + '/' + this.project.namespace.slug + '/icon'
       fetch(iconUrl, {
-        credentials: 'same-origin',
+        credentials: 'include',
+        mode: 'cors',
         method: 'post',
         body: data,
       }).then((res) => {
@@ -668,9 +670,11 @@ export default {
     },
     resetIcon() {
       const data = new FormData(document.getElementById('form-icon'))
-      const iconUrl = '/' + this.project.namespace.owner + '/' + this.project.namespace.slug + '/icon'
+      const iconUrl =
+        config.app.baseUrl + '/' + this.project.namespace.owner + '/' + this.project.namespace.slug + '/icon'
       fetch(iconUrl + '/reset', {
-        credentials: 'same-origin',
+        credentials: 'include',
+        mode: 'cors',
         method: 'post',
         body: data,
       }).then((res) => {
@@ -684,8 +688,9 @@ export default {
       })
     },
     getDeployKey(project) {
-      fetch('/api/v1/projects/' + project.plugin_id + '/keys', {
-        credentials: 'same-origin',
+      fetch(config.app.baseUrl + '/api/v1/projects/' + project.plugin_id + '/keys', {
+        credentials: 'include',
+        mode: 'cors',
       }).then((res) => {
         if (res.ok) {
           res.json().then((json) => {
@@ -702,9 +707,10 @@ export default {
       this.showDeployKeySpinner = true
       const data = new FormData()
       data.append('csrfToken', window.csrf)
-      fetch('/api/v1/projects/' + this.project.plugin_id + '/keys/new', {
+      fetch(config.app.baseUrl + '/api/v1/projects/' + this.project.plugin_id + '/keys/new', {
         method: 'POST',
-        credentials: 'same-origin',
+        credentials: 'include',
+        mode: 'cors',
         body: data,
       }).then((res) => {
         this.showDeployKeySpinner = false
@@ -725,9 +731,10 @@ export default {
       const data = new FormData()
       data.append('id', this.deployKey.id)
       data.append('csrfToken', window.csrf)
-      fetch('/api/v1/projects/' + this.project.plugin_id + '/keys/revoke', {
+      fetch(config.app.baseUrl + '/api/v1/projects/' + this.project.plugin_id + '/keys/revoke', {
         method: 'POST',
-        credentials: 'same-origin',
+        credentials: 'include',
+        mode: 'cors',
         body: data,
       }).then((res) => {
         this.showDeployKeySpinner = false

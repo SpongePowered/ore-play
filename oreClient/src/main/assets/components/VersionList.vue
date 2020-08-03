@@ -187,7 +187,8 @@ export default {
     },
     project: {
       handler(val, oldVal) {
-        if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
+        // eslint-disable-next-line camelcase
+        if (val && val.plugin_id !== oldVal?.plugin_id) {
           this.update()
         }
       },

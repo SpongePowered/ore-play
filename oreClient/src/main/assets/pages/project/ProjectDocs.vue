@@ -285,7 +285,8 @@ export default {
     },
     project: {
       handler(val, oldVal) {
-        if (!oldVal || val.plugin_id !== oldVal.plugin_id) {
+        // eslint-disable-next-line camelcase
+        if (val && val.plugin_id !== oldVal?.plugin_id) {
           this.updatePage(true)
         }
       },
@@ -294,10 +295,6 @@ export default {
   },
   methods: {
     updatePage(fetchPages) {
-      if (!this.project) {
-        return
-      }
-
       NProgress.start()
       API.request('projects/' + this.project.plugin_id + '/_pages/' + this.joinedPage)
         .then((response) => {

@@ -1,6 +1,6 @@
 <template>
   <ul class="pagination">
-    <li :class="{ disabled: !hasPrevious }">
+    <li ref="prev" :class="{ disabled: !hasPrevious }">
       <a @click="previous">«</a>
     </li>
 
@@ -47,10 +47,13 @@ export default {
       type: Number,
       required: true,
     },
+    maxButtons: {
+      type: Number,
+      default: 15,
+    },
   },
   data() {
     return {
-      maxButtons: 999,
       buttonWidth: 45,
       areaWidth: 800,
     }
@@ -133,8 +136,9 @@ export default {
 
       // We get the length of the last button to be on the safe side
       this.buttonWidth = Math.max(
-        this.$refs.buttons[this.$refs.buttons.length - 1].offsetWidth,
-        this.$refs.lastButton.offsetWidth
+        this.$refs.prev.offsetWidth,
+        (this.$refs.buttons && this.$refs.buttons[this.$refs.buttons.length - 1]?.offsetWidth) ?? 0,
+        this.$refs.lastButton?.offsetWidth ?? 0
       )
     },
   },
