@@ -139,7 +139,16 @@ object APIV2 {
       fileInfo: FileInfo,
       author: Option[String],
       reviewState: ReviewState,
-      tags: VersionTags
+      tags: VersionTags,
+      external: VersionExternal
+  )
+
+  @SnakeCaseJsonCodec case class VersionExternal(
+      discourse: VersionExternalDiscourse
+  )
+
+  @SnakeCaseJsonCodec case class VersionExternalDiscourse(
+      postId: Option[Int]
   )
 
   @SnakeCaseJsonCodec case class VersionTags(

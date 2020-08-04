@@ -295,7 +295,7 @@ final class Application(forms: OreForms, val errorHandler: HttpErrorHandler)(
   }
 
   def UserAdminAction: ActionBuilder[AuthRequest, AnyContent] =
-    Authenticated.andThen(PermissionAction(Permission.EditAllUserSettings))
+    Authenticated.andThen(PermissionAction(Permission.EditAdminSettings))
 
   def userAdmin(user: String): Action[AnyContent] = UserAdminAction.asyncF { implicit request =>
     for {

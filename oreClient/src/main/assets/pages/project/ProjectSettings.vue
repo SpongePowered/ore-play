@@ -274,6 +274,34 @@
               <div class="clearfix" />
             </div>
 
+            <div v-if="permissions.includes('edit_admin_settings')" class="setting">
+              <div class="setting-description">
+                <h4>Manual Discourse settings</h4>
+                <p>
+                  Edit Discourse settings for a project manually here. There are no sanity checks here, so make sure to
+                  get it right.
+                </p>
+              </div>
+              <div class="setting-content">
+                <div class="form-group">
+                  <label for="discourseTopicId">Topic id:</label>
+                  <input id="discourseTopicId" v-model="discourseTopicId" class="form-control" type="number" />
+                </div>
+
+                <div class="form-group">
+                  <label for="discoursePostId">Post id:</label>
+                  <input id="discoursePostId" v-model="discoursePostId" class="form-control" type="number" />
+                </div>
+
+                <div class="form-group">
+                  <input id="discourseSendUpdate" v-model="discourseSendUpdate" type="checkbox" />
+                  <label for="discourseSendUpdate">Update topic</label>
+                </div>
+                <button class="btn btn-warning" @click="updateDiscourseTopic">Update Topic</button>
+              </div>
+              <div class="clearfix" />
+            </div>
+
             <!-- Rename -->
             <div class="setting">
               <div class="setting-description">
@@ -519,6 +547,7 @@ export default {
       selectedLogo: false,
       deleteReason: '',
       hardDelete: false,
+      discourseSendUpdate: true,
     }
 
     if (project) {
@@ -541,6 +570,8 @@ export default {
         summary: null,
         iconUrl: null,
         ...alwaysPresent,
+        discourseTopicId: null,
+        discoursePostId: null,
       }
     }
   },
@@ -616,6 +647,8 @@ export default {
       self.forumSync = project.settings.forum_sync
       self.summary = project.summary
       self.iconUrl = project.icon_url
+      self.discourseTopicId = project.external.discourse.topic_id
+      self.discoursePostId = project.external.discourse.post_id
     },
     avatarUrl(name) {
       return avatarUrlUtils(name)
@@ -747,6 +780,19 @@ export default {
         } else {
           genericError(this, 'An error occoured when revoking the deploy key')
         }
+      })
+    },
+    updateDiscourseTopic() {
+      API.request(`projects/${this.project.plugin_id}/external/_discourse`, 'POST', {
+        topic_id: this.discourseTopicId === '' ? null : this.discourseTopicId,
+        post_id: this.discoursePostId === '' ? null : this.discoursePostId,
+        update_topic: this.discourseSendUpdate,
+      }).then(() => {
+        this.$store.commit({
+          type: 'addAlert',
+          level: 'success',
+          message: 'Updated discourse settings',
+        })
       })
     },
     resetDeleteData() {

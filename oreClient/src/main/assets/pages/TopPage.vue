@@ -18,7 +18,7 @@
                   class="close"
                   data-dismiss="alert"
                   aria-label="Close"
-                  @click="$store.commit('dismissAllAlert', { level })"
+                  @click="$store.commit('dismissAlertsByType', { level })"
                 >
                   <span aria-hidden="true">&times;</span>
                 </button>

@@ -21,7 +21,7 @@ import ore.models.user.{User, UserOwned}
 import ore.permission.role.Role
 import ore.permission.scope.HasScope
 import ore.syntax._
-import ore.util.StringLocaleFormatterUtils
+import ore.util.{StringLocaleFormatterUtils, StringUtils}
 
 import cats.syntax.all._
 import cats.{Functor, Monad, MonadError, Parallel}
@@ -39,10 +39,8 @@ import slick.lifted.TableQuery
   * @param ownerName              The owner Author for this project
   * @param ownerId                User ID of Project owner
   * @param name                   Name of plugin
-  * @param slug                   URL slug
   * @param topicId                ID of forum topic
   * @param postId                 ID of forum topic post ID
-  * @param isTopicDirty           Whether this project's forum topic needs to be updated
   * @param visibility             Whether this project is visible to the default user
   * @param notes                  JSON notes
   */
@@ -51,7 +49,6 @@ case class Project(
     ownerName: String,
     ownerId: DbRef[User],
     name: String,
-    slug: String,
     category: Category = Category.Undefined,
     description: Option[String],
     topicId: Option[Int] = None,
@@ -62,6 +59,8 @@ case class Project(
 ) extends Named
     with Describable
     with Visitable {
+
+  val slug: String = StringUtils.slugify(name)
 
   def namespace: ProjectNamespace = ProjectNamespace(ownerName, slug)
 

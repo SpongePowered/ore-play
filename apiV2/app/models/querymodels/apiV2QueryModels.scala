@@ -277,7 +277,8 @@ case class APIV2QueryVersion(
     stability: Stability,
     releaseType: Option[ReleaseType],
     platforms: List[String],
-    platformVersions: List[Option[String]]
+    platformVersions: List[Option[String]],
+    postId: Option[Int]
 ) {
 
   def asProtocol: APIV2.Version = APIV2.Version(
@@ -301,6 +302,11 @@ case class APIV2QueryVersion(
         case (platform, platformVersion) =>
           APIV2QueryProject.decodeVersionPlatform(platform, platformVersion)
       }
+    ),
+    APIV2.VersionExternal(
+      APIV2.VersionExternalDiscourse(
+        postId
+      )
     )
   )
 }

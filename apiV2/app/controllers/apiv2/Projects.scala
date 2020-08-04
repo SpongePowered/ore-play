@@ -381,6 +381,20 @@ class Projects(
         .flatMap(doHardDeleteProject(_))
         .as(NoContent)
     }
+
+  def editDiscourseSettings(pluginId: String): Action[Projects.DiscourseModifyTopicSettings] =
+    ApiAction(Permission.EditAdminSettings, APIScope.ProjectScope(pluginId))
+      .asyncF(parseCirce.decodeJson[Projects.DiscourseModifyTopicSettings]) { implicit request =>
+        projects
+          .withPluginId(pluginId)
+          .someOrFail(NotFound)
+          .flatMap { project =>
+            val update = service.update(project)(_.copy(topicId = request.body.topicId, postId = request.body.postId))
+            val addJob = service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob)
+
+            update.as(NoContent) <* addJob.when(request.body.updateTopic)
+          }
+      }
 }
 object Projects {
   import APIV2.{categoryCodec, visibilityCodec, permissionRoleCodec}
@@ -478,4 +492,10 @@ object Projects {
 
     def asFactoryTemplate: ProjectTemplate = ProjectTemplate(name, pluginId, category, description)
   }
+
+  @SnakeCaseJsonCodec case class DiscourseModifyTopicSettings(
+      topicId: Option[Int],
+      postId: Option[Int],
+      updateTopic: Boolean
+  )
 }

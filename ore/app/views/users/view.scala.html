@@ -79,7 +79,7 @@
                             }
                         }
 
-                        @if(request.headerData.globalPerm(Permission.EditAllUserSettings)) {
+                        @if(request.headerData.globalPerm(Permission.EditAdminSettings)) {
                             <a class="user-settings" href="@routes.Application.userAdmin(u.user.name)">
                                 <i class="fas fa-wrench" data-toggle="tooltip"
                                 data-placement="top" title="User Admin"></i>

@@ -146,18 +146,15 @@ trait ProjectFactory {
   ): IO[String, Model[Project]] = {
     val name = template.name
     val slug = slugify(name)
-    val insertProject = TableQuery[ProjectTable].map(p =>
-      (p.pluginId, p.createdAt, p.ownerId, p.ownerName, p.name, p.category, p.description.?, p.visibility)
-    ) += (
-      (
+    val insertProject = service.insert(
+      Project(
         template.pluginId,
-        OffsetDateTime.now(),
-        ownerId,
         ownerName,
+        ownerId,
         name,
         template.category,
         template.description,
-        Visibility.New
+        visibility = Visibility.New
       )
     )
 
@@ -174,8 +171,7 @@ trait ProjectFactory {
       _          <- cond(!existsId, "project with that plugin id already exists")
       _          <- cond(available, "slug not available")
       _          <- cond(config.isValidProjectName(name), "invalid name")
-      _          <- service.runDBIO(insertProject)
-      newProject <- ModelView.now(Project).find(_.pluginId === template.pluginId).value.someOrFail("Impossible")
+      newProject <- insertProject
       _ <- {
         MembershipDossier
           .projectHasMemberships[UIO]

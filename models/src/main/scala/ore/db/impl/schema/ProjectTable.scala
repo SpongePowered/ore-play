@@ -53,7 +53,6 @@ class ProjectTable(tag: Tag)
         ownerName,
         ownerId,
         name,
-        slug,
         category,
         description.?,
         topicId,

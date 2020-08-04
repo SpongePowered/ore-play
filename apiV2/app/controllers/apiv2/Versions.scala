@@ -341,7 +341,8 @@ class Versions(
             Version.Stability.Stable,
             None,
             pluginFile.versionedPlatforms.map(_.id),
-            pluginFile.versionedPlatforms.map(_.version)
+            pluginFile.versionedPlatforms.map(_.version),
+            None
           )
 
           val warnings = NonEmptyList.fromList(pluginFile.warnings.toList)
@@ -410,7 +411,8 @@ class Versions(
             version.tags.stability,
             version.tags.releaseType,
             platforms.map(_.platform).toList,
-            platforms.map(_.platformVersion).toList
+            platforms.map(_.platformVersion).toList,
+            version.postId
           )
 
           Created(apiVersion.asProtocol)
@@ -480,6 +482,27 @@ class Versions(
               )
           }
     }
+
+  def editDiscourseSettings(pluginId: String, version: String): Action[Versions.DiscourseModifyPostSettings] =
+    ApiAction(Permission.EditAdminSettings, APIScope.ProjectScope(pluginId))
+      .asyncF(parseCirce.decodeJson[Versions.DiscourseModifyPostSettings]) { implicit request =>
+        projects
+          .withPluginId(pluginId)
+          .someOrFail(NotFound)
+          .flatMap { p =>
+            ModelView
+              .now(Version)
+              .find(v => v.projectId === p.id.value && v.versionString === version)
+              .value
+              .someOrFail(NotFound)
+          }
+          .flatMap { version =>
+            val update = service.update(version)(_.copy(postId = request.body.postId))
+            val addJob = service.insert(Job.UpdateDiscourseVersionPost.newJob(version.id).toJob)
+
+            update.as(NoContent) <* addJob.when(request.body.updatePost)
+          }
+      }
 }
 object Versions {
 
@@ -532,5 +555,10 @@ object Versions {
   @SnakeCaseJsonCodec case class ScannedVersion(
       version: APIV2.Version,
       warnings: Option[NonEmptyList[String]]
+  )
+
+  @SnakeCaseJsonCodec case class DiscourseModifyPostSettings(
+      postId: Option[Int],
+      updatePost: Boolean
   )
 }

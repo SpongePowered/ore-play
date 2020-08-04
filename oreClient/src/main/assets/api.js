@@ -35,6 +35,8 @@ export class API {
     if (res.ok) {
       if (res.status !== 204) {
         return await res.json()
+      } else {
+        return {}
       }
     } else if (res.status === 401) {
       const jsonError = await res.json()

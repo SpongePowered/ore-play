@@ -506,6 +506,32 @@ GET     /projects/:pluginId/stats                            @controllers.apiv2.
 ###
 POST    /projects/:pluginId/visibility                       @controllers.apiv2.Projects.setProjectVisibility(pluginId)
 
+###
+#  summary: Sets a project's discourse topic settings.
+#  description: >-
+#    Edit's a project's Discourse settings manually.
+#    Needs the `edit_admin_settings` permission.
+#  tags:
+#    - Projects
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to change the discourse settings of
+#  requestBody:
+#    required: true
+#    content:
+#      application/json:
+#        schema:
+#          $ref: '#/components/schemas/controllers.apiv2.Projects.DiscourseModifyTopicSettings'
+#  responses:
+#    204:
+#      description: Project updated
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+POST    /projects/:pluginId/external/_discourse              @controllers.apiv2.Projects.editDiscourseSettings(pluginId)
+
 
 
 ###
@@ -698,6 +724,34 @@ GET     /projects/:pluginId/versions/:name/changelog          @controllers.apiv2
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 PUT     /projects/:pluginId/versions/:name/changelog          @controllers.apiv2.Versions.updateChangelog(pluginId, name)
+
+###
+#  summary: Sets a versions's discourse post settings.
+#  description: >-
+#    Edit's a version's Discourse settings manually.
+#    Needs the `edit_admin_settings` permission.
+#  tags:
+#    - Versions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the version to change the discourse settings of
+#    - name: name
+#      description: The name of the version to update the settings of
+#  requestBody:
+#    required: true
+#    content:
+#      application/json:
+#        schema:
+#          $ref: '#/components/schemas/controllers.apiv2.Versions.DiscourseModifyPostSettings'
+#  responses:
+#    204:
+#      description: Version updated
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+POST    /projects/:pluginId/versions/:name/external/_discourse  @controllers.apiv2.Versions.editDiscourseSettings(pluginId, name)
 
 ###
 #  summary: Returns the stats for a version

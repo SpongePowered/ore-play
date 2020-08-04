@@ -404,6 +404,31 @@
             </li>
           </ul>
         </div>
+
+        <div v-if="editVersion && permissions.includes('edit_admin_settings')" class="panel panel-default">
+          <div class="panel-heading">
+            <h3 clasS="panel-title">
+              Discourse settings
+            </h3>
+          </div>
+          <ul class="list-group">
+            <li class="list-group-item" style="padding-bottom: 20px;">
+              <div class="form-inline">
+                <label for="setPostId">Post id</label>
+                <input id="setPostId" v-model="discoursePostId" type="number" class="form-control pull-right" />
+              </div>
+            </li>
+            <li class="list-group-item" style="padding-bottom: 20px;">
+              <div class="form-inline">
+                <label for="updatePost">Update post</label>
+                <input id="updatePost" v-model="discourseSendUpdate" type="checkbox" class="form-control pull-right" />
+              </div>
+            </li>
+            <li class="list-group-item">
+              <button class="btn btn-warning" @click="updateDiscoursePost">Update discourse settings</button>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
 
@@ -578,6 +603,8 @@ export default {
       editReleaseType: null,
       editPlatforms: [],
       spinIcon: false,
+      discoursePostId: null,
+      discourseSendUpdate: true,
     }
   },
   computed: {
@@ -715,6 +742,18 @@ export default {
         this.versionObj.visibility = visibility
       })
     },
+    updateDiscoursePost() {
+      API.request(`projects/${this.project.plugin_id}/versions/${this.versionObj.name}/external/_discourse`, 'POST', {
+        post_id: this.discoursePostId === '' ? null : this.discoursePostId,
+        update_post: this.discourseSendUpdate,
+      }).then(() => {
+        this.$store.commit({
+          type: 'addAlert',
+          level: 'success',
+          message: 'Updated discourse settings',
+        })
+      })
+    },
     hardDeleteVersion() {
       API.request('projects/' + this.project.plugin_id + '/versions/' + this.versionObj.name, 'DELETE').then((res) => {
         $('#modal-harddelete').modal('hide')
@@ -732,6 +771,8 @@ export default {
       this.editStability = this.versionObj.tags.stability
       this.editReleaseType = this.versionObj.tags.release_type
       this.editPlatforms = this.versionObj.tags.platforms.map(this.simplifyPlatform)
+      this.discoursePostId = this.versionObj.external.discourse.post_id
+      this.discourseSendUpdate = true
     },
     cancelEdit() {
       this.editVersion = false
