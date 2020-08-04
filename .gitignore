@@ -183,6 +183,7 @@ node_modules
 
 # Ore
 oreClient/src/main/assets/config.json5
+oreClient/dist
 jobs/src/main/resources/application.conf
 ore/conf/application.conf
 /project/project/target
