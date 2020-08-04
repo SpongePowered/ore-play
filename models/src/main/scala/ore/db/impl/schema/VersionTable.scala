@@ -2,7 +2,9 @@ package ore.db.impl.schema
 
 import java.time.OffsetDateTime
 
-import ore.db.DbRef
+import scala.reflect.ClassTag
+
+import ore.db.{DbRef, impl}
 import ore.db.impl.OrePostgresDriver
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.{DescriptionColumn, VisibilityColumn}
@@ -17,8 +19,12 @@ class VersionTable(tag: Tag)
 
   implicit private val listOptionStrType: OrePostgresDriver.DriverJdbcType[List[Option[String]]] =
     new OrePostgresDriver.SimpleArrayJdbcType[String]("text")
-      .mapTo[Option[String]](Option(_), _.orNull)
-      .to(_.toList)
+      .to[List](
+        //DANGER
+        _.map(Option(_)).toList.asInstanceOf[List[String]],
+        _.asInstanceOf[List[Option[String]]].map(_.orNull)
+      )
+      .asInstanceOf[OrePostgresDriver.DriverJdbcType[List[Option[String]]]]
 
   def versionString      = column[String]("version_string")
   def dependencyIds      = column[List[String]]("dependency_ids")

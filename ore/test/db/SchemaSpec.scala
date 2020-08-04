@@ -18,7 +18,7 @@ import org.scalatestplus.junit.JUnitRunner
 class SchemaSpec extends DbSpec {
 
   test("Project") {
-    check(sql"""|SELECT plugin_id, owner_name, owner_id, name, slug,
+    check(sql"""|SELECT plugin_id, owner_name, owner_id, name,
                 |category, description, topic_id, post_id, visibility,
                 |notes, keywords, homepage, issues, source, support, license_name, license_url, 
                 |forum_sync FROM projects""".stripMargin.query[Project])
