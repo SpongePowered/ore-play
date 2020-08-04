@@ -9,23 +9,27 @@
         <div class="row">
           <div class="col-md-4"></div>
           <div class="col-md-4">
-            <div class="mb-1 text-center" v-if="!processing && versionPreview">{{ this.$refs.fileInput.files[0].name }}</div>
-            <label class="btn btn-primary btn-block" :class="{'btn-lg': (!processing && !versionPreview)}">
+            <div v-if="!processing && versionPreview" class="mb-1 text-center">
+              {{ this.$refs.fileInput.files[0].name }}
+            </div>
+            <label class="btn btn-primary btn-block" :class="{ 'btn-lg': !processing && !versionPreview }">
               <input
-                  ref="fileInput"
-                  type="file"
-                  style="display: none;"
-                  :disabled="processing"
-                  accept=".jar, application/zip"
-                  @change="processFileUpload"
+                ref="fileInput"
+                type="file"
+                style="display: none;"
+                :disabled="processing"
+                accept=".jar, application/zip"
+                @change="processFileUpload"
               />
               <span v-if="!processing && !versionPreview">
-              Select file
-            </span>
-              <span v-else-if="!versionPreview"> Processing <font-awesome-icon :icon="['fas', 'spinner']" spin /> </span>
+                Select file
+              </span>
+              <span v-else-if="!versionPreview">
+                Processing <font-awesome-icon :icon="['fas', 'spinner']" spin />
+              </span>
               <span v-else>
-              Upload a different file
-            </span>
+                Upload a different file
+              </span>
             </label>
           </div>
           <div class="col-md-4"></div>
@@ -33,7 +37,7 @@
       </div>
     </div>
 
-    <div class="panel panel-default" v-if="versionPreview">
+    <div v-if="versionPreview" class="panel panel-default">
       <div v-if="versionPreview" class="panel-heading">
         <h3 class="panel-title">Version info</h3>
       </div>
@@ -102,8 +106,8 @@
             <div class="col-sm-10">
               <ul class="list-unstyled">
                 <li
-                    v-for="platform in versionPreview.tags.platforms"
-                    :key="platform.platform + platform.platform_version"
+                  v-for="platform in versionPreview.tags.platforms"
+                  :key="platform.platform + platform.platform_version"
                 >
                   {{ platforms.fromId(platform.platform).shortName }} ({{ platform.platform }}):
                   {{ platform.platform_version }}
@@ -115,12 +119,17 @@
       </div>
     </div>
 
-    <div class="panel panel-default" v-if="versionPreview">
+    <div v-if="versionPreview" class="panel panel-default">
       <div v-if="versionPreview" class="panel-heading">
         <h3 class="panel-title">Version description</h3>
       </div>
       <div v-if="versionPreview" class="panel-body">
-        <editor :enabled="true" :raw="description" @change="(data) => (description = data)" @saved="(data) => (description = data)"></editor>
+        <editor
+          :enabled="true"
+          :raw="description"
+          @change="(data) => (description = data)"
+          @saved="(data) => (description = data)"
+        ></editor>
 
         <button class="btn btn-success" @click="publishVersion">
           <span v-if="!uploadProcessing">Publish version</span>
@@ -178,7 +187,7 @@ export default {
       return parseFloat((bytes / k ** i).toFixed(dm)) + ' ' + sizes[i]
     },
     async processFileUpload() {
-      if(this.$refs.fileInput.files.length !== 1 && this.versionPreview) {
+      if (this.$refs.fileInput.files.length !== 1 && this.versionPreview) {
         this.processing = false
         this.versionPreview = false
         return

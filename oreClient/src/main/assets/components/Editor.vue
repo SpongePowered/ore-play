@@ -77,7 +77,7 @@
     </template>
 
     <div v-if="state === 'edit'" class="page-edit">
-      <textarea v-model="rawData" @change="$emit('change', rawData)" name="content" class="form-control" />
+      <textarea v-model="rawData" name="content" class="form-control" @change="$emit('change', rawData)" />
     </div>
     <!-- eslint-disable-next-line vue/no-v-html -->
     <div v-else-if="state === 'preview'" class="page-preview page-rendered" v-html="previewCooked" />
