@@ -297,7 +297,14 @@
                   <input id="discourseSendUpdate" v-model="discourseSendUpdate" type="checkbox" />
                   <label for="discourseSendUpdate">Update topic</label>
                 </div>
-                <button class="btn btn-warning" @click="updateDiscourseTopic">Update Topic</button>
+                <button
+                  id="btn-discourse-update"
+                  data-toggle="modal"
+                  data-target="#modal-discourse-update"
+                  class="btn btn-warning"
+                >
+                  Update Topic
+                </button>
               </div>
               <div class="clearfix" />
             </div>
@@ -430,6 +437,46 @@
               </button>
               <button name="rename" class="btn btn-warning" @click="sendProjectUpdate({ name: newName })">
                 Rename
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="modal-discourse-update"
+      class="modal fade"
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="label-discourse-update"
+    >
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <h4 id="label-discourse-update" class="modal-title">
+              Update Discourse settings
+            </h4>
+          </div>
+          <div class="modal-body">
+            Make sure the new values are correct. Wrong values here can have negative side effects.
+            <dl>
+              <dt>Topic id:</dt>
+              <dd>{{ discourseTopicId }}</dd>
+              <dt>Post id:</dt>
+              <dd>{{ discoursePostId }}</dd>
+            </dl>
+          </div>
+          <div class="modal-footer">
+            <div class="form-inline">
+              <button type="button" class="btn btn-default" data-dismiss="modal">
+                Close
+              </button>
+              <button name="update-topic" class="btn btn-warning" @click="updateDiscourseTopic">
+                Update topic
               </button>
             </div>
           </div>
@@ -788,6 +835,7 @@ export default {
         post_id: this.discoursePostId === '' ? null : this.discoursePostId,
         update_topic: this.discourseSendUpdate,
       }).then(() => {
+        $('#modal-discourse-update').modal('hide')
         this.$store.commit({
           type: 'addAlert',
           level: 'success',

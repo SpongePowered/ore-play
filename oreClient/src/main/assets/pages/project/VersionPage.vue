@@ -425,9 +425,54 @@
               </div>
             </li>
             <li class="list-group-item">
-              <button class="btn btn-warning" @click="updateDiscoursePost">Update discourse settings</button>
+              <button
+                id="btn-discourse-update"
+                data-toggle="modal"
+                data-target="#modal-discourse-update"
+                class="btn btn-warning"
+              >
+                Update post
+              </button>
             </li>
           </ul>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="modal-discourse-update"
+      class="modal fade"
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="label-discourse-update"
+    >
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <h4 id="label-discourse-update" class="modal-title">
+              Update Discourse settings
+            </h4>
+          </div>
+          <div class="modal-body">
+            Make sure the new values are correct. Wrong values here can have negative side effects.
+            <dl>
+              <dt>Post id:</dt>
+              <dd>{{ discoursePostId }}</dd>
+            </dl>
+          </div>
+          <div class="modal-footer">
+            <div class="form-inline">
+              <button type="button" class="btn btn-default" data-dismiss="modal">
+                Close
+              </button>
+              <button name="update-post" class="btn btn-warning" @click="updateDiscoursePost">
+                Update post
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -747,6 +792,7 @@ export default {
         post_id: this.discoursePostId === '' ? null : this.discoursePostId,
         update_post: this.discourseSendUpdate,
       }).then(() => {
+        $('#modal-discourse-update').modal('hide')
         this.$store.commit({
           type: 'addAlert',
           level: 'success',
