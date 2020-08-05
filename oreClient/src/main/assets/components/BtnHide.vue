@@ -27,49 +27,31 @@
       </li>
     </ul>
 
-    <div
-      id="modal-visibility-comment"
-      class="modal fade"
-      tabindex="-1"
-      role="dialog"
-      aria-labelledby="modal-visibility-comment"
-    >
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-            <h4 class="modal-title" style="color: black;">
-              Comment
-            </h4>
-          </div>
-          <div class="modal-body">
-            <textarea v-model="comment" class="textarea-visibility-comment form-control" rows="3" />
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-default" data-dismiss="modal" @click="resetData">
-              Close
-            </button>
-            <button
-              class="btn btn-visibility-comment-submit btn-primary"
-              @click="sendVisibilityChange(selectedVisibility)"
-            >
-              <FontAwesomeIcon :icon="['fas', 'pencil-alt']" />
-              Submit
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <modal ref="commentModal" name="visibility-comment" title="Comment" :on-close="resetData">
+      <textarea v-model="comment" class="textarea-visibility-comment form-control" rows="3" />
+
+      <template #footer>
+        <button class="btn btn-default" data-dismiss="modal" @click="resetData">
+          Close
+        </button>
+        <button class="btn btn-visibility-comment-submit btn-primary" @click="sendVisibilityChange(selectedVisibility)">
+          <FontAwesomeIcon :icon="['fas', 'pencil-alt']" />
+          Submit
+        </button>
+      </template>
+    </modal>
   </div>
 </template>
 
 <script>
 import { Visibility } from '../enums'
 import { API } from '../api'
+import Modal from './Modal'
 
 export default {
+  components: {
+    Modal,
+  },
   props: {
     currentVisibility: {
       type: String,
@@ -79,7 +61,7 @@ export default {
       type: String,
       required: true,
     },
-    emitLocation: {
+    commitLocation: {
       type: String,
       default: null,
     },
@@ -122,7 +104,7 @@ export default {
     handleVisibilityClick(visibility) {
       if (visibility.showModal) {
         this.selectedVisibility = visibility
-        $('#modal-visibility-comment').modal('show')
+        this.$refs.commentModal.show()
       } else {
         this.sendVisibilityChange(visibility)
       }
@@ -134,11 +116,11 @@ export default {
         comment: this.comment,
       }).then((res) => {
         this.spinIcon = false
-        $('#modal-visibility-comment').modal('hide')
+        this.$refs.commentModal.hide()
 
-        if (this.emitLocation) {
-          this.$emit({
-            type: this.emitLocation,
+        if (this.commitLocation) {
+          this.$store.commit({
+            type: this.commitLocation,
             visibility: visibility.name,
           })
         }

@@ -76,111 +76,91 @@
               <FontAwesomeIcon :icon="['fas', 'plus']" />
             </button>
 
-            <div id="edit-page" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="page-label">
-              <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                      <span aria-hidden="true">&times;</span>
-                    </button>
-                    <h4 id="page-label" class="modal-title">
-                      <template v-if="newPage">
-                        Create a new page
-                      </template>
-                      <template v-else>
-                        Edit page
-                      </template>
-                    </h4>
-                    <h4
-                      v-if="pagePutError"
-                      id="page-label-error"
-                      class="modal-title"
-                      style="display: none; color: red;"
-                    >
-                      Error updating page {{ pagePutError }}
-                    </h4>
+            <modal ref="editPageModal" name="edit-page" :title="newPage ? 'Create a new page' : 'Edit page'" :on-close="resetPutPage">
+              <h4 v-if="pagePutError" id="page-label-error" class="modal-title" style="display: none; color: red;">
+                Error updating page {{ pagePutError }}
+              </h4>
+
+              <div class="input-group">
+                <div class="setting">
+                  <div class="setting-description">
+                    <h4>Page name</h4>
+                    <p>Enter a title for your page.</p>
                   </div>
-                  <div class="modal-body input-group">
-                    <div class="setting">
-                      <div class="setting-description">
-                        <h4>Page name</h4>
-                        <p>Enter a title for your page.</p>
-                      </div>
-                      <div class="setting-content">
-                        <input
-                          id="page-name"
-                          v-model="requestPage.name"
-                          class="form-control"
-                          type="text"
-                          name="page-name"
-                        />
-                      </div>
-                      <div class="clearfix" />
-                    </div>
-                    <div class="setting">
-                      <div class="setting-description">
-                        <h4>Parent page</h4>
-                        <p>Select a parent page (optional)</p>
-                      </div>
-                      <div class="setting-content">
-                        <select v-model="requestPage.parent" class="form-control select-parent">
-                          <option selected value="null">
-                            &lt;none&gt;
-                          </option>
-                          <option
-                            v-for="(forPage, index) in pages"
-                            :key="index"
-                            :value="forPage.slug.join('/')"
-                            :data-slug="forPage.slug.join('/')"
-                          >
-                            {{ forPage.name.join('/') }}
-                          </option>
-                        </select>
-                      </div>
-                      <div class="clearfix" />
-                    </div>
-                    <div class="setting setting-no-border">
-                      <div class="setting-description">
-                        <h4>Navigational</h4>
-                        <p>
-                          Makes the page only useful for nagivation.
-                          <b>This will delete all content currently on the page.</b>
-                        </p>
-                      </div>
-                      <div class="setting-content">
-                        <div class="form-check">
-                          <input
-                            id="page-navigational"
-                            v-model="requestPage.navigational"
-                            class="form-check-input position-static"
-                            type="checkbox"
-                            name="page-navigational"
-                            aria-label="Navigational"
-                          />
-                        </div>
-                      </div>
-                      <div class="clearfix" />
+                  <div class="setting-content">
+                    <input
+                      id="page-name"
+                      v-model="requestPage.name"
+                      class="form-control"
+                      type="text"
+                      name="page-name"
+                    />
+                  </div>
+                  <div class="clearfix" />
+                </div>
+                <div class="setting">
+                  <div class="setting-description">
+                    <h4>Parent page</h4>
+                    <p>Select a parent page (optional)</p>
+                  </div>
+                  <div class="setting-content">
+                    <select v-model="requestPage.parent" class="form-control select-parent">
+                      <option selected value="null">
+                        &lt;none&gt;
+                      </option>
+                      <option
+                        v-for="(forPage, index) in pages"
+                        :key="index"
+                        :value="forPage.slug.join('/')"
+                        :data-slug="forPage.slug.join('/')"
+                      >
+                        {{ forPage.name.join('/') }}
+                      </option>
+                    </select>
+                  </div>
+                  <div class="clearfix" />
+                </div>
+                <div class="setting setting-no-border">
+                  <div class="setting-description">
+                    <h4>Navigational</h4>
+                    <p>
+                      Makes the page only useful for nagivation.
+                      <b>This will delete all content currently on the page.</b>
+                    </p>
+                  </div>
+                  <div class="setting-content">
+                    <div class="form-check">
+                      <input
+                        id="page-navigational"
+                        v-model="requestPage.navigational"
+                        class="form-check-input position-static"
+                        type="checkbox"
+                        name="page-navigational"
+                        aria-label="Navigational"
+                      />
                     </div>
                   </div>
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal" @click="resetPutPage">
-                      Close
-                    </button>
-                    <button v-if="!newPage" type="button" class="btn btn-danger" @click="deletePage">
-                      Delete
-                    </button>
-                    <button
-                      :disabled="!requestPage.name || requestPage.name.includes('/')"
-                      type="button"
-                      class="btn btn-primary"
-                      @click="updateCreatePage"
-                    >
-                      Continue
-                    </button>
-                  </div>
+                  <div class="clearfix" />
                 </div>
               </div>
-            </div>
+
+              <template #footer>
+                <button type="button" class="btn btn-default" data-dismiss="modal" @click="resetPutPage">
+                  Close
+                </button>
+                <button v-if="!newPage" type="button" class="btn btn-danger" @click="deletePage">
+                  Delete
+                </button>
+                <button
+                  :disabled="!requestPage.name || requestPage.name.includes('/')"
+                  type="button"
+                  class="btn btn-primary"
+                  @click="updateCreatePage"
+                >
+                  Continue
+                </button>
+              </template>
+            </modal>
           </template>
         </div>
 
@@ -207,9 +187,11 @@ import MemberList from '../../components/MemberList'
 import { Category } from '../../enums'
 import PageList from '../../components/PageList'
 import { genericError, notFound, numberWithCommas } from '../../utils'
+import Modal from '../../components/Modal'
 
 export default {
   components: {
+    Modal,
     PageList,
     Editor,
     MemberList,
@@ -362,7 +344,7 @@ export default {
 
       action
         .then((res) => {
-          $('#edit-page').modal('toggle')
+          this.$refs.editPageModal.toggle()
           this.resetPutPage()
           this.updatePage(true)
         })
@@ -386,7 +368,7 @@ export default {
 
       API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'DELETE')
         .then((res) => {
-          $('#edit-page').modal('toggle')
+          this.$refs.editPageModal.toggle()
           this.resetPutPage()
 
           if (pageSlug === this.joinedPage) {
@@ -412,12 +394,12 @@ export default {
       API.request('projects/' + this.project.plugin_id + '/_pages/' + page.slug.join('/'))
         .then((response) => {
           this.$set(this.requestPage, 'content', response.content)
-          $('#edit-page').modal('toggle')
+          this.$refs.editPageModal.toggle()
         })
         .catch((error) => {
           if (error === 404) {
             this.$set(this.requestPage, 'existing', undefined)
-            $('#edit-page').modal('toggle')
+            this.$refs.editPageModal.toggle()
           } else {
             // TODO
           }

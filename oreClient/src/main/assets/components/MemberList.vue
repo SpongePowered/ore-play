@@ -1,36 +1,5 @@
 <template>
   <div>
-    <div
-      v-if="editable && permissions.includes('manage_subject_members')"
-      id="modal-user-delete"
-      class="modal fade"
-      tabindex="-1"
-      role="dialog"
-      aria-labelledby="label-user-delete"
-    >
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
-          <h4 id="label-user-delete" class="modal-title">
-            Remove member
-          </h4>
-        </div>
-        <div class="modal-body">
-          Are you sure you want to remove this user?
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal" @click="userToRemove = null">
-            Close
-          </button>
-          <button type="submit" class="btn btn-danger" @click="$emit('remove-user', userToRemove)">
-            Remove
-          </button>
-        </div>
-      </div>
-    </div>
-
     <div v-if="updateError" class="alert alert-danger member-error">
       <span>{{ updateError }}</span>
     </div>

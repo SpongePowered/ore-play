@@ -90,46 +90,30 @@
         </a>
       </div>
 
-      <div id="modal-tagline" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="label-tagline">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close" @click="resetTagline">
-                <span aria-hidden="true">&times;</span>
-              </button>
-              <h4 class="modal-title">
-                Edit tagline
-              </h4>
-            </div>
-
-            <div class="modal-body">
-              <div class="setting setting-no-border">
-                <div class="setting-description">
-                  <h4>Tagline</h4>
-                  <p>Add a short tagline to let people know what you're about!</p>
-                </div>
-                <input
-                  id="tagline"
-                  v-model="editTagline"
-                  class="form-control"
-                  type="text"
-                  name="tagline"
-                  :maxlength="config.ore.users.maxTaglineLen"
-                />
-              </div>
-              <div class="clearfix" />
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-default" data-dismiss="modal" @click.prevent="resetTagline">
-                Close
-              </button>
-              <button type="submit" class="btn btn-primary" @click.prevent="updateTagline">
-                Save
-              </button>
-            </div>
+      <modal
+        ref="taglineModal"
+        name="tagline"
+        title="Edit tagline"
+        button-label="Save"
+        :on-close="resetTagline"
+        :on-submit="updateTagline"
+      >
+        <div class="setting setting-no-border">
+          <div class="setting-description">
+            <h4>Tagline</h4>
+            <p>Add a short tagline to let people know what you're about!</p>
           </div>
+          <input
+            id="tagline"
+            v-model="editTagline"
+            class="form-control"
+            type="text"
+            name="tagline"
+            :maxlength="config.ore.users.maxTaglineLen"
+          />
         </div>
-      </div>
+        <div class="clearfix" />
+      </modal>
     </div>
   </div>
 </template>
@@ -141,9 +125,10 @@ import { avatarUrl, genericError } from '../utils'
 import config from '../config.json5'
 import Prompt from './Prompt'
 import Icon from './Icon'
+import Modal from './Modal'
 
 export default {
-  components: { Icon, Prompt },
+  components: { Modal, Icon, Prompt },
   data() {
     return {
       editTagline: this.currentUser ? (this.currentUser.tagline ? this.currentUser.tagline : '') : '',
@@ -208,7 +193,7 @@ export default {
               tagline: this.editTagline,
             })
           }
-          $('#modal-tagline').modal('hide')
+          this.$refs.taglineModal.hide()
         } else {
           genericError(this, 'An error occoured when setting tagline')
         }

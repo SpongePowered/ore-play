@@ -51,29 +51,9 @@
         </button>
       </div>
 
-      <div id="modal-page-delete" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="label-page-delete">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-              </button>
-              <h4 id="label-page-delete" class="modal-title">Delete {{ subject.toLowerCase() }}</h4>
-            </div>
-            <div class="modal-body">
-              Are you sure you want to delete this {{ subject.toLowerCase() }}? This cannot be undone.
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-default" data-dismiss="modal">
-                Close
-              </button>
-              <button class="btn btn-danger" @click="$emit('delete')">
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <modal name="editor-delete" :title="'Delete ' + subject.toLocaleLowerCase()" :on-submit="() => $emit('delete')">
+        Are you sure you want to delete this {{ subject.toLowerCase() }}? This cannot be undone.
+      </modal>
     </template>
 
     <div v-if="state === 'edit'" class="page-edit">
@@ -96,6 +76,7 @@ import markdownIt from 'markdown-it'
 import markdownItAnchor from 'markdown-it-anchor'
 import markdownItWikilinks from 'markdown-it-wikilinks'
 import markdownItTaskLists from 'markdown-it-task-lists'
+import Modal from './Modal'
 
 const md = markdownIt({
   html: true,
@@ -107,6 +88,9 @@ const md = markdownIt({
   .use(markdownItTaskLists)
 
 export default {
+  components: {
+    Modal,
+  },
   props: {
     savable: {
       type: Boolean,
