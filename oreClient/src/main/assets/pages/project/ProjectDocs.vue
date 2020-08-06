@@ -76,7 +76,12 @@
               <FontAwesomeIcon :icon="['fas', 'plus']" />
             </button>
 
-            <modal ref="editPageModal" name="edit-page" :title="newPage ? 'Create a new page' : 'Edit page'" :on-close="resetPutPage">
+            <modal
+              ref="editPageModal"
+              name="edit-page"
+              :title="newPage ? 'Create a new page' : 'Edit page'"
+              :on-close="resetPutPage"
+            >
               <h4 v-if="pagePutError" id="page-label-error" class="modal-title" style="display: none; color: red;">
                 Error updating page {{ pagePutError }}
               </h4>
