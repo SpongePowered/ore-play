@@ -337,7 +337,7 @@ class Versions(
             pluginFile.fileName,
             Some(user.name),
             ReviewState.Unreviewed,
-            pluginFile.data.containsMixins,
+            pluginFile.entries.exists(_.mixin),
             Version.Stability.Stable,
             None,
             pluginFile.versionedPlatforms.map(_.id),

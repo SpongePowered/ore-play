@@ -4,13 +4,13 @@ import java.nio.file.{Files, Path}
 
 import ore.data.{Platform, VersionedPlatform}
 import ore.db.{DbRef, Model}
-import ore.models.project.{Project, Version, VersionPlatform}
+import ore.models.project.{PluginInfoParser, Project, Version, VersionPlatform}
 import ore.models.user.User
 import ore.util.StringUtils
 
 import cats.effect.Sync
 
-class PluginFileWithData(val path: Path, val user: Model[User], val data: PluginFileData) {
+class PluginFileWithData(val path: Path, val user: Model[User], val entries: List[PluginInfoParser.Entry]) {
 
   def delete[F[_]](implicit F: Sync[F]): F[Unit] = F.delay(Files.delete(path))
 
@@ -25,10 +25,10 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
 
   lazy val fileName: String = path.getFileName.toString
 
-  lazy val dependencyIds: Seq[String]              = data.dependencies.map(_.pluginId)
-  lazy val dependencyVersions: Seq[Option[String]] = data.dependencies.map(_.version)
+  lazy val dependencyIds: Seq[String]              = entries.flatMap(_.dependencies).map(_.identifier)
+  lazy val dependencyVersions: Seq[Option[String]] = entries.flatMap(_.dependencies).map(_.rawVersion)
 
-  lazy val versionString: String = StringUtils.slugify(data.version.get)
+  lazy val versionString: String = StringUtils.slugify(entries.head.version)
 
   lazy val (platformWarnings: List[String], versionedPlatforms: List[VersionedPlatform]) =
     Platform.createVersionedPlatforms(dependencyIds, dependencyVersions).run
@@ -54,7 +54,7 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
     fileName = fileName,
     createForumPost = createForumPost,
     tags = Version.VersionTags(
-      usesMixin = data.containsMixins,
+      usesMixin = entries.exists(_.mixin),
       stability = stability,
       releaseType = releaseType
     )

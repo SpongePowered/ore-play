@@ -119,10 +119,11 @@ trait ProjectFactory {
   ): ZIO[Blocking, String, PluginFileWithData] =
     for {
       plugin <- processPluginUpload(uploadData, uploader)
-        .ensure("error.version.invalidPluginId")(_.data.id.contains(project.pluginId))
-        .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
-      _             <- ZIO.unit.filterOrFail(_ => plugin.data.id.contains(project.pluginId))("error.plugin.invalidPluginId")
-      _             <- ZIO.unit.filterOrFail(_ => plugin.data.version.isDefined)("error.plugin.noVersion")
+        .ensure("error.version.invalidPluginId")(_.entries.head.identifier == project.pluginId)
+        .ensure("error.version.illegalVersion")(_.versionString != "recommended")
+      _ <- ZIO.unit.filterOrFail(_ => plugin.entries.head.identifier == project.pluginId)(
+        "error.plugin.invalidPluginId"
+      )
       versionExists <- versionExists(project.id, plugin.md5, plugin.versionString)
       _ <- {
         if (versionExists && this.config.ore.projects.fileValidate) ZIO.fail("error.version.duplicate")

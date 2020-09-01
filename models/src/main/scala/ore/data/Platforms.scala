@@ -146,36 +146,4 @@ object Platform extends StringEnum[Platform] {
   }
 }
 
-/**
-  * The category of a platform.
-  * Examples would be
-  *
-  * Sponge <- SpongeAPI, SpongeForge, SpongeVanilla
-  * Forge <- Forge (maybe Rift if that doesn't die?)
-  * Bukkit <- Bukkit, Spigot, Paper
-  * Canary <- Canary, Neptune
-  *
-  * @author phase
-  */
-sealed trait PlatformCategory {
-  def name: String
-  def tagName: String
-
-  def getPlatforms: Seq[Platform] = Platform.values.filter(_.platformCategory == this)
-}
-
-case object SpongeCategory extends PlatformCategory {
-  val name    = "Sponge Plugins"
-  val tagName = "Sponge"
-}
-
-case object ForgeCategory extends PlatformCategory {
-  val name    = "Forge Mods"
-  val tagName = "Forge"
-}
-
-object PlatformCategory {
-  def getPlatformCategories: Seq[PlatformCategory] = Seq(SpongeCategory, ForgeCategory)
-}
-
 case class VersionedPlatform(id: String, version: Option[String], coarseVersion: Option[String])
