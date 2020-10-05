@@ -446,7 +446,6 @@ class Versions(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
               .result
           )
         } yield {
-          import cats.instances.option._
           Ok(
             views.log(
               request.project,
@@ -746,7 +745,6 @@ class Versions(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
     */
   def downloadRecommended(author: String, slug: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).asyncF { implicit request =>
-      import cats.instances.option._
       request.project
         .recommendedVersion(ModelView.now(Version))
         .sequence
@@ -852,7 +850,6 @@ class Versions(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
     */
   def downloadRecommendedJar(author: String, slug: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).asyncF { implicit request =>
-      import cats.instances.option._
       request.project
         .recommendedVersion(ModelView.now(Version))
         .sequence
@@ -894,7 +891,6 @@ class Versions(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
     */
   def downloadRecommendedJarById(pluginId: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(pluginId).asyncF { implicit request =>
-      import cats.instances.option._
       val data = request.data
       request.project
         .recommendedVersion(ModelView.now(Version))

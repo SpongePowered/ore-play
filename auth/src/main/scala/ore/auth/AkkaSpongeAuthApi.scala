@@ -13,7 +13,6 @@ import akka.http.scaladsl.model._
 import akka.stream.Materializer
 import cats.effect.Concurrent
 import cats.effect.concurrent.Ref
-import cats.instances.list._
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import io.circe.{Decoder, Json}

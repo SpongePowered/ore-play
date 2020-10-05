@@ -37,7 +37,6 @@ import _root_.util.syntax._
 import util.{FileIO, UserActionLogger}
 import views.html.{projects => views}
 
-import cats.instances.option._
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import zio.blocking.Blocking
@@ -73,7 +72,6 @@ class Projects(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
     * @return Create project view
     */
   def showCreator(): Action[AnyContent] = UserLock().asyncF { implicit request =>
-    import cats.instances.vector._
     for {
       orgas <- request.user.organizations.allFromParent
       createOrga <- orgas.toVector
@@ -108,7 +106,6 @@ class Projects(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
   }
 
   private def orgasUserCanUploadTo(user: Model[User]): UIO[Set[DbRef[Organization]]] = {
-    import cats.instances.vector._
     for {
       all <- user.organizations.allFromParent
       canCreate <- all.toVector.parTraverse(org =>
@@ -740,7 +737,6 @@ class Projects(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
   def showNotes(author: String, slug: String): Action[AnyContent] = {
     Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags)).asyncF { implicit request =>
       getProject(author, slug).flatMap { project =>
-        import cats.instances.vector._
         project.decodeNotes.toVector.parTraverse(note => ModelView.now(User).get(note.user).value.tupleLeft(note)).map {
           notes => Ok(views.admin.notes(project, Model.unwrapNested(notes)))
         }

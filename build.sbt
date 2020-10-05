@@ -1,8 +1,6 @@
 ThisBuild / turbo := true
+ThisBuild / usePipelining := true
 ThisBuild / scalaVersion := Settings.scalaVer
-
-//ThisBuild / semanticdbEnabled := true
-Global / semanticdbVersion := "4.2.3"
 
 lazy val db = project.settings(
   Settings.commonSettings,

@@ -27,7 +27,6 @@ import _root_.util.{StatusZ, UserActionLogger}
 
 import akka.http.scaladsl.model.Uri
 import cats.data.{EitherT, OptionT}
-import cats.instances.list._
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import zio.blocking.Blocking

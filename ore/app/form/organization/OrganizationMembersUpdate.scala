@@ -35,10 +35,6 @@ case class OrganizationMembersUpdate(
       F: MonadError[F, Throwable],
       par: Parallel[F]
   ): F[Unit] = {
-    import cats.instances.list._
-    import cats.instances.option._
-    import cats.instances.vector._
-
     // Add new roles
     val dossier = organization.memberships
     val orgId   = organization.id

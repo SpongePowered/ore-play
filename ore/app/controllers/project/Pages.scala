@@ -85,7 +85,6 @@ class Pages(forms: OreForms, stats: StatTracker[UIO])(
           case _                      => None
         }
 
-        import cats.instances.option._
         res.tupleLeft(pages)
       }
       .get
@@ -108,7 +107,6 @@ class Pages(forms: OreForms, stats: StatTracker[UIO])(
             if (pages.map(_._1).contains(p)) None
             else pages.collectFirst { case (pp, subPage) if subPage.contains(p) => pp }
 
-          import cats.instances.option._
           this.stats.projectViewed(
             IO.succeed(
               Ok(
@@ -142,7 +140,6 @@ class Pages(forms: OreForms, stats: StatTracker[UIO])(
           val pageCount  = pages.size + pages.map(_._2.size).sum
           val parentPage = pages.collectFirst { case (pp, page) if page.contains(p) => pp }
 
-          import cats.instances.option._
           Ok(
             views.view(
               request.data,

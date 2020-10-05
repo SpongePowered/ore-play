@@ -195,7 +195,6 @@ object Project extends DefaultModelCompanion[Project, ProjectTable](TableQuery[P
 
     override def transferOwner(m: Model[Project])(newOwner: DbRef[User]): F[Model[Project]] = {
       // Down-grade current owner to "Developer"
-      import cats.instances.vector._
       val oldOwner = m.ownerId
       for {
         newOwnerUser <- ModelView
