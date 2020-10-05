@@ -11,7 +11,7 @@
             <template v-if="permissions.includes('see_hidden')">
               <btn-hide
                 :current-visibility="project.visibility"
-                :endpoint="'projects/' + project.plugin_id + '/visibility'"
+                :endpoint="'projects/' + project.namespace.owner + '/' + project.namespace.slug + '/visibility'"
                 commit-location="project/setVisibility"
               />
             </template>
@@ -409,7 +409,7 @@
             :permissions="permissions"
             role-category="project"
             new-role="Project_Support"
-            :endpoint="'projects/' + project.plugin_id + '/members'"
+            :endpoint="'projects/' + project.namespace.owner + '/' + project.namespace.slug + '/members'"
             commit-location="project/updateMembers"
           />
         </router-link>
@@ -628,7 +628,7 @@ export default {
         const changedName = this.project.name !== this.newName
         const changedOwner = this.project.namespace.owner !== this.newOwner
 
-        API.request('projects/' + this.project.plugin_id, 'PATCH', update)
+        API.projectRequest(this.project.namespace, '', 'PATCH', update)
           .then((result) => {
             this.$store.commit({
               type: 'project/updateProject',
@@ -750,7 +750,7 @@ export default {
       })
     },
     updateDiscourseTopic() {
-      API.request(`projects/${this.project.plugin_id}/external/_discourse`, 'POST', {
+      API.projectRequest(this.project.namespace, 'external/_discourse', 'POST', {
         topic_id: this.discourseTopicId === '' ? null : this.discourseTopicId,
         post_id: this.discoursePostId === '' ? null : this.discoursePostId,
         update_topic: this.discourseSendUpdate,
@@ -769,13 +769,13 @@ export default {
     },
     deleteProject() {
       if (this.hardDelete) {
-        API.request('projects/' + this.project.plugin_id, 'DELETE').then((res) => {
+        API.projectRequest(this.project.namespace, '', 'DELETE').then((res) => {
           this.$store.commit('project/clearProject')
           this.$refs.deleteModal.hide()
           this.$router.push({ name: 'home' })
         })
       } else {
-        API.request('projects/' + this.project.plugin_id + '/visibility', 'POST', {
+        API.projectRequest(this.project.namespace, 'visibility', 'POST', {
           visibility: 'softDelete',
           comment: this.deleteReason,
         }).then((res) => {

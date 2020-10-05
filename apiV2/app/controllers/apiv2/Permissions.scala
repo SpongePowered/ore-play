@@ -18,9 +18,13 @@ class Permissions(
 ) extends AbstractApiV2Controller(lifecycle) {
   import Permissions._
 
-  def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
+  def showPermissions(
+      projectOwner: Option[String],
+      projectSlug: Option[String],
+      organizationName: Option[String]
+  ): Action[AnyContent] =
     CachingApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
-      permissionsInApiScope(pluginId, organizationName).map {
+      permissionsInApiScope(projectOwner, projectSlug, organizationName).map {
         case (scope, perms) =>
           Ok(
             KeyPermissions(
@@ -33,13 +37,14 @@ class Permissions(
 
   def has(
       checkPermissions: Seq[NamedPermission],
-      pluginId: Option[String],
+      projectOwner: Option[String],
+      projectSlug: Option[String],
       organizationName: Option[String]
   )(
       check: (Seq[Permission], Permission) => Boolean
   ): Action[AnyContent] =
     CachingApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
-      permissionsInApiScope(pluginId, organizationName).map {
+      permissionsInApiScope(projectOwner, projectSlug, organizationName).map {
         case (scope, perms) =>
           Ok(PermissionCheck(scope.tpe, check(checkPermissions.map(_.permission), perms)))
       }
@@ -47,17 +52,19 @@ class Permissions(
 
   def hasAll(
       permissions: Seq[NamedPermission],
-      pluginId: Option[String],
+      projectOwner: Option[String],
+      projectSlug: Option[String],
       organizationName: Option[String]
   ): Action[AnyContent] =
-    has(permissions, pluginId, organizationName)((seq, perm) => seq.forall(perm.has(_)))
+    has(permissions, projectOwner, projectSlug, organizationName)((seq, perm) => seq.forall(perm.has(_)))
 
   def hasAny(
       permissions: Seq[NamedPermission],
-      pluginId: Option[String],
+      projectOwner: Option[String],
+      projectSlug: Option[String],
       organizationName: Option[String]
   ): Action[AnyContent] =
-    has(permissions, pluginId, organizationName)((seq, perm) => seq.exists(perm.has(_)))
+    has(permissions, projectOwner, projectSlug, organizationName)((seq, perm) => seq.exists(perm.has(_)))
 }
 object Permissions {
   import models.protocols.APIV2.namedPermissionCodec

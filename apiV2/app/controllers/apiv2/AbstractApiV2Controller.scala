@@ -120,11 +120,11 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
 
   def apiScopeToRealScope(scope: APIScope): IO[Unit, Scope] = scope match {
     case APIScope.GlobalScope => UIO.succeed(GlobalScope)
-    case APIScope.ProjectScope(pluginId) =>
+    case APIScope.ProjectScope(projectOwner, projectSlug) =>
       service
         .runDBIO(
           TableQuery[ProjectTable]
-            .filter(_.pluginId === pluginId)
+            .filter(p => p.ownerName === projectOwner && p.slug.toLowerCase === projectSlug.toLowerCase)
             .map(_.id)
             .result
             .headOption
@@ -146,20 +146,35 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
         .map(OrganizationScope)
   }
 
-  def createApiScope(pluginId: Option[String], organizationName: Option[String]): Either[Result, APIScope] =
-    (pluginId, organizationName) match {
-      case (Some(_), Some(_)) =>
-        Left(BadRequest(ApiError("Can't check for project and organization permissions at the same time")))
-      case (Some(plugId), None)  => Right(APIScope.ProjectScope(plugId))
-      case (None, Some(orgName)) => Right(APIScope.OrganizationScope(orgName))
-      case (None, None)          => Right(APIScope.GlobalScope)
-    }
+  def createApiScope(
+      projectOwner: Option[String],
+      projectSlug: Option[String],
+      organizationName: Option[String]
+  ): Either[Result, APIScope] = {
+    val projectOwnerName = projectOwner.zip(projectSlug)
 
-  def permissionsInApiScope(pluginId: Option[String], organizationName: Option[String])(
+    if ((projectOwner.isDefined || projectSlug.isDefined) && projectOwnerName.isEmpty) {
+      Left(BadRequest(ApiError("You need to specify both the project owner and slug at the same time, not just one")))
+    } else {
+      (projectOwnerName, organizationName) match {
+        case (Some(_), Some(_)) =>
+          Left(BadRequest(ApiError("Can't check for project and organization permissions at the same time")))
+        case (Some((owner, name)), None) => Right(APIScope.ProjectScope(owner, name))
+        case (None, Some(orgName))       => Right(APIScope.OrganizationScope(orgName))
+        case (None, None)                => Right(APIScope.GlobalScope)
+      }
+    }
+  }
+
+  def permissionsInApiScope(
+      projectOwner: Option[String],
+      projectSlug: Option[String],
+      organizationName: Option[String]
+  )(
       implicit request: ApiRequest[_]
   ): IO[Result, (APIScope, Permission)] =
     for {
-      apiScope <- ZIO.fromEither(createApiScope(pluginId, organizationName))
+      apiScope <- ZIO.fromEither(createApiScope(projectOwner, projectSlug, organizationName))
       scope    <- apiScopeToRealScope(apiScope).orElseFail(NotFound)
       perms    <- request.permissionIn(scope)
     } yield (apiScope, perms)

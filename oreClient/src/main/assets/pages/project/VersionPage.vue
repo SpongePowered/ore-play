@@ -190,7 +190,15 @@
               <template v-if="permissions.includes('see_hidden')">
                 <btn-hide
                   :current-visibility="versionObj.visibility"
-                  :endpoint="'projects/' + project.plugin_id + '/versions/' + versionObj.name + '/visibility'"
+                  :endpoint="
+                    'projects/' +
+                    project.namespace.owner +
+                    '/' +
+                    project.namespace.slug +
+                    '/versions/' +
+                    versionObj.name +
+                    '/visibility'
+                  "
                   :callback="(visibility) => (versionObj.visibility = visibility)"
                 />
               </template>
@@ -296,7 +304,6 @@
                 :to="{
                   name: 'project_home',
                   params: {
-                    pluginId: depend.project.plugin_id,
                     fetchedProject: depend.project,
                     ...depend.project.namespace,
                   },
@@ -600,7 +607,7 @@ export default {
       if (!this.versionObj || this.versionObj.name !== this.version) {
         NProgress.start()
 
-        futureVersion = API.request('projects/' + this.project.plugin_id + '/versions/' + this.version)
+        futureVersion = API.versionRequest(this.project.namespace, this.version)
       } else {
         futureVersion = Promise.resolve(this.versionObj)
       }
@@ -645,7 +652,7 @@ export default {
           }
         })
 
-      API.request('projects/' + this.project.plugin_id + '/versions/' + this.version + '/changelog').then((o) => {
+      API.versionRequest(this.project.namespace, this.version, 'changelog').then((o) => {
         this.versionDescription = o.changelog
       })
     },
@@ -667,14 +674,14 @@ export default {
       return parseFloat((bytes / k ** i).toFixed(dm)) + ' ' + sizes[i]
     },
     saveDescription(newDescription) {
-      API.request('projects/' + this.project.plugin_id + '/versions/' + this.version + '/changelog', 'PUT', {
+      API.versionRequest(this.project.namespace, this.version, 'changelog', 'PUT', {
         changelog: newDescription,
       }).then((res) => {
         this.versionDescription = newDescription
       })
     },
     setVisibility(visibility) {
-      API.request('projects/' + this.project.plugin_id + '/versions/' + this.versionObj.name + '/visibility', 'POST', {
+      API.versionRequest(this.project.namespace, this.version, 'visibility', 'POST', {
         visibility,
         comment: this.modalComment,
       }).then((res) => {
@@ -685,7 +692,7 @@ export default {
       })
     },
     updateDiscoursePost() {
-      API.request(`projects/${this.project.plugin_id}/versions/${this.versionObj.name}/external/_discourse`, 'POST', {
+      API.versionRequest(this.project.namespace, this.version, 'external/_discourse', 'POST', {
         post_id: this.discoursePostId === '' ? null : this.discoursePostId,
         update_post: this.discourseSendUpdate,
       }).then(() => {
@@ -698,7 +705,7 @@ export default {
       })
     },
     hardDeleteVersion() {
-      API.request('projects/' + this.project.plugin_id + '/versions/' + this.versionObj.name, 'DELETE').then((res) => {
+      API.versionRequest(this.project.namespace, this.version, '', 'DELETE').then((res) => {
         this.$refs.hardDeleteModal.hide()
 
         this.$router.push({ name: 'versions' })
@@ -764,11 +771,7 @@ export default {
 
       this.spinIcon = true
       if (Object.entries(patchVersion).length) {
-        API.request(
-          'projects/' + this.project.plugin_id + '/versions/' + this.versionObj.name,
-          'PATCH',
-          patchVersion
-        ).then((res) => {
+        API.versionRequest(this.project.namespace, this.version, 'PATCH', patchVersion).then((res) => {
           this.spinIcon = false
           this.editVersion = false
           this.versionObj = res
