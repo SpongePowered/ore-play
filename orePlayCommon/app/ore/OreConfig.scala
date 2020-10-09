@@ -6,6 +6,9 @@ import ore.db.DbRef
 import ore.models.user.User
 import ore.util.StringUtils._
 
+import com.typesafe.config.ConfigMemorySize
+import pureconfig.ConfigReader
+
 case class OreConfig(
     application: OreConfig.App,
     ore: OreConfig.Ore,
@@ -52,6 +55,14 @@ case class OreConfig(
       throw new UnsupportedOperationException("this function is supported in debug mode only") // scalafix:ok
 }
 object OreConfig {
+
+  //SOE in compiler for some reason sometimes, so we keep this here. Seems to tame it
+  implicit val reader: ConfigReader[OreConfig] = {
+    import pureconfig.generic.auto._
+    import pureconfig.generic.semiauto._
+    deriveReader[OreConfig]
+  }
+
   case class App(
       baseUrl: String,
       discourseUrl: String,
@@ -117,7 +128,8 @@ object OreConfig {
         checkInterval: FiniteDuration,
         draftExpire: FiniteDuration,
         userGridPageSize: Int,
-        unsafeDownloadMaxAge: FiniteDuration
+        unsafeDownloadMaxAge: FiniteDuration,
+        uploadMaxSize: ConfigMemorySize
     )
 
     case class Users(

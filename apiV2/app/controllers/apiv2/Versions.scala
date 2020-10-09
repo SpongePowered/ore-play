@@ -319,104 +319,106 @@ class Versions(
   }
 
   def scanVersion(pluginId: String): Action[MultipartFormData[Files.TemporaryFile]] =
-    ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(parse.multipartFormData).asyncF {
-      implicit request =>
-        for {
-          t <- processVersionUploadToErrors(pluginId)
-          (user, _, pluginFile) = t
-        } yield {
-          val apiVersion = APIV2QueryVersion(
-            OffsetDateTime.now(),
-            pluginFile.versionString,
-            pluginFile.dependencyIds.toList,
-            pluginFile.dependencyVersions.toList,
-            Visibility.Public,
-            0,
-            pluginFile.fileSize,
-            pluginFile.md5,
-            pluginFile.fileName,
-            Some(user.name),
-            ReviewState.Unreviewed,
-            pluginFile.data.containsMixins,
-            Version.Stability.Stable,
-            None,
-            pluginFile.versionedPlatforms.map(_.id),
-            pluginFile.versionedPlatforms.map(_.version),
-            None
-          )
+    ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(
+      parse.multipartFormData(config.ore.projects.uploadMaxSize.toBytes)
+    ).asyncF { implicit request =>
+      for {
+        t <- processVersionUploadToErrors(pluginId)
+        (user, _, pluginFile) = t
+      } yield {
+        val apiVersion = APIV2QueryVersion(
+          OffsetDateTime.now(),
+          pluginFile.versionString,
+          pluginFile.dependencyIds.toList,
+          pluginFile.dependencyVersions.toList,
+          Visibility.Public,
+          0,
+          pluginFile.fileSize,
+          pluginFile.md5,
+          pluginFile.fileName,
+          Some(user.name),
+          ReviewState.Unreviewed,
+          pluginFile.data.containsMixins,
+          Version.Stability.Stable,
+          None,
+          pluginFile.versionedPlatforms.map(_.id),
+          pluginFile.versionedPlatforms.map(_.version),
+          None
+        )
 
-          val warnings = NonEmptyList.fromList(pluginFile.warnings.toList)
-          Ok(ScannedVersion(apiVersion.asProtocol, warnings))
-        }
+        val warnings = NonEmptyList.fromList(pluginFile.warnings.toList)
+        Ok(ScannedVersion(apiVersion.asProtocol, warnings))
+      }
     }
 
   def deployVersion(pluginId: String): Action[MultipartFormData[Files.TemporaryFile]] =
-    ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(parse.multipartFormData).asyncF {
-      implicit request =>
-        type TempFile = MultipartFormData.FilePart[Files.TemporaryFile]
-        import zio.blocking._
+    ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(
+      parse.multipartFormData(config.ore.projects.uploadMaxSize.toBytes)
+    ).asyncF { implicit request =>
+      type TempFile = MultipartFormData.FilePart[Files.TemporaryFile]
+      import zio.blocking._
 
-        val pluginInfoFromFileF = ZIO.bracket(
-          acquire = UIO(request.body.file("plugin-info")).get.mapError(Left.apply),
-          release = (filePart: TempFile) => effectBlocking(java.nio.file.Files.deleteIfExists(filePart.ref)).fork,
-          use = (filePart: TempFile) => readFileAsync(filePart.ref).mapError(Right.apply)
+      val pluginInfoFromFileF = ZIO.bracket(
+        acquire = UIO(request.body.file("plugin-info")).get.mapError(Left.apply),
+        release = (filePart: TempFile) => effectBlocking(java.nio.file.Files.deleteIfExists(filePart.ref)).fork,
+        use = (filePart: TempFile) => readFileAsync(filePart.ref).mapError(Right.apply)
+      )
+
+      val dataStringF = ZIO
+        .fromOption(request.body.dataParts.get("plugin-info").flatMap(_.headOption))
+        .orElse(pluginInfoFromFileF)
+        .catchAll {
+          case Left(_)  => IO.fail("No plugin info specified")
+          case Right(e) => IO.die(e)
+        }
+
+      val dataF = dataStringF
+        .flatMap(s => ZIO.fromEither(parser.decode[DeployVersionInfo](s).leftMap(_.show)))
+        .ensure("Description too long")(_.description.forall(_.length < Page.maxLength))
+        .mapError(e => BadRequest(ApiError(e)))
+
+      for {
+        t <- processVersionUploadToErrors(pluginId)
+        (user, project, pluginFile) = t
+        data <- dataF
+        t <- factory
+          .createVersion(
+            project,
+            pluginFile,
+            data.description,
+            data.createForumPost.getOrElse(project.settings.forumSync),
+            data.stability.getOrElse(Stability.Stable),
+            data.releaseType
+          )
+          .mapError { es =>
+            implicit val lang: Lang = user.langOrDefault
+            BadRequest(UserErrors(es.map(messagesApi(_))))
+          }
+      } yield {
+        val (_, version, platforms) = t
+
+        val apiVersion = APIV2QueryVersion(
+          version.createdAt,
+          version.versionString,
+          version.dependencyIds,
+          version.dependencyVersions,
+          version.visibility,
+          0,
+          version.fileSize,
+          version.hash,
+          version.fileName,
+          Some(user.name),
+          version.reviewState,
+          version.tags.usesMixin,
+          version.tags.stability,
+          version.tags.releaseType,
+          platforms.map(_.platform).toList,
+          platforms.map(_.platformVersion).toList,
+          version.postId
         )
 
-        val dataStringF = ZIO
-          .fromOption(request.body.dataParts.get("plugin-info").flatMap(_.headOption))
-          .orElse(pluginInfoFromFileF)
-          .catchAll {
-            case Left(_)  => IO.fail("No plugin info specified")
-            case Right(e) => IO.die(e)
-          }
-
-        val dataF = dataStringF
-          .flatMap(s => ZIO.fromEither(parser.decode[DeployVersionInfo](s).leftMap(_.show)))
-          .ensure("Description too long")(_.description.forall(_.length < Page.maxLength))
-          .mapError(e => BadRequest(ApiError(e)))
-
-        for {
-          t <- processVersionUploadToErrors(pluginId)
-          (user, project, pluginFile) = t
-          data <- dataF
-          t <- factory
-            .createVersion(
-              project,
-              pluginFile,
-              data.description,
-              data.createForumPost.getOrElse(project.settings.forumSync),
-              data.stability.getOrElse(Stability.Stable),
-              data.releaseType
-            )
-            .mapError { es =>
-              implicit val lang: Lang = user.langOrDefault
-              BadRequest(UserErrors(es.map(messagesApi(_))))
-            }
-        } yield {
-          val (_, version, platforms) = t
-
-          val apiVersion = APIV2QueryVersion(
-            version.createdAt,
-            version.versionString,
-            version.dependencyIds,
-            version.dependencyVersions,
-            version.visibility,
-            0,
-            version.fileSize,
-            version.hash,
-            version.fileName,
-            Some(user.name),
-            version.reviewState,
-            version.tags.usesMixin,
-            version.tags.stability,
-            version.tags.releaseType,
-            platforms.map(_.platform).toList,
-            platforms.map(_.platformVersion).toList,
-            version.postId
-          )
-
-          Created(apiVersion.asProtocol)
-        }
+        Created(apiVersion.asProtocol)
+      }
     }
 
   def hardDeleteVersion(pluginId: String, version: String): Action[AnyContent] =

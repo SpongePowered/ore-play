@@ -60,7 +60,6 @@ import com.typesafe.scalalogging.Logger
 import doobie.util.transactor.Strategy
 import doobie.{ExecutionContexts, KleisliInterpreter, Transactor}
 import pureconfig.ConfigSource
-import pureconfig.generic.auto._
 import slick.basic.{BasicProfile, DatabaseConfig}
 import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
