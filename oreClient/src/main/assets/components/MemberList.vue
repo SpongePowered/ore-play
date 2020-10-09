@@ -73,6 +73,7 @@
         <li v-if="permissions.includes('manage_subject_members') && editable" class="list-group-item">
           <user-search
             :exclude="Object.values(updatedMembers).map((m) => m.user)"
+            :exclude-organizations="excludeOrganizations"
             style="width: 100%;"
             @add-user="addNewMember"
           />
@@ -128,6 +129,10 @@ export default {
     commitLocation: {
       type: String,
       default: null,
+    },
+    excludeOrganizations: {
+      type: Boolean,
+      default: false,
     },
   },
   data() {

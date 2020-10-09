@@ -289,7 +289,8 @@ class Projects(
     ApiAction(Permission.ManageProjectMembers, APIScope.ProjectScope(pluginId))
       .asyncF(parseCirce.decodeJson[List[Members.MemberUpdate]]) { implicit r =>
         Members.updateMembers[Project, ProjectUserRole, ProjectRoleTable](
-          getOwner = projects.withPluginId(pluginId).someOrFail(NotFound),
+          getSubject = projects.withPluginId(pluginId).someOrFail(NotFound),
+          allowOrgMembers = true,
           getMembersQuery = APIV2Queries.projectMembers(pluginId, _, _),
           createRole = ProjectUserRole(_, _, _),
           roleCompanion = ProjectUserRole,

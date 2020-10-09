@@ -115,6 +115,7 @@
           :members="orgaMembers"
           :permissions="orgaPermissions"
           editable
+          exclude-organizations
           new-role="Organization_Support"
           :endpoint="'users/' + user.name + '/members'"
           commit-location="user/updateMembers"

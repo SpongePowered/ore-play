@@ -41,6 +41,10 @@ export default {
         return []
       },
     },
+    excludeOrganizations: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -58,7 +62,11 @@ export default {
       if (this.query === '') {
         this.users = []
       } else {
-        API.request('users?q=' + this.query + '&limit=' + 5).then((res) => {
+        API.request('users', 'GET', {
+          q: this.query,
+          limit: 5,
+          excludeOrganizations: this.excludeOrganizations,
+        }).then((res) => {
           this.users = res.result.filter((u) => !this.exclude.includes(u.name))
         })
       }
