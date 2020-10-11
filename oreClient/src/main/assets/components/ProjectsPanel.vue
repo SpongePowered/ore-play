@@ -12,7 +12,7 @@
         </tr>
         <tr v-for="project in projects" v-else :key="project.plugin_id">
           <td>
-            <router-link :to="{ name: 'project_home', params: { pluginId: project.plugin_id, ...project.namespace } }">
+            <router-link :to="{ name: 'project_home', params: project.namespace }">
               {{ project.namespace.owner }}/<strong>{{ project.namespace.slug }}</strong>
             </router-link>
             <div class="pull-right">

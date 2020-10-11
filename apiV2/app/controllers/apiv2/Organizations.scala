@@ -41,7 +41,7 @@ class Organizations(
       .asyncF(parseCirce.decodeJson[List[Members.MemberUpdate]]) { implicit r =>
         Members.updateMembers[Organization, OrganizationUserRole, OrganizationRoleTable](
           getOwner = organizations.withName(organization).someOrFail(NotFound),
-          getMembersQuery = APIV2Queries.projectMembers(organization, _, _),
+          getMembersQuery = APIV2Queries.orgaMembers(organization, _, _),
           createRole = OrganizationUserRole(_, _, _),
           roleCompanion = OrganizationUserRole,
           notificationType = NotificationType.OrganizationInvite,

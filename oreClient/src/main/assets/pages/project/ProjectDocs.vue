@@ -266,8 +266,10 @@ export default {
     ...mapState('project', ['project', 'permissions', 'members']),
   },
   watch: {
-    $route() {
-      this.updatePage(false)
+    $route(oldVal, newVal) {
+      if (oldVal.path !== newVal.path || oldVal.hash === newVal.hash) {
+        this.updatePage(false)
+      }
     },
     project: {
       handler(val, oldVal) {
@@ -282,7 +284,7 @@ export default {
   methods: {
     updatePage(fetchPages) {
       NProgress.start()
-      API.request('projects/' + this.project.plugin_id + '/_pages/' + this.joinedPage)
+      API.projectRequest(this.project.namespace, '_pages/' + this.joinedPage)
         .then((response) => {
           if (response.content === null) {
             this.description = ''
@@ -302,7 +304,7 @@ export default {
         })
 
       if (fetchPages) {
-        API.request('projects/' + this.project.plugin_id + '/_pages').then((pageList) => {
+        API.projectRequest(this.project.namespace, '_pages').then((pageList) => {
           this.pages = pageList.pages
         })
       }
@@ -334,13 +336,13 @@ export default {
       let action
       if (this.newPage) {
         const pageSlug = page.parent ? page.parent + '/' + page.name : page.name
-        action = API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'PUT', {
+        action = API.projectRequest(this.project.namespace, '_pages/' + pageSlug, 'PUT', {
           name: page.name,
           content,
         })
       } else {
         const pageSlug = page.oldParent ? page.oldParent + '/' + page.oldName : page.oldName
-        action = API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'PATCH', {
+        action = API.projectRequest(this.project.namespace, '_pages/' + pageSlug, 'PATCH', {
           name: page.name,
           content,
           parent: page.parent,
@@ -360,7 +362,7 @@ export default {
         })
     },
     savePage(newContent) {
-      API.request('projects/' + this.project.plugin_id + '/_pages/' + this.joinedPage, 'PUT', {
+      API.projectRequest(this.project.namespace, '_pages/' + this.joinedPage, 'PUT', {
         name: this.currentPage.name[this.currentPage.name.length - 1],
         content: newContent,
       }).then(() => {
@@ -371,7 +373,7 @@ export default {
       const page = this.requestPage
       const pageSlug = page.parent ? page.parent + '/' + page.name : page.name
 
-      API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'DELETE')
+      API.projectRequest(this.project.namespace, '_pages/' + pageSlug, 'DELETE')
         .then((res) => {
           this.$refs.editPageModal.toggle()
           this.resetPutPage()
@@ -396,7 +398,7 @@ export default {
       this.$set(this.requestPage, 'parent', this.requestPage.oldParent)
       this.$set(this.requestPage, 'navigational', page.navigational)
 
-      API.request('projects/' + this.project.plugin_id + '/_pages/' + page.slug.join('/'))
+      API.projectRequest(this.project.namespace, '_pages/' + page.slug.join('/'))
         .then((response) => {
           this.$set(this.requestPage, 'content', response.content)
           this.$refs.editPageModal.toggle()

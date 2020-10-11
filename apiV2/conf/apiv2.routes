@@ -118,10 +118,12 @@ DELETE  /keys                                                @controllers.apiv2.
 #  tags:
 #    - Permissions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin to check permissions in. Must not be used together with `organizationName`
+#    - name: projectOwner
+#      description: The owner of the project to get the permissions for. Must not be used together with `organizationName`
+#    - name: projectSlug
+#      description: The project slug of the project get the permissions for. Must not be used together with `organizationName`
 #    - name: organizationName
-#      description: The organization to check permissions in. Must not be used together with `pluginId`
+#      description: The organization to check permissions in. Must not be used together with `projectOwner` and `projectSlug`
 #  responses:
 #    200:
 #      description: Ok
@@ -132,7 +134,7 @@ DELETE  /keys                                                @controllers.apiv2.
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 ###
-GET     /permissions                                         @controllers.apiv2.Permissions.showPermissions(pluginId: Option[String], organizationName: Option[String])
+GET     /permissions                                         @controllers.apiv2.Permissions.showPermissions(projectOwner: Option[String], projectSlug: Option[String], organizationName: Option[String])
 
 ###
 #  summary: Do an AND permission check
@@ -142,10 +144,12 @@ GET     /permissions                                         @controllers.apiv2.
 #  parameters:
 #    - name: permissions
 #      description: The permissions to check
-#    - name: pluginId
-#      description: The plugin to check permissions in. Must not be used together with `organizationName`
+#    - name: projectOwner
+#      description: The owner of the project to check permissions in. Must not be used together with `organizationName`
+#    - name: projectSlug
+#      description: The project slug of the project to check permissions in. Must not be used together with `organizationName`
 #    - name: organizationName
-#      description: The organization to check permissions in. Must not be used together with `pluginId`
+#      description: The organization to check permissions in. Must not be used together with `projectOwner` and `projectSlug`
 #  responses:
 #    200:
 #      description: Ok
@@ -156,7 +160,7 @@ GET     /permissions                                         @controllers.apiv2.
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 ###
-GET     /permissions/hasAll                                  @controllers.apiv2.Permissions.hasAll(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])
+GET     /permissions/hasAll                                  @controllers.apiv2.Permissions.hasAll(permissions: Seq[NamedPermission], projectOwner: Option[String], projectSlug: Option[String], organizationName: Option[String])
 
 ###
 #  summary: Do an OR permission check
@@ -166,10 +170,12 @@ GET     /permissions/hasAll                                  @controllers.apiv2.
 #  parameters:
 #    - name: permissions
 #      description: The permissions to check
-#    - name: pluginId
-#      description: The plugin to check permissions in. Must not be used together with `organizationName`
+#    - name: projectOwner
+#      description: The owner of the project to check permissions in. Must not be used together with `organizationName`
+#    - name: projectSlug
+#      description: The project slug of the project to check permissions in. Must not be used together with `organizationName`
 #    - name: organizationName
-#      description: The organization to check permissions in. Must not be used together with `pluginId`
+#      description: The organization to check permissions in. Must not be used together with `projectOwner` and `projectSlug`
 #  responses:
 #    200:
 #      description: Ok
@@ -180,7 +186,7 @@ GET     /permissions/hasAll                                  @controllers.apiv2.
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 ###
-GET     /permissions/hasAny                                  @controllers.apiv2.Permissions.hasAny(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])
+GET     /permissions/hasAny                                  @controllers.apiv2.Permissions.hasAny(permissions: Seq[NamedPermission], projectOwner: Option[String], projectSlug: Option[String], organizationName: Option[String])
 
 
 
@@ -258,8 +264,10 @@ POST     /projects                                           @controllers.apiv2.
 #  tags:
 #    - Projects
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to return
+#    - name: projectOwner
+#      description: The owner of the project to return
+#    - name: projectSlug
+#      description: The project slug of the project to return
 #  responses:
 #    200:
 #      description: Ok
@@ -272,7 +280,7 @@ POST     /projects                                           @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId                                  @controllers.apiv2.Projects.showProject(pluginId)
+GET     /projects/:projectOwner/:projectSlug                                  @controllers.apiv2.Projects.showProject(projectOwner, projectSlug)
 
 ###
 #  summary: Edits an existing project
@@ -337,7 +345,7 @@ GET     /projects/:pluginId                                  @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-PATCH   /projects/:pluginId                                  @controllers.apiv2.Projects.editProject(pluginId)
+PATCH   /projects/:projectOwner/:projectSlug                                  @controllers.apiv2.Projects.editProject(projectOwner, projectSlug)
 
 ###
 #  summary: Permanently deletes a project.
@@ -347,8 +355,10 @@ PATCH   /projects/:pluginId                                  @controllers.apiv2.
 #  tags:
 #    - Projects
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to delete
+#    - name: projectOwner
+#      description: The owner of the project to delete
+#    - name: projectSlug
+#      description: The project slug of the project to delete
 #  responses:
 #    204:
 #      description: Deleted
@@ -357,7 +367,7 @@ PATCH   /projects/:pluginId                                  @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-DELETE  /projects/:pluginId                                  @controllers.apiv2.Projects.hardDeleteProject(pluginId)
+DELETE  /projects/:projectOwner/:projectSlug                                  @controllers.apiv2.Projects.hardDeleteProject(projectOwner, projectSlug)
 
 ###
 #  summary: Returns the description for a specific project
@@ -367,8 +377,10 @@ DELETE  /projects/:pluginId                                  @controllers.apiv2.
 #  tags:
 #    - Projects
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project description to return
+#    - name: projectOwner
+#      description: The owner of the project which description to return
+#    - name: projectSlug
+#      description: The project slug of project which description to return
 #  responses:
 #    200:
 #      description: Ok
@@ -384,7 +396,7 @@ DELETE  /projects/:pluginId                                  @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/description                      @controllers.apiv2.Projects.showProjectDescription(pluginId)
+GET     /projects/:projectOwner/:projectSlug/description                      @controllers.apiv2.Projects.showProjectDescription(projectOwner, projectSlug)
 
 ###
 #  summary: Returns the members of a project
@@ -395,8 +407,10 @@ GET     /projects/:pluginId/description                      @controllers.apiv2.
 #  tags:
 #    - Projects
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to return members for
+#    - name: projectOwner
+#      description: The owner of the project to return members for
+#    - name: projectSlug
+#      description: The project slug of project to return members for
 #    - name: limit
 #      description: The maximum amount of members to return
 #    - name: offset
@@ -415,7 +429,7 @@ GET     /projects/:pluginId/description                      @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/members                          @controllers.apiv2.Projects.showMembers(pluginId, limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:projectOwner/:projectSlug/members                          @controllers.apiv2.Projects.showMembers(projectOwner, projectSlug, limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Updates the members of a project
@@ -424,8 +438,10 @@ GET     /projects/:pluginId/members                          @controllers.apiv2.
 #  tags:
 #    - Projects
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to update members for
+#    - name: projectOwner
+#      description: The owner of the project to update members for
+#    - name: projectSlug
+#      description: The project slug of project to update members for
 #  requestBody:
 #    required: true
 #    content:
@@ -442,7 +458,7 @@ GET     /projects/:pluginId/members                          @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-POST    /projects/:pluginId/members                          @controllers.apiv2.Projects.updateMembers(pluginId)
+POST    /projects/:projectOwner/:projectSlug/members                          @controllers.apiv2.Projects.updateMembers(projectOwner, projectSlug)
 
 ###
 #  summary: Returns the stats for a project
@@ -452,8 +468,10 @@ POST    /projects/:pluginId/members                          @controllers.apiv2.
 #  tags:
 #    - Projects
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to return the stats for
+#    - name: projectOwner
+#      description: The owner of the project to return the stats for
+#    - name: projectSlug
+#      description: The project slug of project to return the stats for
 #    - name: fromDate
 #      description: The first date to include in the result
 #      format: date
@@ -475,7 +493,7 @@ POST    /projects/:pluginId/members                          @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/stats                            @controllers.apiv2.Projects.showProjectStats(pluginId, fromDate: String, toDate: String)
+GET     /projects/:projectOwner/:projectSlug/stats                            @controllers.apiv2.Projects.showProjectStats(projectOwner, projectSlug, fromDate: String, toDate: String)
 
 ###
 #  summary: Sets a project's visibility.
@@ -488,8 +506,10 @@ GET     /projects/:pluginId/stats                            @controllers.apiv2.
 #  tags:
 #    - Projects
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to change the visibility of
+#    - name: projectOwner
+#      description: The owner of the project to change the visibility of
+#    - name: projectSlug
+#      description: The project slug of project to change the visibility of
 #  requestBody:
 #    required: true
 #    content:
@@ -504,7 +524,7 @@ GET     /projects/:pluginId/stats                            @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-POST    /projects/:pluginId/visibility                       @controllers.apiv2.Projects.setProjectVisibility(pluginId)
+POST    /projects/:projectOwner/:projectSlug/visibility                       @controllers.apiv2.Projects.setProjectVisibility(projectOwner, projectSlug)
 
 ###
 #  summary: Sets a project's discourse topic settings.
@@ -514,8 +534,10 @@ POST    /projects/:pluginId/visibility                       @controllers.apiv2.
 #  tags:
 #    - Projects
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to change the discourse settings of
+#    - name: projectOwner
+#      description: The owner of the project to change the discourse settings of
+#    - name: projectSlug
+#      description: The project slug of project to change the discourse settings of
 #  requestBody:
 #    required: true
 #    content:
@@ -530,7 +552,7 @@ POST    /projects/:pluginId/visibility                       @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-POST    /projects/:pluginId/external/_discourse              @controllers.apiv2.Projects.editDiscourseSettings(pluginId)
+POST    /projects/:projectOwner/:projectSlug/external/_discourse              @controllers.apiv2.Projects.editDiscourseSettings(projectOwner, projectSlug)
 
 
 
@@ -540,8 +562,10 @@ POST    /projects/:pluginId/external/_discourse              @controllers.apiv2.
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to return versions for
+#    - name: projectOwner
+#      description: The owner of the project to return versions for
+#    - name: projectSlug
+#      description: The project slug of project to return versions for
 #    - name: platforms
 #      required: false
 #      description: Only show versions that with a platform given in this list. Should be formated either as `platform` or `platform:version`.
@@ -565,7 +589,7 @@ POST    /projects/:pluginId/external/_discourse              @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions                         @controllers.apiv2.Versions.listVersions(pluginId, platforms: Seq[String], stability: Seq[Version.Stability], releaseType: Seq[Version.ReleaseType], limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:projectOwner/:projectSlug/versions                         @controllers.apiv2.Versions.listVersions(projectOwner, projectSlug, platforms: Seq[String], stability: Seq[Version.Stability], releaseType: Seq[Version.ReleaseType], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Returns a specific version of a project
@@ -573,8 +597,10 @@ GET     /projects/:pluginId/versions                         @controllers.apiv2.
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to return the version for
+#    - name: projectOwner
+#      description: The owner of the project to return the version for
+#    - name: projectSlug
+#      description: The project slug of project to return the version for
 #    - name: name
 #      description: The name of the version to return
 #  responses:
@@ -589,7 +615,7 @@ GET     /projects/:pluginId/versions                         @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.Versions.showVersion(pluginId, name)
+GET     /projects/:projectOwner/:projectSlug/versions/:name                   @controllers.apiv2.Versions.showVersionAction(projectOwner, projectSlug, name)
 
 ###
 #  summary: Edits an existing version
@@ -599,8 +625,10 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project whose version you will edit
+#    - name: projectOwner
+#      description: The owner of the project whose version you will edit
+#    - name: projectSlug
+#      description: The project slug of project whose version you will edit
 #    - name: name
 #      description: The name of the version to edit
 #  requestBody:
@@ -622,7 +650,7 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-PATCH   /projects/:pluginId/versions/:name                   @controllers.apiv2.Versions.editVersion(pluginId, name)
+PATCH   /projects/:projectOwner/:projectSlug/versions/:name                   @controllers.apiv2.Versions.editVersion(projectOwner, projectSlug, name)
 
 ###
 #  summary: Permanently deletes a version.
@@ -632,8 +660,10 @@ PATCH   /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project whose version you will delete
+#    - name: projectOwner
+#      description: The owner of the project whose version you will delete
+#    - name: projectSlug
+#      description: The project slug of project whose version you will delete
 #    - name: name
 #      description: The name of the version to delete
 #  responses:
@@ -644,7 +674,7 @@ PATCH   /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-DELETE  /projects/:pluginId/versions/:name                   @controllers.apiv2.Versions.hardDeleteVersion(pluginId, name)
+DELETE  /projects/:projectOwner/:projectSlug/versions/:name                   @controllers.apiv2.Versions.hardDeleteVersion(projectOwner, projectSlug, name)
 
 ###
 #  summary: Sets a version's visibility.
@@ -657,8 +687,10 @@ DELETE  /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project whose version you will edit
+#    - name: projectOwner
+#      description: The owner of the project whose version you will edit the visibility of
+#    - name: projectSlug
+#      description: The project slug of project whose version you will edit the visibility of
 #    - name: name
 #      description: The name of the version to edit
 #  requestBody:
@@ -675,7 +707,7 @@ DELETE  /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-POST    /projects/:pluginId/versions/:name/visibility        @controllers.apiv2.Versions.setVersionVisibility(pluginId, name)
+POST    /projects/:projectOwner/:projectSlug/versions/:name/visibility        @controllers.apiv2.Versions.setVersionVisibility(projectOwner, projectSlug, name)
 
 ###
 #  summary: Returns the changelog for a version
@@ -685,8 +717,10 @@ POST    /projects/:pluginId/versions/:name/visibility        @controllers.apiv2.
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to return the version for
+#    - name: projectOwner
+#      description: The owner of the project to return the version changelog for
+#    - name: projectSlug
+#      description: The project slug of project to return the version changelog for
 #    - name: name
 #      description: The name of the version to return the changelog for
 #  responses:
@@ -701,7 +735,7 @@ POST    /projects/:pluginId/versions/:name/visibility        @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions/:name/changelog          @controllers.apiv2.Versions.showVersionChangelog(pluginId, name)
+GET     /projects/:projectOwner/:projectSlug/versions/:name/changelog          @controllers.apiv2.Versions.showVersionChangelog(projectOwner, projectSlug, name)
 
 ###
 #  summary: Updates the changelog for a version
@@ -711,8 +745,10 @@ GET     /projects/:pluginId/versions/:name/changelog          @controllers.apiv2
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to return the version for
+#    - name: projectOwner
+#      description: The owner of the project to update the version changelog for
+#    - name: projectSlug
+#      description: The project slug of project to update the version changelog for
 #    - name: name
 #      description: The name of the version to update the changelog for
 #  responses:
@@ -723,7 +759,7 @@ GET     /projects/:pluginId/versions/:name/changelog          @controllers.apiv2
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-PUT     /projects/:pluginId/versions/:name/changelog          @controllers.apiv2.Versions.updateChangelog(pluginId, name)
+PUT     /projects/:projectOwner/:projectSlug/versions/:name/changelog          @controllers.apiv2.Versions.updateChangelog(projectOwner, projectSlug, name)
 
 ###
 #  summary: Sets a versions's discourse post settings.
@@ -733,8 +769,10 @@ PUT     /projects/:pluginId/versions/:name/changelog          @controllers.apiv2
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the version to change the discourse settings of
+#    - name: projectOwner
+#      description: The owner of the project which version to change the discourse settings of
+#    - name: projectSlug
+#      description: The project slug of project which version to change the discourse settings of
 #    - name: name
 #      description: The name of the version to update the settings of
 #  requestBody:
@@ -751,7 +789,7 @@ PUT     /projects/:pluginId/versions/:name/changelog          @controllers.apiv2
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-POST    /projects/:pluginId/versions/:name/external/_discourse  @controllers.apiv2.Versions.editDiscourseSettings(pluginId, name)
+POST    /projects/:projectOwner/:projectSlug/versions/:name/external/_discourse  @controllers.apiv2.Versions.editDiscourseSettings(projectOwner, projectSlug, name)
 
 ###
 #  summary: Returns the stats for a version
@@ -761,8 +799,10 @@ POST    /projects/:pluginId/versions/:name/external/_discourse  @controllers.api
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the version to return the stats for
+#    - name: projectOwner
+#      description: The owner of the project which version to return the stats for
+#    - name: projectSlug
+#      description: The project slug of project which version to return the stats for
 #    - name: version
 #      description: The version to return the stats for
 #    - name: fromDate
@@ -786,7 +826,7 @@ POST    /projects/:pluginId/versions/:name/external/_discourse  @controllers.api
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions/:name/stats          @controllers.apiv2.Versions.showVersionStats(pluginId, name, fromDate: String, toDate: String)
+GET     /projects/:projectOwner/:projectSlug/versions/:name/stats          @controllers.apiv2.Versions.showVersionStats(projectOwner, projectSlug, name, fromDate: String, toDate: String)
 
 ###
 #  summary: Scan a plugin file.
@@ -797,8 +837,10 @@ GET     /projects/:pluginId/versions/:name/stats          @controllers.apiv2.Ver
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to scan the file for
+#    - name: projectOwner
+#      description: The owner of the project to scan the file for
+#    - name: projectSlug
+#      description: The project slug of project to scan the file for
 #  requestBody:
 #    required: true
 #    content:
@@ -824,7 +866,7 @@ GET     /projects/:pluginId/versions/:name/stats          @controllers.apiv2.Ver
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 +nocsrf
-PUT    /projects/:pluginId/versions/scan                     @controllers.apiv2.Versions.scanVersion(pluginId)
+PUT    /projects/:projectOwner/:projectSlug/versions/scan                     @controllers.apiv2.Versions.scanVersion(projectOwner, projectSlug)
 
 ###
 #  summary: Creates a new version
@@ -832,8 +874,10 @@ PUT    /projects/:pluginId/versions/scan                     @controllers.apiv2.
 #  tags:
 #    - Versions
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to create the version for
+#    - name: projectOwner
+#      description: The owner of the project to create the version for
+#    - name: projectSlug
+#      description: The project slug of project to create the version for
 #  requestBody:
 #    required: true
 #    content:
@@ -864,7 +908,7 @@ PUT    /projects/:pluginId/versions/scan                     @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 +nocsrf
-POST    /projects/:pluginId/versions                         @controllers.apiv2.Versions.deployVersion(pluginId)
+POST    /projects/:projectOwner/:projectSlug/versions                         @controllers.apiv2.Versions.deployVersion(projectOwner, projectSlug)
 
 ###
 #  summary: Returns all the pages for a project
@@ -876,8 +920,10 @@ POST    /projects/:pluginId/versions                         @controllers.apiv2.
 #  tags:
 #    - Pages
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to return the pages for
+#    - name: projectOwner
+#      description: The owner of the project to return the pages for
+#    - name: projectSlug
+#      description: The project slug of project to return the pages for
 #    - name: page
 #      description: The slug of the pages to return
 #  responses:
@@ -892,7 +938,7 @@ POST    /projects/:pluginId/versions                         @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/_pages                           @controllers.apiv2.Pages.showPages(pluginId)
+GET     /projects/:projectOwner/:projectSlug/_pages                           @controllers.apiv2.Pages.showPages(projectOwner, projectSlug)
 
 ###
 #  summary: Returns the given page
@@ -904,8 +950,10 @@ GET     /projects/:pluginId/_pages                           @controllers.apiv2.
 #  tags:
 #    - Pages
 #  parameters:
-#    - name: pluginId
-#      description: The plugin id of the project to return the page for
+#    - name: projectOwner
+#      description: The owner of the project to return the page for
+#    - name: projectSlug
+#      description: The project slug of project to return the page for
 #    - name: page
 #      description: The slug of the page to return
 #  responses:
@@ -920,7 +968,7 @@ GET     /projects/:pluginId/_pages                           @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/_pages/*page       @controllers.apiv2.Pages.showPage(pluginId, page)
+GET     /projects/:projectOwner/:projectSlug/_pages/*page       @controllers.apiv2.Pages.showPageAction(projectOwner, projectSlug, page)
 
 ###
 #  summary: Creates or updates a page
@@ -956,7 +1004,7 @@ GET     /projects/:pluginId/_pages/*page       @controllers.apiv2.Pages.showPage
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 #+nocsrf
-PUT     /projects/:pluginId/_pages/*page                     @controllers.apiv2.Pages.putPage(pluginId, page)
+PUT     /projects/:projectOwner/:projectSlug/_pages/*page                     @controllers.apiv2.Pages.putPage(projectOwner, projectSlug, page)
 
 ###
 #  summary: Updates a page
@@ -986,7 +1034,7 @@ PUT     /projects/:pluginId/_pages/*page                     @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 #+nocsrf
-PATCH   /projects/:pluginId/_pages/*page                     @controllers.apiv2.Pages.patchPage(pluginId, page)
+PATCH   /projects/:projectOwner/:projectSlug/_pages/*page                     @controllers.apiv2.Pages.patchPage(projectOwner, projectSlug, page)
 
 ###
 #  summary: Deletes a page
@@ -1006,11 +1054,14 @@ PATCH   /projects/:pluginId/_pages/*page                     @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 #+nocsrf
-DELETE   /projects/:pluginId/_pages/*page                     @controllers.apiv2.Pages.deletePage(pluginId, page)
+DELETE   /projects/:projectOwner/:projectSlug/_pages/*page                     @controllers.apiv2.Pages.deletePage(projectOwner, projectSlug, page)
 
 ### NoDocs ###
 #+nocsrf
-GET      /projects/:pluginId/_projectData                     @controllers.apiv2.Projects.projectData(pluginId)
+GET      /projects/:projectOwner/:projectSlug/_projectData                     @controllers.apiv2.Projects.projectData(projectOwner, projectSlug)
+
+### NoDocs ###
+GET      /projects/:pluginId/*path                                              @controllers.apiv2.Projects.redirectPluginId(pluginId, path)
 
 ###
 #  summary: Searches the users on Ore

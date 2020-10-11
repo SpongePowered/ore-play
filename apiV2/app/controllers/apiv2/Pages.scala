@@ -32,63 +32,74 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
     implicit oreComponents: OreControllerComponents
 ) extends AbstractApiV2Controller(lifecycle) {
 
-  def showPages(pluginId: String): Action[AnyContent] =
+  def showPages(projectOwner: String, projectSlug: String): Action[AnyContent] =
     CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
-      service.runDbCon(APIV2Queries.pageList(pluginId).to[Vector]).flatMap { pages =>
+      service.runDbCon(APIV2Queries.pageList(projectOwner, projectSlug).to[Vector]).flatMap { pages =>
         if (pages.isEmpty) ZIO.fail(NotFound)
         else ZIO.succeed(Ok(APIV2.PageList(pages.map(t => APIV2.PageListEntry(t._3, t._4, t._5)))))
       }
     }
 
-  def showPage(pluginId: String, page: String): Action[AnyContent] =
+  def showPageAction(projectOwner: String, projectSlug: String, page: String): Action[AnyContent] =
     CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
-      service.runDbCon(APIV2Queries.getPage(pluginId, page).option).get.orElseFail(NotFound).map {
+      service.runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, page).option).get.orElseFail(NotFound).map {
         case (_, _, name, contents) =>
           Ok(APIV2.Page(name, contents))
       }
     }
 
-  def putPage(pluginId: String, page: String): Action[APIV2.Page] =
-    ApiAction(Permission.EditPage, APIScope.ProjectScope(pluginId)).asyncF(parseCirce.decodeJson[APIV2.Page]) { c =>
-      val newName = StringUtils.compact(c.body.name)
-      val content = c.body.content
+  def putPage(projectOwner: String, projectSlug: String, page: String): Action[APIV2.Page] =
+    ApiAction(Permission.EditPage, APIScope.ProjectScope(projectOwner, projectSlug))
+      .asyncF(parseCirce.decodeJson[APIV2.Page]) { c =>
+        val newName = StringUtils.compact(c.body.name)
+        val content = c.body.content
 
-      val pageArr  = page.split("/")
-      val pageInit = pageArr.init.mkString("/")
-      val slug     = StringUtils.slugify(pageArr.last) //TODO: Check ASCII
+        val pageArr  = page.split("/")
+        val pageInit = pageArr.init.mkString("/")
+        val slug     = StringUtils.slugify(pageArr.last) //TODO: Check ASCII
 
-      val updateExisting = service.runDbCon(APIV2Queries.getPage(pluginId, page).option).get.flatMap {
-        case (_, id, _, _) =>
+        val updateExisting =
+          service.runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, page).option).get.flatMap {
+            case (_, id, _, _) =>
+              service
+                .runDBIO(
+                  TableQuery[PageTable].filter(_.id === id).map(p => (p.name, p.contents)).update((newName, content))
+                )
+                .as(Ok(APIV2.Page(newName, content)))
+          }
+
+        def insertNewPage(projectId: DbRef[Project], parentId: Option[DbRef[Page]]) =
           service
-            .runDBIO(
-              TableQuery[PageTable].filter(_.id === id).map(p => (p.name, p.contents)).update((newName, content))
-            )
-            .as(Ok(APIV2.Page(newName, content)))
+            .insert(Page(projectId, parentId, newName, slug, isDeletable = true, content))
+            .as(Created(APIV2.Page(newName, content)))
+
+        val createNew =
+          if (page.contains("/")) {
+            service
+              .runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, pageInit).option)
+              .get
+              .orElseFail(NotFound)
+              .flatMap {
+                case (projectId, parentId, _, _) =>
+                  insertNewPage(projectId, Some(parentId))
+              }
+          } else {
+            projects
+              .withSlug(projectOwner, projectSlug)
+              .get
+              .orElseFail(NotFound)
+              .map(_.id)
+              .flatMap(insertNewPage(_, None))
+          }
+
+        if (page == Page.homeName && content.fold(0)(_.length) < Page.minLength)
+          ZIO.fail(BadRequest(ApiError("Too short content")))
+        else if (content.fold(0)(_.length) > Page.maxLengthPage) ZIO.fail(BadRequest(ApiError("Too long content")))
+        else updateExisting.orElse(createNew)
       }
 
-      def insertNewPage(projectId: DbRef[Project], parentId: Option[DbRef[Page]]) =
-        service
-          .insert(Page(projectId, parentId, newName, slug, isDeletable = true, content))
-          .as(Created(APIV2.Page(newName, content)))
-
-      val createNew =
-        if (page.contains("/")) {
-          service.runDbCon(APIV2Queries.getPage(pluginId, pageInit).option).get.orElseFail(NotFound).flatMap {
-            case (projectId, parentId, _, _) =>
-              insertNewPage(projectId, Some(parentId))
-          }
-        } else {
-          projects.withPluginId(pluginId).get.orElseFail(NotFound).map(_.id).flatMap(insertNewPage(_, None))
-        }
-
-      if (page == Page.homeName && content.fold(0)(_.length) < Page.minLength)
-        ZIO.fail(BadRequest(ApiError("Too short content")))
-      else if (content.fold(0)(_.length) > Page.maxLengthPage) ZIO.fail(BadRequest(ApiError("Too long content")))
-      else updateExisting.orElse(createNew)
-    }
-
-  def patchPage(pluginId: String, page: String): Action[Json] =
-    ApiAction(Permission.EditPage, APIScope.ProjectScope(pluginId))
+  def patchPage(projectOwner: String, projectSlug: String, page: String): Action[Json] =
+    ApiAction(Permission.EditPage, APIScope.ProjectScope(projectOwner, projectSlug))
       .asyncF(parseCirce.json) { implicit request =>
         val root = request.body.hcursor
 
@@ -104,9 +115,12 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
 
             val slug = newName.name.map(StringUtils.slugify)
 
-            val oldPage = service.runDbCon(APIV2Queries.getPage(pluginId, page).option).get.orElseFail(NotFound)
+            val oldPage =
+              service.runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, page).option).get.orElseFail(NotFound)
             val newParent = newName.parent
-              .map(_.map(p => service.runDbCon(APIV2Queries.getPage(pluginId, p).option).get.map(_._2)).sequence)
+              .map(
+                _.map(p => service.runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, p).option).get.map(_._2)).sequence
+              )
               .sequence
               .orElseFail(BadRequest(ApiError("Unknown parent")))
 
@@ -124,10 +138,10 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
         }
       }
 
-  def deletePage(pluginId: String, page: String): Action[AnyContent] =
-    ApiAction(Permission.EditPage, APIScope.ProjectScope(pluginId)).asyncF {
+  def deletePage(projectOwner: String, projectSlug: String, page: String): Action[AnyContent] =
+    ApiAction(Permission.EditPage, APIScope.ProjectScope(projectOwner, projectSlug)).asyncF {
       service
-        .runDbCon(APIV2Queries.getPage(pluginId, page).option)
+        .runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, page).option)
         .get
         .orElseFail(NotFound)
         .flatMap {
