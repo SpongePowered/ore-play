@@ -111,6 +111,6 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
       readPrompts,
       isLocked,
       lang.?
-    ) <> (applyFunc, unapplyFunc)
+    ).<>(applyFunc, unapplyFunc)
   }
 }

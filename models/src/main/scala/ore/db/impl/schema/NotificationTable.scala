@@ -17,7 +17,10 @@ class NotificationTable(tag: Tag) extends ModelTable[Notification](tag, "notific
   def read             = column[Boolean]("read")
 
   override def * =
-    (id.?, createdAt.?, (userId, originId, notificationType, messageArgs, action.?, read)) <> (mkApply(
-      (Notification.apply _).tupled
-    ), mkUnapply(Notification.unapply))
+    (id.?, createdAt.?, (userId, originId, notificationType, messageArgs, action.?, read)).<>(
+      mkApply(
+        (Notification.apply _).tupled
+      ),
+      mkUnapply(Notification.unapply)
+    )
 }

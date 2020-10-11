@@ -18,7 +18,10 @@ class ReviewTable(tag: Tag) extends ModelTable[Review](tag, "project_version_rev
   def comment   = column[Json]("comment")
 
   override def * =
-    (id.?, createdAt.?, (versionId, userId, endedAt.?, comment)) <> (mkApply((Review.apply _).tupled), mkUnapply(
-      Review.unapply
-    ))
+    (id.?, createdAt.?, (versionId, userId, endedAt.?, comment)).<>(
+      mkApply((Review.apply _).tupled),
+      mkUnapply(
+        Review.unapply
+      )
+    )
 }

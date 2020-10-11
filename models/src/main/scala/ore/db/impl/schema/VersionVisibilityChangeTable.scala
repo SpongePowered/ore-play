@@ -13,7 +13,10 @@ class VersionVisibilityChangeTable(tag: Tag)
   def versionId = column[DbRef[Version]]("version_id")
 
   override def * =
-    (id.?, createdAt.?, (createdBy.?, versionId, comment, resolvedAt.?, resolvedBy.?, visibility)) <> (mkApply(
-      (VersionVisibilityChange.apply _).tupled
-    ), mkUnapply(VersionVisibilityChange.unapply))
+    (id.?, createdAt.?, (createdBy.?, versionId, comment, resolvedAt.?, resolvedBy.?, visibility)).<>(
+      mkApply(
+        (VersionVisibilityChange.apply _).tupled
+      ),
+      mkUnapply(VersionVisibilityChange.unapply)
+    )
 }
