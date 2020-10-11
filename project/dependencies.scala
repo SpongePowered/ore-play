@@ -64,7 +64,6 @@ object Deps {
 
   val zio     = "dev.zio" %% "zio"              % Version.zio
   val zioCats = "dev.zio" %% "zio-interop-cats" % Version.zioCats
-  val zioZmx  = "dev.zio" %% "zio-zmx"          % "0.0.4"
 
   val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.14.0"
 

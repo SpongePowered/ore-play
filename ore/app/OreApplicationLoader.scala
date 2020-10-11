@@ -67,7 +67,6 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.zmx.Diagnostics
 import zio.{ExecutionStrategy, Exit, Runtime, Schedule, Task, UIO, ZEnv, ZIO, ZManaged}
 
 class OreApplicationLoader extends ApplicationLoader {
@@ -96,7 +95,6 @@ class OreComponents(context: ApplicationLoader.Context)
 
   use(prefix) //Gets around unused warning
   eager(applicationEvolutions)
-  eager(zmxDiagnostics)
 
   val logger = Logger("Bootstrap")
 
@@ -147,10 +145,6 @@ class OreComponents(context: ApplicationLoader.Context)
   implicit lazy val impActorSystem: ActorSystem = actorSystem
 
   implicit lazy val runtime: Runtime[ZEnv] = Runtime.default
-
-  lazy val zmxDiagnostics: Diagnostics = applicationManaged(
-    zio.zmx.Diagnostics.live("localhost", config.diagnostics.zmx.port).build
-  )
 
   override lazy val evolutionsReader = new OreEvolutionsReader(environment)
 

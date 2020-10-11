@@ -188,8 +188,7 @@ lazy val ore = project
       Deps.circeDerivation,
       Deps.circeParser,
       Deps.macwire,
-      Deps.periscopeAkka,
-      Deps.zioZmx
+      Deps.periscopeAkka
     ),
     libraryDependencies ++= Deps.flexmarkDeps,
     libraryDependencies ++= Seq(
@@ -217,7 +216,9 @@ lazy val ore = project
     WebKeys.exportedMappings in Assets := Seq(),
     PlayKeys.playMonitoredFiles += (oreClient / baseDirectory).value / "assets",
     //sbt 1.4 workaround
-    play.sbt.PlayInternalKeys.playCompileEverything ~= (_.map(_.copy(compilations = sbt.internal.inc.Compilations.of(Seq.empty)))),
+    play.sbt.PlayInternalKeys.playCompileEverything ~= (_.map(
+      _.copy(compilations = sbt.internal.inc.Compilations.of(Seq.empty))
+    ))
   )
 
 lazy val oreAll =

@@ -14,8 +14,7 @@ case class OreConfig(
     sponge: OreConfig.Sponge,
     auth: OreConfig.Auth,
     mail: OreConfig.Mail,
-    performance: OreConfig.Performance,
-    diagnostics: OreConfig.Diagnostics
+    performance: OreConfig.Performance
 ) {
 
   /**
@@ -221,15 +220,6 @@ object OreConfig {
   case class Performance(
       nioBlockingFibers: Int
   )
-
-  case class Diagnostics(
-      zmx: Diagnostics.Zmx
-  )
-  object Diagnostics {
-    case class Zmx(
-        port: Int
-    )
-  }
 }
 
 case class Logo(name: String, image: String, link: String)
