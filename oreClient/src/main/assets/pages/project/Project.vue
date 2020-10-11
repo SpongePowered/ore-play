@@ -15,10 +15,6 @@ export default {
     ProjectHeader,
   },
   props: {
-    pluginId: {
-      type: String,
-      default: null,
-    },
     owner: {
       type: String,
       default: null,
@@ -58,8 +54,7 @@ export default {
       ) {
         this.$store.dispatch('project/setActiveProjectFromFetched', this.fetchedProject)
       } else {
-        const dispatchProject = this.pluginId ? this.pluginId : { owner: this.owner, slug: this.slug }
-        this.$store.dispatch('project/setActiveProject', dispatchProject)
+        this.$store.dispatch('project/setActiveProject', { owner: this.owner, slug: this.slug })
       }
     },
   },

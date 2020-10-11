@@ -204,7 +204,7 @@ export default {
       }
 
       NProgress.start()
-      API.request('projects/' + this.project.plugin_id + '/versions', 'GET', requestParams).then((response) => {
+      API.projectRequest(this.project.namespace, 'versions', 'GET', requestParams).then((response) => {
         this.versions = response.result
         this.totalVersions = response.pagination.count
         this.loading = false

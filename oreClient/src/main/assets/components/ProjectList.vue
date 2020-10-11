@@ -219,7 +219,6 @@ export default {
       return {
         name: 'project_home',
         params: {
-          pluginId: project.plugin_id,
           fetchedProject: project,
           owner: project.namespace.owner,
           slug: project.namespace.slug,

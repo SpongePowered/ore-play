@@ -42,7 +42,7 @@ class Organizations(
         Members.updateMembers[Organization, OrganizationUserRole, OrganizationRoleTable](
           getSubject = organizations.withName(organization).someOrFail(NotFound),
           allowOrgMembers = false,
-          getMembersQuery = APIV2Queries.projectMembers(organization, _, _),
+          getMembersQuery = APIV2Queries.orgaMembers(organization, _, _),
           createRole = OrganizationUserRole(_, _, _),
           roleCompanion = OrganizationUserRole,
           notificationType = NotificationType.OrganizationInvite,

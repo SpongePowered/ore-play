@@ -409,7 +409,7 @@ export default {
   },
   watch: {
     project(val) {
-      API.request('projects/' + val.plugin_id + '/_projectData').then((res) => {
+      API.projectRequest(val.namespace, '_projectData').then((res) => {
         this.projectData = res
       })
     },

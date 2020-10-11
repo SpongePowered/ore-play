@@ -71,13 +71,14 @@ class APIV2QueriesSpec extends DbSpec {
   }
 
   test("ProjectMembers") {
-    check(APIV2Queries.projectMembers("Foo", 20L, 0L))
+    check(APIV2Queries.projectMembers("Foo", "bar", 20L, 0L))
   }
 
   test("VersionCountQuery") {
     check(
       APIV2Queries.versionCountQuery(
         "Foo",
+        "Bar",
         List("Foo" -> Some("Bar"), "Baz" -> None),
         canSeeHidden = false,
         stability = List(Version.Stability.Stable),
@@ -92,10 +93,10 @@ class APIV2QueriesSpec extends DbSpec {
   }
 
   test("ProjectStats") {
-    check(APIV2Queries.projectStats("foo", LocalDate.now().minusDays(30), LocalDate.now()))
+    check(APIV2Queries.projectStats("foo", "bar", LocalDate.now().minusDays(30), LocalDate.now()))
   }
 
   test("VersionStats") {
-    check(APIV2Queries.versionStats("foo", "bar", LocalDate.now().minusDays(30), LocalDate.now()))
+    check(APIV2Queries.versionStats("foo", "bar", "baz", LocalDate.now().minusDays(30), LocalDate.now()))
   }
 }

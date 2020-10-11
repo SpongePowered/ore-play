@@ -200,7 +200,7 @@ export default {
       formData.append('plugin-file', this.$refs.fileInput.files[0])
 
       try {
-        const scanResult = await API.request(`projects/${this.project.plugin_id}/versions/scan`, 'PUT', formData)
+        const scanResult = await API.projectRequest(this.project.namespace, 'versions/scan', 'PUT', formData)
         this.versionPreview = scanResult.version
         this.selectedStability = this.versionPreview.tags.stability
         this.selectedReleaseType = this.versionPreview.tags.release_type
@@ -237,7 +237,7 @@ export default {
       formData.append('plugin-info', JSON.stringify(pluginInfo))
 
       try {
-        const deployResult = await API.request(`projects/${this.project.plugin_id}/versions`, 'POST', formData)
+        const deployResult = await API.projectRequest(this.project.namespace, 'versions', 'POST', formData)
 
         this.$router.push({ name: 'version', params: { version: deployResult.name, fetchedVersionObj: deployResult } })
       } catch {

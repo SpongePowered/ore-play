@@ -9,9 +9,9 @@ import io.circe._
 
 sealed abstract class APIScope(val tpe: APIScopeType)
 object APIScope {
-  case object GlobalScope                                extends APIScope(APIScopeType.Global)
-  case class ProjectScope(pluginId: String)              extends APIScope(APIScopeType.Project)
-  case class OrganizationScope(organizationName: String) extends APIScope(APIScopeType.Organization)
+  case object GlobalScope                                            extends APIScope(APIScopeType.Global)
+  case class ProjectScope(projectOwner: String, projectSlug: String) extends APIScope(APIScopeType.Project)
+  case class OrganizationScope(organizationName: String)             extends APIScope(APIScopeType.Organization)
 }
 
 sealed abstract class APIScopeType extends EnumEntry with EnumEntry.Snakecase
