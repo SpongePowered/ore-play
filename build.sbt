@@ -173,7 +173,7 @@ lazy val oreClient = project
   )
 
 lazy val ore = project
-  .enablePlugins(PlayScala, SwaggerPlugin, WebScalaJSBundlerPlugin)
+  .enablePlugins(PlayScala, SwaggerPlugin, WebScalaJSBundlerPlugin, BuildInfoPlugin)
   .dependsOn(orePlayCommon, apiV2)
   .settings(
     Settings.commonSettings,
@@ -215,6 +215,9 @@ lazy val ore = project
     pipelineStages in Assets += scalaJSPipeline,
     WebKeys.exportedMappings in Assets := Seq(),
     PlayKeys.playMonitoredFiles += (oreClient / baseDirectory).value / "assets",
+    buildInfoKeys := Seq[BuildInfoKey](version, scalaVersion, resolvers, libraryDependencies),
+    buildInfoOptions += BuildInfoOption.BuildTime,
+    buildInfoPackage := "ore",
     //sbt 1.4 workaround
     play.sbt.PlayInternalKeys.playCompileEverything ~= (_.map(
       _.copy(compilations = sbt.internal.inc.Compilations.of(Seq.empty))
