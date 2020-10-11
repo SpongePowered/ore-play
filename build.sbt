@@ -215,7 +215,9 @@ lazy val ore = project
     scalaJSProjects := Seq(oreClient),
     pipelineStages in Assets += scalaJSPipeline,
     WebKeys.exportedMappings in Assets := Seq(),
-    PlayKeys.playMonitoredFiles += (oreClient / baseDirectory).value / "assets"
+    PlayKeys.playMonitoredFiles += (oreClient / baseDirectory).value / "assets",
+    //sbt 1.4 workaround
+    play.sbt.PlayInternalKeys.playCompileEverything ~= (_.map(_.copy(compilations = sbt.internal.inc.Compilations.of(Seq.empty)))),
   )
 
 lazy val oreAll =
