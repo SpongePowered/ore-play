@@ -1,6 +1,7 @@
 import scala.language.higherKinds
 
 import java.sql.Connection
+import java.time.Duration
 import javax.inject.Provider
 
 import scala.annotation.unused
@@ -278,7 +279,7 @@ class OreComponents(context: ApplicationLoader.Context)
 
   def runWhenEvolutionsDone(action: UIO[Unit]): Unit = {
     val isDone    = ZIO.effectTotal(applicationEvolutions.upToDate)
-    val waitCheck = Schedule.recurWhileM((_: Unit) => isDone) && Schedule.fixed(zio.duration.Duration.fromNanos(100))
+    val waitCheck = Schedule.recurWhileM((_: Unit) => isDone) && Schedule.fixed(Duration.ofMillis(20))
 
     runtime.unsafeRunAsync(ZIO.unit.repeat(waitCheck).andThen(action)) {
       case Exit.Success(_) => ()

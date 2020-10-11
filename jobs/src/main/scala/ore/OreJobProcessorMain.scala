@@ -3,6 +3,7 @@ package ore
 import java.sql.Connection
 
 import scala.concurrent.ExecutionContext
+import scala.jdk.DurationConverters._
 
 import ore.db.ModelService
 import ore.db.access.ModelView
@@ -24,7 +25,6 @@ import doobie.util.transactor.{Strategy, Transactor}
 import slick.jdbc.JdbcDataSource
 import zio._
 import zio.blocking.Blocking
-import zio.duration.Duration
 import zio.interop.catz._
 
 object OreJobProcessorMain extends zio.ManagedApp {
@@ -78,7 +78,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
         } else ZIO.unit
       } yield ()
 
-      val schedule = Schedule.spaced(Duration.fromScala(env.get[OreJobsConfig].jobs.checkInterval))
+      val schedule = Schedule.spaced(env.get[OreJobsConfig].jobs.checkInterval.toJava)
 
       ZManaged.fromEffect(
         checkAndCreateFibers
