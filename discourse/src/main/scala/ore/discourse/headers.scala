@@ -13,7 +13,7 @@ case class `Api-Key`(key: String) extends ModeledCustomHeader[`Api-Key`] {
 }
 object `Api-Key` extends ModeledCustomHeaderCompanion[`Api-Key`] {
   override def name: String                         = "Api-Key"
-  override def parse(value: String): Try[`Api-Key`] = Success(`Api-Key`(value))
+  override def parse(value: String): Try[`Api-Key`] = Success(new `Api-Key`(value))
 }
 
 case class `Api-Username`(username: String) extends ModeledCustomHeader[`Api-Username`] {
@@ -25,5 +25,5 @@ case class `Api-Username`(username: String) extends ModeledCustomHeader[`Api-Use
 }
 object `Api-Username` extends ModeledCustomHeaderCompanion[`Api-Username`] {
   override def name: String                              = "Api-Username"
-  override def parse(value: String): Try[`Api-Username`] = Success(`Api-Username`(value))
+  override def parse(value: String): Try[`Api-Username`] = Success(new `Api-Username`(value))
 }
