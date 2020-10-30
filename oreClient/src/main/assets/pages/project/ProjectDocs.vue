@@ -220,7 +220,7 @@ export default {
       return jsRoutes.controllers.project
     },
     groupedPages() {
-      const nonHome = this.pages.filter((p) => p.slug.length !== 1 || p.slug[0] !== 'Home')
+      const nonHome = this.pages.filter((p) => p.slug.length !== 1 || p.slug[0].toLowerCase() !== 'home')
       const acc = {}
 
       for (const page of nonHome) {
