@@ -14,7 +14,10 @@ class ApiKeySessionTable(tag: Tag) extends ModelTable[ApiSession](tag, "api_sess
   def expires = column[OffsetDateTime]("expires")
 
   override def * =
-    (id.?, createdAt.?, (token, keyId, userId, expires)) <> (mkApply((ApiSession.apply _).tupled), mkUnapply(
-      ApiSession.unapply
-    ))
+    (id.?, createdAt.?, (token, keyId, userId, expires)).<>(
+      mkApply((ApiSession.apply _).tupled),
+      mkUnapply(
+        ApiSession.unapply
+      )
+    )
 }

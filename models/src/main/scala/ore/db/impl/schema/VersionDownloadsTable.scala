@@ -9,7 +9,10 @@ class VersionDownloadsTable(tag: Tag)
     extends StatTable[Version, VersionDownload](tag, "project_version_downloads", "version_id") {
 
   override def * =
-    (id.?, createdAt.?, (modelId, address, cookie, userId.?)) <> (mkApply((VersionDownload.apply _).tupled), mkUnapply(
-      VersionDownload.unapply
-    ))
+    (id.?, createdAt.?, (modelId, address, cookie, userId.?)).<>(
+      mkApply((VersionDownload.apply _).tupled),
+      mkUnapply(
+        VersionDownload.unapply
+      )
+    )
 }

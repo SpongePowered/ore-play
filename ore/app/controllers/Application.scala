@@ -39,7 +39,6 @@ import views.{html => views}
 
 import akka.util.{ByteString, Timeout}
 import cats.Order
-import cats.instances.vector._
 import cats.syntax.all._
 import akka.actor.ActorSystem
 import zio.interop.catz._
@@ -172,7 +171,7 @@ final class Application(forms: OreForms, val errorHandler: HttpErrorHandler)(
             noTopicProjects,
             staleProjects,
             notPublic,
-            Model.unwrapNested(missingFileProjects),
+            Model.unwrapNested[Vector[(Version, Project)]](missingFileProjects),
             erroredJobs
           )
         )

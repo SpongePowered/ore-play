@@ -27,7 +27,6 @@ import _root_.util.{StatusZ, UserActionLogger}
 
 import akka.http.scaladsl.model.Uri
 import cats.data.{EitherT, OptionT}
-import cats.instances.list._
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import zio.blocking.Blocking
@@ -311,57 +310,65 @@ final class ApiV1Controller(
 
     Logger.debug("Sync Request received")
 
-    forms.SyncSso
-      .bindEitherT[UIO](hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
-      .ensure(BadRequest("API Key not valid"))(_._3 == confApiKey) //_3 is apiKey
-      .ensure(BadRequest("Signature not matched"))(
-        { case (ssoStr, sig, _) => CryptoUtils.hmac_sha256(confSecret, ssoStr.getBytes("UTF-8")) == sig }
-      )
-      .map(t => Uri.Query(Base64.getMimeDecoder.decode(t._1))) //_1 is sso
-      .semiflatMap { q =>
-        Logger.debug("Sync Payload: " + q)
-        ModelView.now(User).get(q.get("external_id").get.toLong).value.tupleLeft(q)
-      }
-      .semiflatMap {
-        case (query, optUser) =>
-          Logger.debug("Sync user found: " + optUser.isDefined)
+    val apiKeyCheck =
+      ZIO
+        .fromOption(request.headers.get("Api-Key"))
+        .orElseFail(BadRequest(Json.obj("errors" -> Seq("No Api-Key header present"))))
+        .filterOrFail(_ == confApiKey)(BadRequest("API Key not valid"))
 
-          val id        = ObjId(query.get("external_id").get.toLong)
-          val email     = query.get("email")
-          val username  = query.get("username")
-          val fullName  = query.get("name")
-          val addGroups = query.get("add_groups")
+    val ssoPayload =
+      forms.SyncSso
+        .bindZIO(hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
+        .filterOrFail(form => CryptoUtils.hmac_sha256(confSecret, form.sso.getBytes("UTF-8")) == form.sig)(
+          BadRequest("Signature not matched")
+        )
+        .map(form => Uri.Query(Base64.getMimeDecoder.decode(form.sso)))
 
-          val globalRoles = addGroups.map { groups =>
-            if (groups.trim.isEmpty) Nil
-            else groups.split(",").flatMap(Role.withValueOpt).toList
-          }
+    apiKeyCheck *>
+      ssoPayload
+        .flatMap { q =>
+          Logger.debug("Sync Payload: " + q)
+          ModelView.now(User).get(q.get("external_id").get.toLong).value.tupleLeft(q)
+        }
+        .flatMap {
+          case (query, optUser) =>
+            Logger.debug("Sync user found: " + optUser.isDefined)
 
-          val updateRoles = (user: Model[User]) =>
-            globalRoles.fold(UIO.unit) { roles =>
-              user.globalRoles.deleteAllFromParent *> roles
-                .map(_.toDbRole.id.value)
-                .traverse(user.globalRoles.addAssoc)
-                .unit
+            val id        = ObjId(query.get("external_id").get.toLong)
+            val email     = query.get("email")
+            val username  = query.get("username")
+            val fullName  = query.get("name")
+            val addGroups = query.get("add_groups")
+
+            val globalRoles = addGroups.map { groups =>
+              if (groups.trim.isEmpty) Nil
+              else groups.split(",").flatMap(Role.withValueOpt).toList
             }
 
-          optUser
-            .map { user =>
-              service
-                .update(user)(
-                  _.copy(
-                    email = email.orElse(user.email),
-                    name = username.getOrElse(user.name),
-                    fullName = fullName.orElse(user.fullName)
+            val updateRoles = (user: Model[User]) =>
+              globalRoles.fold(UIO.unit) { roles =>
+                user.globalRoles.deleteAllFromParent *> roles
+                  .map(_.toDbRole.id.value)
+                  .traverse(user.globalRoles.addAssoc)
+                  .unit
+              }
+
+            optUser
+              .map { user =>
+                service
+                  .update(user)(
+                    _.copy(
+                      email = email.orElse(user.email),
+                      name = username.getOrElse(user.name),
+                      fullName = fullName.orElse(user.fullName)
+                    )
                   )
-                )
-                .flatMap(updateRoles)
-            }
-            .getOrElse {
-              service.insert(User(ObjId(id), fullName, username.get, email)).flatMap(updateRoles)
-            }
-            .as(Ok(Json.obj("status" -> "success")))
-      }
-      .toZIO
+                  .flatMap(updateRoles)
+              }
+              .getOrElse {
+                service.insert(User(ObjId(id), fullName, username.get, email)).flatMap(updateRoles)
+              }
+              .as(Ok(Json.obj("status" -> "success")))
+        }
   }
 }

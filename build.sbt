@@ -1,8 +1,6 @@
 ThisBuild / turbo := true
+ThisBuild / usePipelining := true
 ThisBuild / scalaVersion := Settings.scalaVer
-
-//ThisBuild / semanticdbEnabled := true
-Global / semanticdbVersion := "4.2.3"
 
 lazy val db = project.settings(
   Settings.commonSettings,
@@ -137,7 +135,7 @@ lazy val oreClient = project
     Assets / webpackDevConfig := baseDirectory.value / "webpack.config.dev.js",
     Assets / webpackProdConfig := baseDirectory.value / "webpack.config.prod.js",
     //webpackMonitoredDirectories in Assets += baseDirectory.value / "src" / "main" / "assets",
-    includeFilter in webpackMonitoredFiles in Assets := "*.vue" || "*.js",
+    Assets / webpackMonitoredFiles / includeFilter := "*.vue" || "*.js",
     webpackMonitoredFiles in Assets ++= Seq(
       baseDirectory.value / "webpack.config.common.js",
       baseDirectory.value / ".postcssrc.js",
@@ -147,7 +145,7 @@ lazy val oreClient = project
   )
 
 lazy val ore = project
-  .enablePlugins(PlayScala, SwaggerPlugin)
+  .enablePlugins(PlayScala, SwaggerPlugin, BuildInfoPlugin)
   .dependsOn(orePlayCommon, apiV2, oreClient)
   .settings(
     Settings.commonSettings,
@@ -162,8 +160,7 @@ lazy val ore = project
       Deps.circeDerivation,
       Deps.circeParser,
       Deps.macwire,
-      Deps.periscopeAkka,
-      Deps.zioZmx
+      Deps.periscopeAkka
     ),
     libraryDependencies ++= Deps.flexmarkDeps,
     libraryDependencies ++= Seq(
@@ -190,7 +187,14 @@ lazy val ore = project
     swaggerV3 := true,
     PlayKeys.playMonitoredFiles += baseDirectory.value / "swagger.yml",
     PlayKeys.playMonitoredFiles += baseDirectory.value / "swagger-custom-mappings.yml",
-    WebKeys.exportedMappings in Assets := Seq()
+    WebKeys.exportedMappings in Assets := Seq(),
+    buildInfoKeys := Seq[BuildInfoKey](version, scalaVersion, resolvers, libraryDependencies),
+    buildInfoOptions += BuildInfoOption.BuildTime,
+    buildInfoPackage := "ore",
+    //sbt 1.4 workaround
+    play.sbt.PlayInternalKeys.playCompileEverything ~= (_.map(
+      _.copy(compilations = sbt.internal.inc.Compilations.of(Seq.empty))
+    ))
   )
 
 lazy val oreAll =

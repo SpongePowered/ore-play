@@ -18,14 +18,16 @@ import cats.effect.Blocker
 import com.typesafe.config.{Config, ConfigFactory}
 import doobie.util.transactor.Transactor
 import org.junit.runner.RunWith
-import org.scalatest.{BeforeAndAfterAll, FunSuite, Matchers}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.junit.JUnitRunner
 import slick.basic.{BasicProfile, DatabaseConfig}
 import zio.interop.catz._
 import zio.{Runtime, Task}
 
 @RunWith(classOf[JUnitRunner])
-class ModelServiceSpec extends FunSuite with Matchers with BeforeAndAfterAll { self =>
+class ModelServiceSpec extends AnyFunSuite with Matchers with BeforeAndAfterAll { self =>
 
   implicit val runtime: zio.Runtime[Any] = Runtime.default
 

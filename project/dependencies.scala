@@ -3,22 +3,22 @@ import play.sbt.PlayImport._
 import sbt._
 
 object Version {
-  val cats        = "2.1.1"
-  val catsEffect  = "2.1.4"
+  val cats        = "2.2.0"
+  val catsEffect  = "2.2.0"
   val catsTagless = "0.11"
 
-  val zio     = "1.0.0-RC21-2"
-  val zioCats = "2.1.4.0-RC17"
+  val zio     = "1.0.1"
+  val zioCats = "2.2.0.0"
 
-  val slick     = "3.3.2"
-  val slickPg   = "0.19.1"
+  val slick     = "3.3.3"
+  val slickPg   = "0.19.3"
   val playSlick = "5.0.0"
-  val doobie    = "0.9.0"
+  val doobie    = "0.9.2"
 
   val circe           = "0.13.0"
   val circeDerivation = "0.13.0-M4"
 
-  val akka         = "2.6.8"
+  val akka         = "2.6.9"
   val akkaHttp     = "10.1.12"
   val scalaLogging = "3.9.2"
 
@@ -66,9 +66,8 @@ object Deps {
 
   val zio     = "dev.zio" %% "zio"              % Version.zio
   val zioCats = "dev.zio" %% "zio-interop-cats" % Version.zioCats
-  val zioZmx  = "dev.zio" %% "zio-zmx"          % "0.0.4"
 
-  val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.13.0"
+  val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.14.0"
 
   val scalaCache           = "com.github.cb372" %% "scalacache-caffeine"    % Version.scalaCache
   val scalaCacheCatsEffect = "com.github.cb372" %% "scalacache-cats-effect" % Version.scalaCache
@@ -98,15 +97,15 @@ object Deps {
   val pluginMeta = "org.spongepowered" % "plugin-meta" % "0.4.1"
 
   val javaxMail = "javax.mail"     % "mail"            % "1.4.7"
-  val postgres  = "org.postgresql" % "postgresql"      % "42.2.14"
+  val postgres  = "org.postgresql" % "postgresql"      % "42.2.16"
   val logback   = "ch.qos.logback" % "logback-classic" % "1.2.3"
-  val sentry    = "io.sentry"      % "sentry-logback"  % "1.7.30"
+  val sentry    = "io.sentry"      % "sentry-logback"  % "3.0.0"
 
   val playTestDeps = Seq(
     jdbc % Test,
     //specs2 % Test,
     "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0"        % Test,
-    "org.scalatestplus"      %% "junit-4-12"         % "3.2.0.0"      % Test,
+    "org.scalatestplus"      %% "junit-4-12"         % "3.2.2.0"      % Test,
     "org.tpolecat"           %% "doobie-scalatest"   % Version.doobie % Test
   )
 }

@@ -11,7 +11,7 @@ class ApiV1ProjectsTable(tag: Tag) extends Table[ApiV1Project](tag, "apiv1_proje
   def id               = column[DbRef[Project]]("id")
   def promotedVersions = column[Json]("promoted_versions")
 
-  override def * = (id, promotedVersions) <> ((ApiV1Project.apply _).tupled, ApiV1Project.unapply)
+  override def * = (id, promotedVersions).<>((ApiV1Project.apply _).tupled, ApiV1Project.unapply)
 }
 
 case class ApiV1Project(id: DbRef[Project], promotedVersions: Json)

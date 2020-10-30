@@ -196,7 +196,6 @@ class Users(
     */
   def showNotifications(notificationFilter: Option[String], inviteFilter: Option[String]): Action[AnyContent] = {
     Authenticated.asyncF { implicit request =>
-      import cats.instances.vector._
       val user = request.user
 
       // Get visible notifications
@@ -218,7 +217,6 @@ class Users(
         iFilter(user).flatMap(i => i.toVector.parTraverse(invite => invite.subject[Task].orDie.tupleLeft(invite)))
 
       (notificationsF, invitesF).parMapN { (notifications, invites) =>
-        import cats.instances.option._
         Ok(
           views.users.notifications(
             Model.unwrapNested[Seq[(Model[Notification], Option[User])]](notifications),
@@ -279,7 +277,6 @@ class Users(
             service.runDbCon(UserQueries.allPossibleOrgPermissions(request.user.id).unique)
           ).parMapN(_.add(_).add(userData.userPerm))
         } yield {
-          import cats.instances.option._
 
           Ok(
             views.users.apiKeys(

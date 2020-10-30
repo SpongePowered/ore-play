@@ -40,7 +40,6 @@ object OrganizationData {
       F: MonadError[F, Throwable],
       par: Parallel[F]
   ): F[OrganizationData] = {
-    import cats.instances.vector._
     for {
       members <- orga.memberships.membersIds(orga)
       members <- members.toVector.traverse { userId =>

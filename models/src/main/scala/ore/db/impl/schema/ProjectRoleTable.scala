@@ -13,7 +13,10 @@ class ProjectRoleTable(tag: Tag)
   def projectId = column[DbRef[Project]]("project_id")
 
   override def * =
-    (id.?, createdAt.?, (userId, projectId, roleType, isAccepted)) <> (mkApply((ProjectUserRole.apply _).tupled), mkUnapply(
-      ProjectUserRole.unapply
-    ))
+    (id.?, createdAt.?, (userId, projectId, roleType, isAccepted)).<>(
+      mkApply((ProjectUserRole.apply _).tupled),
+      mkUnapply(
+        ProjectUserRole.unapply
+      )
+    )
 }

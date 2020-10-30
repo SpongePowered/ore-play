@@ -53,7 +53,8 @@ object WebpackPlugin extends AutoPlugin {
   override def projectSettings: Seq[Def.Setting[_]] = Seq(
     devCommands in webpack := Seq("run", "compile", "re-start", "reStart", "runAll", "webpackDev"),
     webpackMonitoredDirectories := Seq.empty,
-    (includeFilter in webpackMonitoredFiles) := AllPassFilter,
+    (includeFilter in webpackMonitoredFiles in Assets) := AllPassFilter,
+    (excludeFilter in webpackMonitoredFiles in Assets) := NothingFilter,
     webpackExtraArgs := Seq.empty,
     webpackNodeArgs := Seq.empty,
     yarnExtraArgs := Seq.empty,
@@ -83,10 +84,11 @@ object WebpackPlugin extends AutoPlugin {
     webpackMonitoredFiles in Assets := {
       val webpackDevConfigFile  = (webpackDevConfig in Assets).value
       val webpackProdConfigFile = (webpackProdConfig in Assets).value
-      val filter                = (includeFilter in webpackMonitoredFiles).value
+      val include               = (includeFilter in webpackMonitoredFiles in Assets).value
+      val exclude               = (excludeFilter in webpackMonitoredFiles in Assets).value
       val dirs                  = (webpackMonitoredDirectories in Assets).value
 
-      val additionalFiles: Seq[File] = dirs.flatMap(dir => (dir ** filter).get)
+      val additionalFiles: Seq[File] = dirs.flatMap(dir => (dir ** include).filter(!exclude.accept(_)).get)
       webpackDevConfigFile +: webpackProdConfigFile +: additionalFiles
     }
   )

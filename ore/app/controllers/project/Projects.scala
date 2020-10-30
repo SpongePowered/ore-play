@@ -31,7 +31,6 @@ import _root_.util.syntax._
 import util.UserActionLogger
 import views.html.{projects => views}
 
-import cats.instances.option._
 import cats.syntax.all._
 import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}
@@ -367,7 +366,6 @@ class Projects(stats: StatTracker[UIO], forms: OreForms)(
   def showNotes(author: String, slug: String): Action[AnyContent] = {
     Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags)).asyncF { implicit request =>
       getProject(author, slug).flatMap { project =>
-        import cats.instances.vector._
         project.decodeNotes.toVector.parTraverse(note => ModelView.now(User).get(note.user).value.tupleLeft(note)).map {
           notes => Ok(views.admin.notes(project, Model.unwrapNested(notes)))
         }

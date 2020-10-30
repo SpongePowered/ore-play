@@ -42,9 +42,11 @@ class ProjectTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: z
   private val deleteNewProjects =
     createdAtFilterF.flatMap(createdAtFilter => service.deleteWhere(Project)(newFilter && createdAtFilter))
 
-  private val schedule: Schedule[Clock, Any, Int] = Schedule
-    .fixed(interval)
-    .tapInput(_ => UIO(Logger.debug(s"Deleting draft projects")))
+  private val schedule: Schedule[Any, Unit, Unit] =
+    Schedule
+      .fixed(interval)
+      .unit
+      .tapInput((_: Unit) => UIO(Logger.debug(s"Deleting draft projects")))
 
   private val action = (updateFalseNewProjects *> deleteNewProjects).unit.delay(interval)
 
@@ -53,5 +55,5 @@ class ProjectTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: z
   )
 
   lifecycle.addStopHook(() => task.cancel())
-  Logger.info(s"Initialized. First run in ${this.interval.asScala.toSeconds} seconds.")
+  Logger.info(s"Initialized. First run in ${this.interval.getSeconds} seconds.")
 }

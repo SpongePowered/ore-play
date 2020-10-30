@@ -26,13 +26,13 @@ abstract class LoggedActionTable[M, Ctx](tag: Tag, tableName: String, ctxIdColum
       ctxId.?,
       newState,
       oldState
-    ) <> ((LoggedActionCommon.apply[Ctx] _).tupled, LoggedActionCommon.unapply)
+    ).<>((LoggedActionCommon.apply[Ctx] _).tupled, LoggedActionCommon.unapply)
 }
 
 class LoggedActionProjectTable(tag: Tag)
     extends LoggedActionTable[LoggedActionProject, Project](tag, "logged_actions_project", "project_id") {
   override def * =
-    (id.?, createdAt.?, common) <> (mkApply(LoggedActionProject.apply), mkUnapply(LoggedActionProject.unapply))
+    (id.?, createdAt.?, common).<>(mkApply(LoggedActionProject.apply), mkUnapply(LoggedActionProject.unapply))
 }
 
 class LoggedActionVersionTable(tag: Tag)
@@ -40,9 +40,12 @@ class LoggedActionVersionTable(tag: Tag)
   def projectId = column[DbRef[Project]]("project_id")
 
   override def * =
-    (id.?, createdAt.?, (common, projectId.?)) <> (mkApply((LoggedActionVersion.apply _).tupled), mkUnapply(
-      LoggedActionVersion.unapply
-    ))
+    (id.?, createdAt.?, (common, projectId.?)).<>(
+      mkApply((LoggedActionVersion.apply _).tupled),
+      mkUnapply(
+        LoggedActionVersion.unapply
+      )
+    )
 }
 
 class LoggedActionPageTable(tag: Tag)
@@ -50,15 +53,18 @@ class LoggedActionPageTable(tag: Tag)
   def projectId = column[DbRef[Project]]("project_id")
 
   override def * =
-    (id.?, createdAt.?, (common, projectId.?)) <> (mkApply((LoggedActionPage.apply _).tupled), mkUnapply(
-      LoggedActionPage.unapply
-    ))
+    (id.?, createdAt.?, (common, projectId.?)).<>(
+      mkApply((LoggedActionPage.apply _).tupled),
+      mkUnapply(
+        LoggedActionPage.unapply
+      )
+    )
 }
 
 class LoggedActionUserTable(tag: Tag)
     extends LoggedActionTable[LoggedActionUser, User](tag, "logged_actions_user", "subject_id") {
   override def * =
-    (id.?, createdAt.?, common) <> (mkApply(LoggedActionUser.apply), mkUnapply(LoggedActionUser.unapply))
+    (id.?, createdAt.?, common).<>(mkApply(LoggedActionUser.apply), mkUnapply(LoggedActionUser.unapply))
 }
 
 class LoggedActionOrganizationTable(tag: Tag)
@@ -68,7 +74,10 @@ class LoggedActionOrganizationTable(tag: Tag)
       "organization_id"
     ) {
   override def * =
-    (id.?, createdAt.?, common) <> (mkApply(LoggedActionOrganization.apply), mkUnapply(
-      LoggedActionOrganization.unapply
-    ))
+    (id.?, createdAt.?, common).<>(
+      mkApply(LoggedActionOrganization.apply),
+      mkUnapply(
+        LoggedActionOrganization.unapply
+      )
+    )
 }

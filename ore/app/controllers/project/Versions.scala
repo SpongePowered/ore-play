@@ -72,7 +72,6 @@ class Versions(stats: StatTracker[UIO])(
               .result
           )
         } yield {
-          import cats.instances.option._
           Ok(
             views.log(
               request.project,

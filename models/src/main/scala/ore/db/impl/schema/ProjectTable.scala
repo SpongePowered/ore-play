@@ -42,7 +42,7 @@ class ProjectTable(tag: Tag)
       licenseName.?,
       licenseUrl.?,
       forumSync
-    ) <> (Project.ProjectSettings.tupled, Project.ProjectSettings.unapply)
+    ).<>(Project.ProjectSettings.tupled, Project.ProjectSettings.unapply)
 
   override def * =
     (
@@ -61,5 +61,5 @@ class ProjectTable(tag: Tag)
         notes,
         settings
       )
-    ) <> (mkApply((Project.apply _).tupled), mkUnapply(Project.unapply))
+    ).<>(mkApply((Project.apply _).tupled), mkUnapply(Project.unapply))
 }

@@ -104,6 +104,6 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
       joinDate.?,
       readPrompts,
       lang.?
-    ) <> (applyFunc, unapplyFunc)
+    ).<>(applyFunc, unapplyFunc)
   }
 }

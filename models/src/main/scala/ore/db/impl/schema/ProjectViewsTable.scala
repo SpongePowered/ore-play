@@ -8,7 +8,10 @@ import ore.models.statistic.ProjectView
 class ProjectViewsTable(tag: Tag) extends StatTable[Project, ProjectView](tag, "project_views", "project_id") {
 
   override def * =
-    (id.?, createdAt.?, (modelId, address, cookie, userId.?)) <> (mkApply((ProjectView.apply _).tupled), mkUnapply(
-      ProjectView.unapply
-    ))
+    (id.?, createdAt.?, (modelId, address, cookie, userId.?)).<>(
+      mkApply((ProjectView.apply _).tupled),
+      mkUnapply(
+        ProjectView.unapply
+      )
+    )
 }

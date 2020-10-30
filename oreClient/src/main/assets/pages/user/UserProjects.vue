@@ -25,7 +25,7 @@
                 <router-link
                   :to="{
                     name: 'project_home',
-                    params: { pluginid: membership.project.pluginId, ...membership.project.namespace },
+                    params: membership.project.namespace,
                   }"
                 >
                   {{ membership.project.namespace.owner }}/{{ membership.project.namespace.slug }}
@@ -115,6 +115,7 @@
           :members="orgaMembers"
           :permissions="orgaPermissions"
           editable
+          exclude-organizations
           new-role="Organization_Support"
           :endpoint="'users/' + user.name + '/members'"
           commit-location="user/updateMembers"

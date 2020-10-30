@@ -17,6 +17,14 @@
     <div class="row">
         <div class="col-md-12">
             <h1>@messages("admin.health.title")</h1>
+            <dl>
+                <dt>Ore version</dt>
+                <dd>@ore.BuildInfo.version</dd>
+                <dt>Scala version</dt>
+                <dd>@ore.BuildInfo.scalaVersion</dd>
+                <dt>Built at</dt>
+                <dd>@ore.BuildInfo.builtAtString</dd>
+            </dl>
         </div>
     </div>
     <div class="row">
@@ -112,6 +120,34 @@
                 </div>
                 }
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <h2>Ore compile dependencies</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="h4">Resolvers</h3>
+                </div>
+                <ul class="panel-body list-group list-group-health">
+                @for(resolver <- ore.BuildInfo.resolvers) {
+                    <li class="list-group-item">@resolver</li>
+                }
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="h4">Dependencies</h3>
+                </div>
+                <ul class="panel-body list-group list-group-health">
+                @for(dep <- ore.BuildInfo.libraryDependencies) {
+                    <li class="list-group-item">@dep</li>
+                }
+                </ul>
             </div>
         </div>
     </div>

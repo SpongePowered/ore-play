@@ -61,7 +61,10 @@ const actions = {
     })
 
     if (projectsDiffer || !context.state.permissions.length) {
-      API.request('permissions', 'GET', { pluginId: project.plugin_id }).then((response) => {
+      API.request('permissions', 'GET', {
+        projectOwner: project.namespace.owner,
+        projectSlug: project.namespace.slug,
+      }).then((response) => {
         context.commit({
           type: 'updatePermissions',
           permissions: response.permissions,
@@ -70,7 +73,7 @@ const actions = {
     }
 
     if (projectsDiffer || !context.state.members.length) {
-      API.request('projects/' + project.plugin_id + '/members').then((response) => {
+      API.projectRequest(project.namespace, 'members').then((response) => {
         context.commit({
           type: 'updateMembers',
           members: response,
@@ -79,11 +82,7 @@ const actions = {
     }
   },
   setActiveProject(context, project) {
-    if (typeof project === 'string') {
-      if (!context.state.project || context.state.project.plugin_id !== project) {
-        API.request('projects/' + project).then((res) => context.dispatch('setActiveProjectFromFetched', res))
-      }
-    } else if (!context.state.project || !isEqual(context.state.project.namespace, project)) {
+    if (!context.state.project || !isEqual(context.state.project.namespace, project)) {
       API.request('projects?exact=true&owner=' + project.owner + '&q=' + project.slug).then((res) => {
         if (res.result.length) {
           context.dispatch('setActiveProjectFromFetched', res.result[0])

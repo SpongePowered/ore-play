@@ -8,8 +8,8 @@ import ore.util.StringUtils._
 
 import cats.data.NonEmptyList
 import enumeratum._
+import com.typesafe.config.ConfigMemorySize
 import pureconfig.ConfigReader
-import pureconfig.generic.auto._
 
 case class OreConfig(
     application: OreConfig.App,
@@ -17,8 +17,7 @@ case class OreConfig(
     sponge: OreConfig.Sponge,
     auth: OreConfig.Auth,
     mail: OreConfig.Mail,
-    performance: OreConfig.Performance,
-    diagnostics: OreConfig.Diagnostics
+    performance: OreConfig.Performance
 ) {
 
   /**
@@ -57,6 +56,14 @@ case class OreConfig(
       throw new UnsupportedOperationException("this function is supported in debug mode only") // scalafix:ok
 }
 object OreConfig {
+
+  //SOE in compiler for some reason sometimes, so we keep this here. Seems to tame it
+  implicit val reader: ConfigReader[OreConfig] = {
+    import pureconfig.generic.auto._
+    import pureconfig.generic.semiauto._
+    deriveReader[OreConfig]
+  }
+
   case class App(
       baseUrl: String,
       discourseUrl: String,
@@ -124,7 +131,8 @@ object OreConfig {
         checkInterval: FiniteDuration,
         draftExpire: FiniteDuration,
         userGridPageSize: Int,
-        unsafeDownloadMaxAge: FiniteDuration
+        unsafeDownloadMaxAge: FiniteDuration,
+        uploadMaxSize: ConfigMemorySize
     )
 
     case class Users(
@@ -179,6 +187,7 @@ object OreConfig {
           shapeless.tag[Loader.NonDeterministic](Seq.empty)
     )
     object Loader {
+      import pureconfig.generic.auto._
       implicit val loaderConfigLoader: ConfigReader[OreConfig.Ore.Loader] = ???
 
       sealed trait NonDeterministic
@@ -330,15 +339,6 @@ object OreConfig {
   case class Performance(
       nioBlockingFibers: Int
   )
-
-  case class Diagnostics(
-      zmx: Diagnostics.Zmx
-  )
-  object Diagnostics {
-    case class Zmx(
-        port: Int
-    )
-  }
 }
 
 case class Logo(name: String, image: String, link: String)

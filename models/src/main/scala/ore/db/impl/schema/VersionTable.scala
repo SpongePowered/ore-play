@@ -53,9 +53,9 @@ class VersionTable(tag: Tag)
       releaseType.?,
       channelName.?,
       channelColor.?
-    ) <> (Version.VersionTags.tupled, Version.VersionTags.unapply)
+    ).<>(Version.VersionTags.tupled, Version.VersionTags.unapply)
 
-  override def * = {
+  override def * =
     (
       id.?,
       createdAt.?,
@@ -77,6 +77,5 @@ class VersionTable(tag: Tag)
         postId,
         tags
       )
-    ) <> (mkApply((Version.apply _).tupled), mkUnapply(Version.unapply))
-  }
+    ).<>(mkApply((Version.apply _).tupled), mkUnapply(Version.unapply))
 }

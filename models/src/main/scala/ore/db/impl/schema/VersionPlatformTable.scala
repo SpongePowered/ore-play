@@ -12,7 +12,10 @@ class VersionPlatformTable(tag: Tag) extends ModelTable[VersionPlatform](tag, "p
   def platformCoarseVersion = column[Option[String]]("platform_coarse_version")
 
   override def * =
-    (id.?, createdAt.?, (versionId, platform, platformVersion, platformCoarseVersion)) <> (mkApply(
-      (VersionPlatform.apply _).tupled
-    ), mkUnapply(VersionPlatform.unapply))
+    (id.?, createdAt.?, (versionId, platform, platformVersion, platformCoarseVersion)).<>(
+      mkApply(
+        (VersionPlatform.apply _).tupled
+      ),
+      mkUnapply(VersionPlatform.unapply)
+    )
 }

@@ -17,7 +17,8 @@ import ore.util.{FileUtils, OreMDC}
 import util.FileIO
 import util.syntax._
 
-import cats.instances.vector._
+import cats.Parallel
+import cats.effect.syntax.all._
 import cats.syntax.all._
 import cats.tagless.autoFunctorK
 

@@ -21,9 +21,11 @@ import zio.interop.catz._
 import play.api.mvc.Results._
 
 import db.impl.access.UserBase
+import ore.db.access.ModelView
 import ore.db.impl.common.Named
 import ore.db.impl.table.common.RoleTable
 import ore.member.MembershipDossier
+import ore.models.organization.Organization
 import ore.permission.role.Role
 
 import io.circe._
@@ -62,8 +64,12 @@ object Members {
       }
   }
 
+  private def check(test: Boolean, errorMessage: String)(implicit writeError: Writeable[ApiError]) =
+    if (test) ZIO.fail(BadRequest(ApiError(errorMessage))) else ZIO.unit
+
   def updateMembers[A <: Named: UserOwned, R <: UserRoleModel[R], RT <: RoleTable[R]](
-      getOwner: IO[Result, Model[A]],
+      getSubject: IO[Result, Model[A]],
+      allowOrgMembers: Boolean,
       getMembersQuery: (Long, Long) => doobie.Query0[APIV2.Member],
       createRole: (DbRef[User], DbRef[User], Role) => R,
       roleCompanion: ModelCompanion[R],
@@ -79,11 +85,22 @@ object Members {
       writeError: Writeable[ApiError]
   ): ZIO[Any, Result, Result] =
     for {
-      owner <- getOwner
+      subject <- getSubject
       resolvedUsers <- ZIO.foreach(r.body) { m =>
         users.withName(m.user)(OreMDC.NoMDC).tupleLeft(m.role).value.someOrFail(NotFound)
       }
-      currentMembers <- memberships.members(owner)
+      _ <- if (!allowOrgMembers) {
+        val existOrgUserRep =
+          resolvedUsers.map(_._2.toMaybeOrganization(ModelView.later(Organization))).foldLeft(false: Rep[Boolean]) {
+            _ || _.exists
+          }
+
+        for {
+          existOrgUser <- service.runDBIO(Query(existOrgUserRep).result.head)
+          _            <- check(existOrgUser, "Can't add organization as a member")
+        } yield ()
+      } else ZIO.unit
+      currentMembers <- memberships.members(subject)
       resolvedUsersMap  = resolvedUsers.map(t => t._2.id.value -> t._1).toMap
       currentMembersMap = currentMembers.map(t => t.userId -> t).toMap
       newUsers          = resolvedUsersMap.view.filterKeys(!currentMembersMap.contains(_)).toMap
@@ -92,11 +109,17 @@ object Members {
           (user, (oldRole, resolvedUsersMap(user)))
       }
       usersToDelete = currentMembersMap.view.filterKeys(!resolvedUsersMap.contains(_)).toMap
-      _ <- if (usersToUpdate.contains(owner.userId)) ZIO.fail(BadRequest(ApiError("Can't update owner")))
-      else ZIO.unit
-      _ <- if (usersToDelete.contains(owner.userId)) ZIO.fail(BadRequest(ApiError("Can't delete owner")))
-      else ZIO.unit
-      _ <- service.bulkInsert(newUsers.map(t => createRole(t._1, owner.id, t._2)).toSeq)
+
+      permChangesUpdate = usersToUpdate.map(t => t._2._1.role.permissions ++ t._2._2.permissions)
+      permChangesDelete = usersToDelete.map(t => t._2.role.permissions)
+      permChanges       = Permission((permChangesUpdate ++ permChangesDelete).toSeq: _*)
+
+      _ <- check(usersToUpdate.contains(subject.userId), "Can't update subject")
+      _ <- check(usersToDelete.contains(subject.userId), "Can't delete subject")
+      // No matter if you're the owner or otherwise, this is the wrong place to set the owner role
+      _ <- check(permChanges.has(Permission.IsSubjectOwner), "Can't edit owner roles")
+      _ <- check(!r.scopePermission.has(permChanges), "Can't edit roles higher than yourself")
+      _ <- service.bulkInsert(newUsers.map(t => createRole(t._1, subject.id, t._2)).toSeq)
       _ <- ZIO.foreach(usersToUpdate.values)(t => service.update(t._1)(_.withRole(t._2)))
       _ <- service.deleteWhere(roleCompanion)(_.id.inSetBind(usersToDelete.values.map(_.id.value)))
       _ <- {
@@ -104,9 +127,9 @@ object Members {
           case (userId, role) =>
             Notification(
               userId = userId,
-              originId = Some(owner.userId),
+              originId = Some(subject.userId),
               notificationType = notificationType,
-              messageArgs = NonEmptyList.of(notificationLocalization, role.title, owner.name)
+              messageArgs = NonEmptyList.of(notificationLocalization, role.title, subject.name)
             )
         }
 

@@ -14,9 +14,8 @@ import ore.models.project.{Project, Version}
 import ore.models.{Job, JobInfo}
 
 import akka.pattern.CircuitBreakerOpenException
-import cats.instances.either._
-import cats.syntax.all._
 import com.typesafe.scalalogging
+import cats.syntax.all._
 import slick.lifted.TableQuery
 import zio._
 import zio.clock.Clock

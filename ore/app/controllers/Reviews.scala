@@ -22,7 +22,6 @@ import util.syntax._
 import views.{html => views}
 
 import cats.data.NonEmptyList
-import cats.instances.option._
 import cats.syntax.all._
 import io.circe.Json
 import slick.lifted.{Rep, TableQuery}
