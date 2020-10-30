@@ -1,4 +1,4 @@
-package util.syntax
+package util.syntax.mixins
 
 import scala.language.implicitConversions
 

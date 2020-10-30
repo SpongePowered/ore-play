@@ -17,6 +17,7 @@ object Version {
 
   val circe           = "0.13.0"
   val circeDerivation = "0.13.0-M4"
+  val circeYaml       = "0.13.1"
 
   val akka         = "2.6.9"
   val akkaHttp     = "10.1.12"
@@ -52,6 +53,9 @@ object Deps {
   val circe           = "io.circe" %% "circe-core"                   % Version.circe
   val circeDerivation = "io.circe" %% "circe-derivation-annotations" % Version.circeDerivation
   val circeParser     = "io.circe" %% "circe-parser"                 % Version.circe
+  val circeYaml       = "io.circe" %% "circe-yaml"                   % Version.circeYaml
+
+  val tomlScala = "tech.sparse" %% "toml-scala" % "0.2.2"
 
   val akkaHttp                 = "com.typesafe.akka" %% "akka-http"                  % Version.akkaHttp
   val akkaHttpCore             = "com.typesafe.akka" %% "akka-http-core"             % Version.akkaHttp

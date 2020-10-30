@@ -23,6 +23,8 @@ lazy val externalCommon = project.settings(
     Deps.circe,
     Deps.circeDerivation,
     Deps.circeParser,
+    Deps.circeYaml,
+    Deps.tomlScala,
     Deps.akkaHttp,
     Deps.akkaHttpCore,
     Deps.akkaStream,

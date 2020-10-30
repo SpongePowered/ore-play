@@ -289,7 +289,7 @@ case class APIV2QueryVersion(
     },
     visibility,
     APIV2.VersionStatsAll(downloads),
-    APIV2.FileInfo(name, fileSize, md5Hash),
+    APIV2.FileInfo(fileName, fileSize, md5Hash),
     authorName,
     reviewState,
     APIV2.VersionTags(

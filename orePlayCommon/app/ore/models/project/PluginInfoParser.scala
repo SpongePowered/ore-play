@@ -11,13 +11,14 @@ import ore.OreConfig
 import ore.OreConfig.Ore.Loader
 import ore.OreConfig.Ore.Loader._
 
+import _root_.io.circe._
+import _root_.io.circe.syntax._
 import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.instances.list._
 import cats.syntax.all._
-import _root_.io.circe._
-import _root_.io.circe.syntax._
 import shapeless.tag
 import shapeless.tag.@@
+import toml.Toml
 
 object PluginInfoParser {
 
@@ -72,14 +73,28 @@ object PluginInfoParser {
   }
 
   def isMixin(jar: JarInputStream): Boolean =
-    jar.getManifest.getMainAttributes.asScala.contains("MixinConfigs")
+    Option(jar.getManifest.getMainAttributes.getValue("MixinConfigs")).isDefined
+
+  def tomlScalaToCirce(value: toml.Value): Json = value match {
+    case toml.Value.Str(value)  => Json.fromString(value)
+    case toml.Value.Bool(value) => Json.fromBoolean(value)
+    case toml.Value.Real(value) => Json.fromDoubleOrString(value)
+    case toml.Value.Num(value)  => Json.fromLong(value)
+    case toml.Value.Tbl(value)  => Json.obj(value.map(t => t._1 -> tomlScalaToCirce(t._2)).toSeq: _*)
+    case toml.Value.Arr(value)  => Json.arr(value.map(tomlScalaToCirce): _*)
+    //No idea when thse will play in
+    case toml.Value.Date(value)           => Json.fromString(value.toString)
+    case toml.Value.Time(value)           => Json.fromString(value.toString)
+    case toml.Value.DateTime(value)       => Json.fromString(value.toString)
+    case toml.Value.OffsetDateTime(value) => Json.fromString(value.toString)
+  }
 
   def processLoader(bytes: Array[Byte], loader: Loader): ValidatedNel[Error, (Seq[String], Seq[Entry])] = {
     lazy val strContent = new String(bytes, "UTF-8")
 
     val json: Either[ParsingFailure, Json] = loader.dataType match {
       case DataType.JSON => parser.parse(strContent)
-      case DataType.YAML => ???
+      case DataType.YAML => yaml.parser.parse(strContent)
       case DataType.Manifest =>
         Try {
           val attributes = new java.util.jar.Manifest(new ByteArrayInputStream(bytes)).getMainAttributes
@@ -87,7 +102,12 @@ object PluginInfoParser {
         }.recover {
           case e: IOException => Left(ParsingFailure("Could not parse jar manifest", e))
         }.get
-      case DataType.TOML => ???
+      case DataType.TOML =>
+        Toml.parse(strContent).map(tomlScalaToCirce).leftMap {
+          case (at, message) =>
+            ParsingFailure(s"""|Parse errors at: ${at.mkString(", ")}
+                               |$message""".stripMargin, new Exception(message))
+        }
     }
 
     Validated.fromEither(json).leftMap(NonEmptyList.one).andThen(json => parseLoaderData(json.hcursor, loader))
@@ -151,18 +171,23 @@ object PluginInfoParser {
       def getEntryField[A: Decoder](
           cursor: ACursor,
           field: Field,
-          refName: => Option[String] = name,
-          refIdentifier: => Option[String] = identifier,
-          refVersion: => Option[String] = version
+          findFilter: A => Boolean = (_: A) => true,
+          allowReferences: Boolean = true
       ): Option[A] =
-        getFieldOptional(cursor, field, refName, refIdentifier, refVersion).view
+        getFieldOptional(
+          cursor,
+          field,
+          if (!allowReferences) None else name,
+          if (!allowReferences) None else identifier,
+          if (!allowReferences) None else version
+        ).view
           .map(_.as[A])
           .flatMap(_.toOption)
-          .headOption
+          .find(findFilter)
 
-      lazy val name       = getEntryField[String](cursor, loader.nameField, refName = None)
-      lazy val identifier = getEntryField[String](cursor, loader.identifierField, refIdentifier = None)
-      lazy val version    = getEntryField[String](cursor, loader.identifierField, refVersion = None)
+      lazy val name       = getEntryField[String](cursor, loader.nameField, _.nonEmpty, allowReferences = false)
+      lazy val identifier = getEntryField[String](cursor, loader.identifierField, _.nonEmpty, allowReferences = false)
+      lazy val version    = getEntryField[String](cursor, loader.versionField, _.nonEmpty, allowReferences = false)
 
       val dependencies = for {
         depBlock    <- loader.dependencyTypes
@@ -175,8 +200,8 @@ object PluginInfoParser {
           case DependencyBlock.DependencySyntax.AsObject(identifierField, versionField, requiredField, optionalField) =>
             val identifierFieldTyped = tag[NonDeterministic](identifierField.toList)
 
-            val identifier = getEntryField[String](cursor, identifierFieldTyped)
-            val version    = getEntryField[String](cursor, versionField)
+            val identifier = getEntryField[String](cursor, identifierFieldTyped, _.nonEmpty)
+            val version    = getEntryField[String](cursor, versionField, _.nonEmpty)
             val required   = getEntryField[Boolean](cursor, requiredField)
             val optional   = getEntryField[Boolean](cursor, optionalField)
 
@@ -197,7 +222,8 @@ object PluginInfoParser {
       } yield {
         val lowestDepVersion = depTuple._2.map { version =>
           versionSyntax match {
-            case DependencyBlock.VersionSyntax.Maven => ???
+            case DependencyBlock.VersionSyntax.Maven =>
+              version //We can care about extracting this info some other time
           }
         }
 

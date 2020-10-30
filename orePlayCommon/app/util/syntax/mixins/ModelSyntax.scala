@@ -1,4 +1,4 @@
-package util.syntax
+package util.syntax.mixins
 
 import scala.language.{higherKinds, implicitConversions}
 
@@ -21,23 +21,11 @@ import cats.Functor
 import cats.data.OptionT
 import cats.syntax.all._
 
-trait ModelSyntax {
-
-  implicit def userSyntax(u: User): ModelSyntax.UserSyntax                = new ModelSyntax.UserSyntax(u)
-  implicit def userModelRawSyntax(u: Model[User]): ModelSyntax.UserSyntax = new ModelSyntax.UserSyntax(u)
-  implicit def userObjSyntax(u: User.type): ModelSyntax.UserObjSyntax     = new ModelSyntax.UserObjSyntax(u)
-  implicit def pageObjSyntax(p: Page.type): ModelSyntax.PageObjSyntax     = new ModelSyntax.PageObjSyntax(p)
-  implicit def projectSyntax(p: Project): ModelSyntax.ProjectSyntax       = new ModelSyntax.ProjectSyntax(p)
-  implicit def orgSyntax(o: Organization): ModelSyntax.OrganizationSyntax = new ModelSyntax.OrganizationSyntax(o)
-  implicit def orgModelRawSyntax(o: Model[Organization]): ModelSyntax.OrganizationSyntax =
-    new ModelSyntax.OrganizationSyntax(o)
-  implicit def authUserSyntax(u: AuthUser): ModelSyntax.AuthUserSyntax = new ModelSyntax.AuthUserSyntax(u)
-}
-object ModelSyntax extends ModelSyntax {
+object ModelSyntax {
 
   class UserSyntax(private val u: User) extends AnyVal {
 
-    def avatarUrl(implicit config: OreConfig): String = User.avatarUrl(u.name)
+    def avatarUrl(implicit config: OreConfig): String = new UserObjSyntax(User).avatarUrl(u.name)
 
     /**
       * Returns this user's current language, or the default language if none
@@ -89,7 +77,7 @@ object ModelSyntax extends ModelSyntax {
         F: Functor[F],
         config: OreConfig
     ): F[Either[String, Path]] =
-      projectFiles.getIconPath(p).map(_.toRight(User.avatarUrl(p.ownerName)))
+      projectFiles.getIconPath(p).map(_.toRight(new UserObjSyntax(User).avatarUrl(p.ownerName)))
 
     def hasIcon[F[_]](implicit projectFiles: ProjectFiles[F], F: Functor[F]): F[Boolean] =
       projectFiles.getIconPath(p).map(_.isDefined)

@@ -1,6 +1,5 @@
 package util
 
-import cats.Applicative
 import cats.syntax.all._
 import io.circe.{ACursor, Decoder}
 import squeal.category._
@@ -29,10 +28,4 @@ object PatchDecoder {
     fsd.mapKC(
       λ[Tuple2K[Const[List[String]]#λ, Decoder]#λ ~>: PatchDecoder](t => mkPath(t._1.map(nameTransform): _*)(t._2))
     )
-
-  implicit val applicative: Applicative[PatchDecoder] = new Applicative[PatchDecoder] {
-    override def pure[A](x: A): PatchDecoder[A] = ???
-
-    override def ap[A, B](ff: PatchDecoder[A => B])(fa: PatchDecoder[A]): PatchDecoder[B] = ???
-  }
 }

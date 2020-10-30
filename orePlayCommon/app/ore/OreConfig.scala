@@ -10,9 +10,10 @@ import ore.util.StringUtils._
 
 import cats.data.NonEmptyList
 import com.typesafe.config.ConfigMemorySize
+import enumeratum.EnumEntry.Snakecase
 import enumeratum._
 import pureconfig.ConfigReader
-import pureconfig.error.FailureReason
+import pureconfig.error.{CannotConvert, ConfigReaderFailures, ConvertFailure, FailureReason}
 import pureconfig.generic.semiauto._
 
 case class OreConfig(
@@ -205,9 +206,8 @@ object OreConfig {
         nameField: Loader.Field,
         identifierField: Loader.Field,
         versionField: Loader.Field,
-        dependencyTypes: List[
-          Loader.DependencyBlock
-        ] //@@ Loader.NonDeterministic = shapeless.tag[Loader.NonDeterministic](Seq.empty)
+        dependencyTypes: List[Loader.DependencyBlock] @@ Loader.NonDeterministic =
+          shapeless.tag[Loader.NonDeterministic](List.empty[Loader.DependencyBlock])
     )
     object Loader {
       case object EmptyListError extends FailureReason {
@@ -218,23 +218,28 @@ object OreConfig {
         listReader.emap(xs => NonEmptyList.fromList(xs).toRight(EmptyListError))
 
       implicit val loaderConfigLoader: ConfigReader[OreConfig.Ore.Loader] = {
-        import pureconfig.generic.auto._
+        @unused //Scalac is lying
+        implicit val depdendencyTypesLoader: ConfigReader[List[Loader.DependencyBlock] @@ Loader.NonDeterministic] =
+          ConfigReader[List[Loader.DependencyBlock]]
+            .asInstanceOf[ConfigReader[List[Loader.DependencyBlock] @@ Loader.NonDeterministic]]
+
         deriveReader[OreConfig.Ore.Loader]
       }
 
       sealed trait NonDeterministic
-      object NonDeterministic {
-        implicit def nonDeterministicReader[A](implicit reader: ConfigReader[A]): ConfigReader[A @@ NonDeterministic] =
-          reader.asInstanceOf[ConfigReader[A @@ NonDeterministic]]
-      }
       type Field = Seq[NonEmptyList[String]] @@ NonDeterministic
+      object Field {
+        //noinspection TypeAnnotation
+        val empty = shapeless.tag[NonDeterministic].apply(Nil)
+      }
+
       implicit val fieldConfigReader: ConfigReader[Field] =
         ConfigReader[Seq[NonEmptyList[String]]].map { xxs =>
           val res = shapeless.tag[NonDeterministic](xxs)
           res
         }
 
-      sealed trait DataType extends EnumEntry
+      sealed trait DataType extends EnumEntry with Snakecase
       object DataType extends Enum[DataType] {
         override def values: IndexedSeq[DataType] = findValues
 
@@ -253,11 +258,18 @@ object OreConfig {
 
         implicit val entryLocationConfigLoader: ConfigReader[EntryLocation] = ConfigReader.fromCursor { cursor =>
           for {
-            objCursor <- cursor.asObjectCursor
-            tpe       <- objCursor.atKey("type").flatMap(_.asString)
+            objCursor    <- cursor.asObjectCursor
+            atTypeCursor <- objCursor.atKey("type")
+            tpe          <- atTypeCursor.asString
             res <- tpe match {
               case "root"  => Right(Root)
               case "field" => deriveReader[Field].from(cursor)
+              case _ =>
+                Left(
+                  ConfigReaderFailures(
+                    ConvertFailure(CannotConvert(tpe, "EntryLocation", "not a valid entry location type"), atTypeCursor)
+                  )
+                )
             }
           } yield res
         }
@@ -280,8 +292,8 @@ object OreConfig {
           case class AsObject(
               identifierField: NonEmptyList[NonEmptyList[String]] @@ NonDeterministic,
               versionField: Field,
-              requiredField: Field,
-              optionalField: Field
+              requiredField: Field = Field.empty,
+              optionalField: Field = Field.empty
           ) extends DependencySyntax
 
           implicit val dependencySyntaxConfigLoader: ConfigReader[DependencySyntax] =
@@ -295,18 +307,28 @@ object OreConfig {
                 }
 
               for {
-                objCursor <- cursor.asObjectCursor
-                tpe       <- objCursor.atKey("type").flatMap(_.asString)
+                objCursor    <- cursor.asObjectCursor
+                atTypeCursor <- objCursor.atKey("type")
+                tpe          <- atTypeCursor.asString
                 res <- tpe match {
-                  case "at-seperated" => Right(AtSeparated)
+                  case "at-separated" => Right(AtSeparated)
                   case "as-object"    => deriveReader[AsObject].from(cursor)
+                  case _ =>
+                    Left(
+                      ConfigReaderFailures(
+                        ConvertFailure(
+                          CannotConvert(tpe, "DependencySyntax", "not a valid dependency syntax type"),
+                          atTypeCursor
+                        )
+                      )
+                    )
                 }
               } yield res
             }
         }
 
         sealed trait VersionSyntax extends EnumEntry with EnumEntry.Snakecase
-        object VersionSyntax extends Enum[VersionSyntax] {
+        object VersionSyntax extends Enum[VersionSyntax] with Snakecase {
           override def values: IndexedSeq[VersionSyntax] = findValues
 
           case object Maven extends VersionSyntax
