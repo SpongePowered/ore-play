@@ -18,7 +18,7 @@ import controllers.sugar.Requests.ApiRequest
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
 import models.querymodels.{APIV2QueryVersion, APIV2VersionStatsQuery}
-import ore.data.{Platform, VersionedPlatform}
+import ore.OrePlatform
 import ore.db.Model
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
@@ -27,7 +27,7 @@ import ore.models.Job
 import ore.models.project.Version.Stability
 import ore.models.project._
 import ore.models.project.factory.ProjectFactory
-import ore.models.project.io.{PluginFileWithData, PluginUpload}
+import ore.models.project.io.{PluginFileWithData, PluginUpload, VersionedPlatform}
 import ore.models.user.{LoggedActionType, LoggedActionVersion, User}
 import ore.permission.Permission
 import util.syntax._
@@ -41,8 +41,8 @@ import cats.data.{Const => _, _}
 import cats.syntax.all._
 import doobie.free.connection.ConnectionIO
 import squeal.category._
-import squeal.category.syntax.all._
 import squeal.category.macros.Derive
+import squeal.category.syntax.all._
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.{IO, UIO, ZIO}
@@ -135,27 +135,26 @@ class Versions(
       implicit request =>
         val root = request.body.hcursor
         import cats.instances.list._
-        import cats.instances.option._
 
         def parsePlatforms(platforms: List[SimplePlatform]) = {
           platforms.distinct
             .traverse {
               case SimplePlatform(platformName, platformVersion) =>
-                Platform
-                  .withValueOpt(platformName)
+                config.ore.platformsByName
+                  .get(platformName)
                   .toValidNel(s"Don't know about the platform named $platformName")
                   .tupleRight(platformVersion)
             }
             .map { ps =>
               ps.traverse {
                 case (platform, version) =>
-                  platform
-                    .produceVersionWarning(version)
+                  OrePlatform
+                    .produceVersionWarning(platform)(version)
                     .as(
                       VersionedPlatform(
                         platform.name,
                         version,
-                        version.map(platform.coarseVersionOf)
+                        version.map(OrePlatform.coarseVersionOf(platform))
                       )
                     )
 

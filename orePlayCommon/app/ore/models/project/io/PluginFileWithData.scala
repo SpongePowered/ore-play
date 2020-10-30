@@ -2,15 +2,17 @@ package ore.models.project.io
 
 import java.nio.file.{Files, Path}
 
-import ore.data.{Platform, VersionedPlatform}
 import ore.db.{DbRef, Model}
 import ore.models.project.{PluginInfoParser, Project, Version, VersionPlatform}
 import ore.models.user.User
 import ore.util.StringUtils
+import ore.{OreConfig, OrePlatform}
 
 import cats.effect.Sync
 
-class PluginFileWithData(val path: Path, val user: Model[User], val entries: List[PluginInfoParser.Entry]) {
+class PluginFileWithData(val path: Path, val user: Model[User], val entries: List[PluginInfoParser.Entry])(
+    implicit config: OreConfig
+) {
 
   def delete[F[_]](implicit F: Sync[F]): F[Unit] = F.delay(Files.delete(path))
 
@@ -31,7 +33,7 @@ class PluginFileWithData(val path: Path, val user: Model[User], val entries: Lis
   lazy val versionString: String = StringUtils.slugify(entries.head.version)
 
   lazy val (platformWarnings: List[String], versionedPlatforms: List[VersionedPlatform]) =
-    Platform.createVersionedPlatforms(dependencyIds, dependencyVersions).run
+    OrePlatform.createVersionedPlatforms(dependencyIds, dependencyVersions).run
 
   def warnings: Seq[String] = platformWarnings
 

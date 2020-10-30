@@ -9,8 +9,7 @@ import controllers.apiv2.{Pages, Projects, Users, Versions}
 import controllers.sugar.Requests.ApiAuthInfo
 import models.protocols.APIV2
 import models.querymodels._
-import ore.OreConfig
-import ore.data.Platform
+import ore.{OreConfig, OrePlatform}
 import ore.data.project.Category
 import ore.db.DbRef
 import ore.db.impl.query.DoobieOreProtocol
@@ -106,7 +105,7 @@ object APIV2Queries extends DoobieOreProtocol {
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]],
       exactSearch: Boolean
-  ): Fragment = {
+  )(implicit config: OreConfig): Fragment = {
     val userActionsTaken = currentUserId.fold(fr"FALSE, FALSE,") { id =>
       fr"""|EXISTS(SELECT * FROM project_stars s WHERE s.project_id = p.id AND s.user_id = $id)    AS user_stared,
            |EXISTS(SELECT * FROM project_watchers S WHERE S.project_id = p.id AND S.user_id = $id) AS user_watching,""".stripMargin
@@ -162,7 +161,7 @@ object APIV2Queries extends DoobieOreProtocol {
 
     val (platformsWithVersion, platformsWithoutVersion) = platforms.partitionEither {
       case (name, Some(version)) =>
-        Left((name, Platform.withValueOpt(name).fold(version)(_.coarseVersionOf(version))))
+        Left((name, config.ore.platformsByName.get(name).fold(version)(OrePlatform.coarseVersionOf(_)(version))))
       case (name, None) => Right(name)
     }
 
@@ -301,7 +300,7 @@ object APIV2Queries extends DoobieOreProtocol {
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]],
       exactSearch: Boolean
-  ): Query0[Long] = {
+  )(implicit config: OreConfig): Query0[Long] = {
     val select = projectSelectFrag(
       projectSlug,
       category,
@@ -407,7 +406,7 @@ object APIV2Queries extends DoobieOreProtocol {
       releaseType: List[Version.ReleaseType],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]]
-  ): Fragment = {
+  )(implicit config: OreConfig): Fragment = {
     val base =
       sql"""|SELECT pv.created_at,
             |       pv.version_string,
@@ -433,7 +432,12 @@ object APIV2Queries extends DoobieOreProtocol {
 
     val coarsePlatforms = platforms.map {
       case (name, optVersion) =>
-        (name, optVersion.map(version => Platform.withValueOpt(name).fold(version)(_.coarseVersionOf(version))))
+        (
+          name,
+          optVersion.map(version =>
+            config.ore.platformsByName.get(name).fold(version)(OrePlatform.coarseVersionOf(_)(version))
+          )
+        )
     }
 
     val visibilityFrag =
@@ -477,7 +481,7 @@ object APIV2Queries extends DoobieOreProtocol {
       currentUserId: Option[DbRef[User]],
       limit: Long,
       offset: Long
-  ): Query0[APIV2.Version] =
+  )(implicit config: OreConfig): Query0[APIV2.Version] =
     (versionSelectFrag(
       projectOwner,
       projectSlug,
@@ -497,7 +501,7 @@ object APIV2Queries extends DoobieOreProtocol {
       versionName: String,
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]]
-  ): doobie.Query0[APIV2.Version] =
+  )(implicit config: OreConfig): doobie.Query0[APIV2.Version] =
     versionQuery(projectOwner, projectSlug, Some(versionName), Nil, Nil, Nil, canSeeHidden, currentUserId, 1, 0)
 
   def versionCountQuery(
@@ -508,7 +512,7 @@ object APIV2Queries extends DoobieOreProtocol {
       releaseType: List[Version.ReleaseType],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]]
-  ): Query0[Long] =
+  )(implicit config: OreConfig): Query0[Long] =
     (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(
       versionSelectFrag(projectOwner, projectSlug, None, platforms, stability, releaseType, canSeeHidden, currentUserId)
     ) ++ fr"sq").query[Long]

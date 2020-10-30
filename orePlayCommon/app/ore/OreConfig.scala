@@ -1,15 +1,19 @@
 package ore
 
+import scala.annotation.unused
 import scala.concurrent.duration._
+import scala.util.matching.Regex
 
 import ore.db.DbRef
 import ore.models.user.User
 import ore.util.StringUtils._
 
 import cats.data.NonEmptyList
-import enumeratum._
 import com.typesafe.config.ConfigMemorySize
+import enumeratum._
 import pureconfig.ConfigReader
+import pureconfig.error.FailureReason
+import pureconfig.generic.semiauto._
 
 case class OreConfig(
     application: OreConfig.App,
@@ -60,7 +64,6 @@ object OreConfig {
   //SOE in compiler for some reason sometimes, so we keep this here. Seems to tame it
   implicit val reader: ConfigReader[OreConfig] = {
     import pureconfig.generic.auto._
-    import pureconfig.generic.semiauto._
     deriveReader[OreConfig]
   }
 
@@ -98,7 +101,14 @@ object OreConfig {
       session: Ore.Session,
       platforms: Seq[Ore.Platform],
       loaders: Seq[Ore.Loader]
-  )
+  ) {
+
+    lazy val platformsByName: Map[String, Ore.Platform] =
+      platforms.groupMapReduce(_.name)(identity)((_, snd) => snd)
+
+    lazy val platformsByDependencyId: Map[String, Ore.Platform] =
+      platforms.groupMapReduce(_.dependencyId)(identity)((_, snd) => snd)
+  }
   object Ore {
     case class Homepage(
         updateInterval: FiniteDuration
@@ -171,8 +181,20 @@ object OreConfig {
     case class Platform(
         name: String,
         category: String,
-        categoryPriority: Int
+        categoryPriority: Int,
+        dependencyId: String,
+        url: String,
+        coarseVersionRegex: Option[Regex] = None,
+        noVersionPolicy: Platform.NoVersionPolicy = Platform.NoVersionPolicy.NotAllowed
     )
+    object Platform {
+      sealed trait NoVersionPolicy
+      object NoVersionPolicy {
+        case object NotAllowed extends NoVersionPolicy
+        case object Warning    extends NoVersionPolicy
+        case object Allowed    extends NoVersionPolicy
+      }
+    }
 
     import shapeless.tag.@@
     case class Loader(
@@ -183,14 +205,28 @@ object OreConfig {
         nameField: Loader.Field,
         identifierField: Loader.Field,
         versionField: Loader.Field,
-        dependencyTypes: Seq[Loader.DependencyBlock] @@ Loader.NonDeterministic =
-          shapeless.tag[Loader.NonDeterministic](Seq.empty)
+        dependencyTypes: List[
+          Loader.DependencyBlock
+        ] //@@ Loader.NonDeterministic = shapeless.tag[Loader.NonDeterministic](Seq.empty)
     )
     object Loader {
-      import pureconfig.generic.auto._
-      implicit val loaderConfigLoader: ConfigReader[OreConfig.Ore.Loader] = ???
+      case object EmptyListError extends FailureReason {
+        override def description: String = "Found empty list where non empty list is needed"
+      }
+
+      implicit def nelReader[A](implicit listReader: ConfigReader[List[A]]): ConfigReader[NonEmptyList[A]] =
+        listReader.emap(xs => NonEmptyList.fromList(xs).toRight(EmptyListError))
+
+      implicit val loaderConfigLoader: ConfigReader[OreConfig.Ore.Loader] = {
+        import pureconfig.generic.auto._
+        deriveReader[OreConfig.Ore.Loader]
+      }
 
       sealed trait NonDeterministic
+      object NonDeterministic {
+        implicit def nonDeterministicReader[A](implicit reader: ConfigReader[A]): ConfigReader[A @@ NonDeterministic] =
+          reader.asInstanceOf[ConfigReader[A @@ NonDeterministic]]
+      }
       type Field = Seq[NonEmptyList[String]] @@ NonDeterministic
       implicit val fieldConfigReader: ConfigReader[Field] =
         ConfigReader[Seq[NonEmptyList[String]]].map { xxs =>
@@ -221,7 +257,7 @@ object OreConfig {
             tpe       <- objCursor.atKey("type").flatMap(_.asString)
             res <- tpe match {
               case "root"  => Right(Root)
-              case "field" => ConfigReader[Field].from(cursor)
+              case "field" => deriveReader[Field].from(cursor)
             }
           } yield res
         }
@@ -234,6 +270,8 @@ object OreConfig {
           defaultIsRequired: Boolean = false
       )
       object DependencyBlock {
+        implicit val reader: ConfigReader[DependencyBlock] = deriveReader[DependencyBlock]
+
         sealed trait DependencySyntax extends EnumEntry
         object DependencySyntax extends Enum[DependencySyntax] {
           override def values: IndexedSeq[DependencySyntax] = findValues
@@ -246,8 +284,9 @@ object OreConfig {
               optionalField: Field
           ) extends DependencySyntax
 
-          implicit val dependencySyntaxConfigLoader: ConfigReader[DependencySyntax] = ConfigReader.fromCursor {
-            cursor =>
+          implicit val dependencySyntaxConfigLoader: ConfigReader[DependencySyntax] =
+            ConfigReader.fromCursor { cursor =>
+              @unused //Scalac is lying
               implicit val nelNelStringConfigReader
                   : ConfigReader[NonEmptyList[NonEmptyList[String]] @@ NonDeterministic] =
                 ConfigReader[NonEmptyList[NonEmptyList[String]]].map { xxs =>
@@ -260,10 +299,10 @@ object OreConfig {
                 tpe       <- objCursor.atKey("type").flatMap(_.asString)
                 res <- tpe match {
                   case "at-seperated" => Right(AtSeparated)
-                  case "as-object"    => ConfigReader[AsObject].from(cursor)
+                  case "as-object"    => deriveReader[AsObject].from(cursor)
                 }
               } yield res
-          }
+            }
         }
 
         sealed trait VersionSyntax extends EnumEntry with EnumEntry.Snakecase
