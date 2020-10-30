@@ -296,7 +296,7 @@
 
             <li
               v-for="depend in dependencyObs.filter((d) => !platforms.isPlatformDependency(d))"
-              :key="depend.project.plugin_id"
+              :key="depend.pluginId"
               class="list-group-item"
             >
               <router-link
