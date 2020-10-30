@@ -100,7 +100,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
           .orElseFail(unAuth("Invalid session"))
         scopePerms <- {
           val res: IO[Result, Permission] =
-            apiScopeToRealScope(scope).flatMap(info.permissionIn).orElseFail(NotFound)
+            apiScopeToRealScope(scope).flatMap(info.permissionIn(_)).orElseFail(NotFound)
           res
         }
         res <- {
