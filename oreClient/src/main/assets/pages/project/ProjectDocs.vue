@@ -70,7 +70,7 @@
             <button
               class="new-page btn yellow btn-xs pull-right"
               data-toggle="modal"
-              data-target="#edit-page"
+              data-target="#modal-edit-page"
               title="New"
             >
               <FontAwesomeIcon :icon="['fas', 'plus']" />
