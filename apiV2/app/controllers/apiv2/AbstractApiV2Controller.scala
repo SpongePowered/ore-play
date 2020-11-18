@@ -86,10 +86,6 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
   def apiAction(scope: APIScope): ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
     def executionContext: ExecutionContext = ec
 
-    def permissionIn(scope: Scope, apiInfo: ApiAuthInfo): UIO[Permission] =
-      if (scope == GlobalScope) ZIO.succeed(apiInfo.globalPerms)
-      else apiInfo.key.fold(ZIO.succeed(apiInfo.globalPerms))(_.permissionsIn(scope))
-
     override protected def refine[A](request: Request[A]): Future[Either[Result, ApiRequest[A]]] = {
       def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> "OreApi")
 
@@ -104,7 +100,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
           .orElseFail(unAuth("Invalid session"))
         scopePerms <- {
           val res: IO[Result, Permission] =
-            apiScopeToRealScope(scope).flatMap(permissionIn(_, info)).orElseFail(NotFound)
+            apiScopeToRealScope(scope).flatMap(info.permissionIn(_)).orElseFail(NotFound)
           res
         }
         res <- {

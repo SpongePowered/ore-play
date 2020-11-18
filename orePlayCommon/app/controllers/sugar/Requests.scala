@@ -29,7 +29,16 @@ object Requests {
       session: Option[String],
       expires: OffsetDateTime,
       globalPerms: Permission
-  )
+  ) {
+
+    def permissionIn[B: HasScope, F[_]](b: B)(implicit service: ModelService[F], F: Applicative[F]): F[Permission] =
+      if (b.scope == GlobalScope) F.pure(globalPerms)
+      else
+        key
+          .map(_.permissionsIn(b))
+          .orElse(user.map(_.permissionsIn(b)))
+          .getOrElse(F.pure(globalPerms))
+  }
 
   case class ApiRequest[A](apiInfo: ApiAuthInfo, scopePermission: Permission, request: Request[A])
       extends WrappedRequest[A](request)
@@ -39,12 +48,7 @@ object Requests {
     def globalPermissions: Permission = apiInfo.globalPerms
 
     def permissionIn[B: HasScope, F[_]](b: B)(implicit service: ModelService[F], F: Applicative[F]): F[Permission] =
-      if (b.scope == GlobalScope) F.pure(apiInfo.globalPerms)
-      else
-        apiInfo.key
-          .map(_.permissionsIn(b))
-          .orElse(apiInfo.user.map(_.permissionsIn(b)))
-          .getOrElse(F.pure(globalPermissions))
+      apiInfo.permissionIn(b)
 
     override def logMessage(s: String): String = {
       user.foreach(mdcPutUser)

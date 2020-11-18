@@ -6,12 +6,12 @@ import { store } from './stores/index'
 
 export class API {
   static async versionRequest(projectNamespace, version, url, method = 'GET', data = {}) {
-    const slashUrl = url && url.length ? '/' + url : url
+    const slashUrl = url && url.length ? '/' + url : url ?? ''
     return await this.projectRequest(projectNamespace, 'versions/' + version + slashUrl, method, data)
   }
 
   static async projectRequest(namespace, url, method = 'GET', data = {}) {
-    const slashUrl = url && url.length ? '/' + url : url
+    const slashUrl = url && url.length ? '/' + url : url ?? ''
     return await this.request('projects/' + namespace.owner + '/' + namespace.slug + slashUrl, method, data)
   }
 

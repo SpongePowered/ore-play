@@ -70,7 +70,7 @@
             <button
               class="new-page btn yellow btn-xs pull-right"
               data-toggle="modal"
-              data-target="#edit-page"
+              data-target="#modal-edit-page"
               title="New"
             >
               <FontAwesomeIcon :icon="['fas', 'plus']" />
@@ -220,7 +220,7 @@ export default {
       return jsRoutes.controllers.project
     },
     groupedPages() {
-      const nonHome = this.pages.filter((p) => p.slug.length !== 1 || p.slug[0] !== 'Home')
+      const nonHome = this.pages.filter((p) => p.slug.length !== 1 || p.slug[0].toLowerCase() !== 'home')
       const acc = {}
 
       for (const page of nonHome) {

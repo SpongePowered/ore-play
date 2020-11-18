@@ -193,6 +193,7 @@ RUNNING_PID
 gradle
 .gradle
 build
+user.sbt
 
 # Hydra
 project/hydra.sbt

@@ -81,6 +81,26 @@ cors {
 5. Use `yarn run start` to start the webpack dev server
 6. Navigate to `http://localhost:8080`
 
+#### Disable webpack monitoring
+By default, Ore will monitor the frontend for changes and rebuilt it whenever it sees any. If you're running Ore with 
+the webpack server, this can be more of a hinderance. If you wish to disable it, add this to a new file 
+called `user.sbt` in the root folder.
+```scala
+lazy val setNoMonitoredFiles: State => State = { s: State =>
+  val projectID = "oreClient"
+  val value = Nil
+  if (Project.extract(s).get(LocalProject(projectID) / Assets / webpackMonitoredDirectories) == value)
+    s
+  else
+    s"""set (LocalProject("$projectID") / Assets / webpackMonitoredDirectories) := $value""" :: s
+}
+
+Global / onLoad := {
+  val old = (Global / onLoad).value
+  setNoMonitoredFiles compose old
+}
+```
+
 ### Using Hydra
 
 Hydra is the world’s only parallel compiler for the Scala language.
