@@ -101,7 +101,7 @@ object OreConfig {
       api: Ore.Api,
       session: Ore.Session,
       platforms: Seq[Ore.Platform],
-      loaders: Seq[Ore.Loader]
+      loaders: Map[String, Ore.Loader]
   ) {
 
     lazy val platformsByName: Map[String, Ore.Platform] =
@@ -201,7 +201,7 @@ object OreConfig {
     case class Loader(
         filename: NonEmptyList[String],
         dataType: Loader.DataType,
-        hasMultipleEntries: Boolean = false,
+        rootType: Loader.RootType = Loader.RootType.AlwaysObject,
         entryLocation: Loader.EntryLocation = Loader.EntryLocation.Root,
         nameField: Loader.Field,
         identifierField: Loader.Field,
@@ -249,6 +249,17 @@ object OreConfig {
         case object TOML     extends DataType
 
         implicit val dataTypeConfigLoader: ConfigReader[DataType] = ConfigReader.fromStringOpt(withNameOption)
+      }
+
+      sealed trait RootType extends EnumEntry with Snakecase
+      object RootType extends Enum[RootType] {
+        override def values: IndexedSeq[RootType] = findValues
+
+        case object AlwaysObject extends RootType
+        case object ObjectOrList extends RootType
+        case object AlwaysList   extends RootType
+
+        implicit val dataTypeConfigLoader: ConfigReader[RootType] = ConfigReader.fromStringOpt(withNameOption)
       }
 
       sealed trait EntryLocation

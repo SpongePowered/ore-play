@@ -24,7 +24,6 @@ object PluginInfoParser {
 
   case class Dependency(
       identifier: String,
-      lowestVersion: Option[String],
       rawVersion: Option[String],
       required: Boolean
   )
@@ -32,19 +31,19 @@ object PluginInfoParser {
       name: Option[String],
       identifier: String,
       version: Option[String],
-      dependencies: Seq[Dependency]
+      dependencies: Set[Dependency]
   )
   case class Entry(
       name: String,
       identifier: String,
       version: String,
-      dependencies: Seq[Dependency],
+      dependencies: Set[Dependency],
       mixin: Boolean
   )
 
   def processJar(jar: JarInputStream)(implicit config: OreConfig): (List[String], List[Entry]) = {
     val filesOfInterest =
-      config.ore.loaders.flatMap(loader => loader.filename.map(loader -> _).toList).groupMap(_._2)(_._1)
+      config.ore.loaders.values.flatMap(loader => loader.filename.map(loader -> _).toList).groupMap(_._2)(_._1)
 
     val res = Iterator
       .continually(jar.getNextJarEntry)
@@ -123,7 +122,9 @@ object PluginInfoParser {
     ): Seq[Decoder.Result[ACursor]] @@ NonDeterministic =
       tag[NonDeterministic](
         field.map { path =>
-          path.foldLeft(Right(if (path.head == "$") data else cursor): Decoder.Result[ACursor])((c, s) =>
+          val startAtRoot = path.head == "$"
+          val pathStart   = if (startAtRoot) path.tail else path.toList
+          pathStart.foldLeft(Right(if (startAtRoot) data else cursor): Decoder.Result[ACursor])((c, s) =>
             c.flatMap {
               cursor =>
                 @nowarn
@@ -191,12 +192,11 @@ object PluginInfoParser {
 
       val dependencies = for {
         depBlock    <- loader.dependencyTypes
-        arrayCursor <- getFieldOptional(cursor, depBlock.field)
-        depSyntax     = depBlock.dependencySyntax
-        versionSyntax = depBlock.versionSyntax
+        arrayCursor <- getFieldOptional(cursor, depBlock.field, name, identifier, version)
+        depSyntax = depBlock.dependencySyntax
         arrayObj <- arrayCursor.values.toList.flatten
         cursor = arrayObj.hcursor
-        depTuple <- depSyntax match {
+        dependency <- depSyntax match {
           case DependencyBlock.DependencySyntax.AsObject(identifierField, versionField, requiredField, optionalField) =>
             val identifierFieldTyped = tag[NonDeterministic](identifierField.toList)
 
@@ -206,7 +206,7 @@ object PluginInfoParser {
             val optional   = getEntryField[Boolean](cursor, optionalField)
 
             identifier.map { id =>
-              (
+              Dependency(
                 id,
                 version,
                 required.orElse(optional.map(!_)).getOrElse(depBlock.defaultIsRequired)
@@ -216,21 +216,12 @@ object PluginInfoParser {
           case DependencyBlock.DependencySyntax.AtSeparated =>
             cursor.as[String].map(_.split("@", 2)).map(a => (a(0), a.lift(1))).toOption.toList.map {
               case (id, version) =>
-                (id, version, depBlock.defaultIsRequired)
+                Dependency(id, version, depBlock.defaultIsRequired)
             }
         }
-      } yield {
-        val lowestDepVersion = depTuple._2.map { version =>
-          versionSyntax match {
-            case DependencyBlock.VersionSyntax.Maven =>
-              version //We can care about extracting this info some other time
-          }
-        }
+      } yield dependency
 
-        Dependency(depTuple._1, lowestDepVersion, depTuple._2, depTuple._3)
-      }
-
-      identifier.map(id => PartialEntry(name, id, version, dependencies))
+      identifier.map(id => PartialEntry(name, id, version, dependencies.toSet))
     }
 
     val entryCursors = loader.entryLocation match {
@@ -241,8 +232,11 @@ object PluginInfoParser {
     entryCursors
       .andThen { cursors =>
         val entryObjs = tag[NonDeterministic](
-          if (loader.hasMultipleEntries) cursors.map(_.as[Seq[JsonObject]])
-          else cursors.map(_.as[JsonObject].map(Seq(_)))
+          loader.rootType match {
+            case RootType.AlwaysObject => cursors.map(_.as[JsonObject].map(Seq(_)))
+            case RootType.AlwaysList   => cursors.map(c => c.as[Seq[JsonObject]])
+            case RootType.ObjectOrList => cursors.map(c => c.as[Seq[JsonObject]].orElse(c.as[JsonObject].map(Seq(_))))
+          }
         )
 
         val ignoringErrors = entryObjs.toList.flatMap(_.toOption)

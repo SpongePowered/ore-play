@@ -110,6 +110,7 @@ object Deps {
     //specs2 % Test,
     "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0"        % Test,
     "org.scalatestplus"      %% "junit-4-12"         % "3.2.2.0"      % Test,
-    "org.tpolecat"           %% "doobie-scalatest"   % Version.doobie % Test
+    "org.tpolecat"           %% "doobie-scalatest"   % Version.doobie % Test,
+    "com.github.pathikrit"   %% "better-files"       % "3.9.1"        % Test
   )
 }
