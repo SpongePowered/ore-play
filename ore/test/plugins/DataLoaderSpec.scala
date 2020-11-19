@@ -12,7 +12,13 @@ import io.circe.Decoder
 
 class DataLoaderSpec extends AnyFunSuite {
 
-  private val loadersFolder = File.currentWorkingDirectory / "ore" / "test" / "data" / "loaders"
+  private val oreFolder = {
+    val cwd = File.currentWorkingDirectory
+    if ((cwd / "conf" / "application.conf").exists) cwd
+    else cwd / "ore" //Assume the tests were started from IntelliJ, and we're in the root folder
+  }
+
+  private val loadersFolder = oreFolder / "test" / "data" / "loaders"
   private val testRoots     = loadersFolder.glob("testroot-*.json")
 
   implicit private val loaderEntryDecoder: Decoder[PluginInfoParser.Entry] = {
