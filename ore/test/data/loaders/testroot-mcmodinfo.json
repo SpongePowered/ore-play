@@ -16,6 +16,11 @@
       "name": "multiple mods",
       "file": "mcmodinfo/multiple_mods.json",
       "result": "mcmodinfo/multiple_mods_result.json"
+    },
+    {
+      "name": "duplicate dependency",
+      "file": "mcmodinfo/tablist102.json",
+      "result": "mcmodinfo/tablist102_result.json"
     }
   ]
 }

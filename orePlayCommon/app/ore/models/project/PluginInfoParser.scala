@@ -13,7 +13,7 @@ import ore.OreConfig.Ore.Loader._
 
 import _root_.io.circe._
 import _root_.io.circe.syntax._
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
+import cats.data.{Ior, NonEmptyList, Validated, ValidatedNel}
 import cats.instances.list._
 import cats.syntax.all._
 import shapeless.tag
@@ -221,7 +221,35 @@ object PluginInfoParser {
         }
       } yield dependency
 
-      identifier.map(id => PartialEntry(name, id, version, dependencies.toSet))
+      val groupedDependencies = dependencies.groupMapReduce(_.identifier)(identity) { (d1, d2) =>
+        val versionToUse = (d1.rawVersion, d2.rawVersion) match {
+          case (None, opt @ Some(_))            => opt
+          case (opt @ Some(_), None)            => opt
+          case (Some(v1), Some(v2)) if v1 == v2 => Some(v1)
+          case (Some(v1), Some(v2)) =>
+            val v1Parts = v1.split('.').toVector
+            val v2Parts = v2.split('.').toVector
+
+            v1Parts.align(v2Parts).foldLeft(None: Option[String]) {
+              case (victor @ Some(_), _) => victor
+              case (None, Ior.Both(a, b)) =>
+                cats.Order[Option[Int]]
+                a.toIntOption.compare(b.toIntOption) match {
+                  case 0          => None
+                  case i if i > 0 => Some(v1)
+                  case i if i < 0 => Some(v2)
+                }
+
+              case (None, Ior.Left(_))  => Some(v1)
+              case (None, Ior.Right(_)) => Some(v2)
+            }
+
+        }
+
+        Dependency(d1.identifier, versionToUse, d1.required || d2.required)
+      }
+
+      identifier.map(id => PartialEntry(name, id, version, groupedDependencies.values.toSet))
     }
 
     val entryCursors = loader.entryLocation match {
