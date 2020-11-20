@@ -223,6 +223,7 @@ object PluginInfoParser {
 
       val groupedDependencies = dependencies.groupMapReduce(_.identifier)(identity) { (d1, d2) =>
         val versionToUse = (d1.rawVersion, d2.rawVersion) match {
+          case (None, None)                     => None
           case (None, opt @ Some(_))            => opt
           case (opt @ Some(_), None)            => opt
           case (Some(v1), Some(v2)) if v1 == v2 => Some(v1)
