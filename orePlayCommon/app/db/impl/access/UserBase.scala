@@ -1,9 +1,7 @@
 package db.impl.access
 
-import scala.language.higherKinds
-
+import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
-import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.UUID
 
 import play.api.mvc.Request
@@ -20,14 +18,14 @@ import ore.util.OreMDC
 import ore.util.StringUtils._
 import util.syntax._
 
-import cats.Monad
-import cats.data.{EitherT, OptionT}
 import cats.syntax.all._
+import zio.{IO, UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * Represents a central location for all Users.
   */
-trait UserBase[F[_]] {
+trait UserBase {
 
   /**
     * Returns the user with the specified username. If the specified username
@@ -37,7 +35,7 @@ trait UserBase[F[_]] {
     * @param username Username of user
     * @return User if found, None otherwise
     */
-  def withName(username: String)(implicit mdc: OreMDC): OptionT[F, Model[User]]
+  def withName(username: String)(implicit mdc: OreMDC): IO[Option[Nothing], Model[User]]
 
   /**
     * Returns the requested user when it is the requester or has the requested permission in the orga
@@ -50,7 +48,7 @@ trait UserBase[F[_]] {
     */
   def requestPermission(user: Model[User], name: String, perm: Permission)(
       implicit mdc: OreMDC
-  ): OptionT[F, Model[User]]
+  ): IO[Option[Nothing], Model[User]]
 
   /**
     * Attempts to find the specified User in the database or creates a new User
@@ -63,8 +61,8 @@ trait UserBase[F[_]] {
   def getOrCreate(
       username: String,
       user: User,
-      ifInsert: Model[User] => F[Unit]
-  ): F[Model[User]]
+      ifInsert: Model[User] => UIO[Unit]
+  ): UIO[Model[User]]
 
   /**
     * Creates a new [[Session]] for the specified [[User]].
@@ -73,7 +71,7 @@ trait UserBase[F[_]] {
     *
     * @return     Newly created session
     */
-  def createSession(user: Model[User]): F[Model[Session]]
+  def createSession(user: Model[User]): UIO[Model[Session]]
 
   /**
     * Returns the currently authenticated User.c
@@ -81,7 +79,7 @@ trait UserBase[F[_]] {
     * @param session  Current session
     * @return         Authenticated user, if any, None otherwise
     */
-  def current(implicit session: Request[_], mdc: OreMDC): OptionT[F, Model[User]]
+  def current(implicit session: Request[_], mdc: OreMDC): IO[Option[Nothing], Model[User]]
 }
 
 object UserBase {
@@ -89,42 +87,38 @@ object UserBase {
   /**
     * Default live implementation of [[UserBase]]
     */
-  class UserBaseF[F[_]](implicit service: ModelService[F], auth: SpongeAuthApi[F], config: OreConfig, F: Monad[F])
-      extends UserBase[F] {
+  class UserBaseF(implicit service: ModelService[UIO], auth: SpongeAuthApi, config: OreConfig) extends UserBase {
 
-    def withName(username: String)(implicit mdc: OreMDC): OptionT[F, Model[User]] =
-      ModelView.now(User).find(equalsIgnoreCase(_.name, username)).orElse {
-        EitherT(auth.getUser(username)).map(_.toUser).toOption.semiflatMap(res => service.insert(res))
+    def withName(username: String)(implicit mdc: OreMDC): IO[Option[Nothing], Model[User]] =
+      ModelView.now(User).find(equalsIgnoreCase(_.name, username)).value.someOrElseM {
+        auth.getUser(username).map(_.toUser).option.get.flatMap(service.insert(_))
       }
 
     def requestPermission(user: Model[User], name: String, perm: Permission)(
         implicit mdc: OreMDC
-    ): OptionT[F, Model[User]] = {
+    ): IO[Option[Nothing], Model[User]] = {
       this.withName(name).flatMap { toCheck =>
-        if (user == toCheck) OptionT.pure[F](user) // Same user
+        if (user.id == toCheck.id) ZIO.succeed(user) // Same user
         else
-          toCheck.toMaybeOrganization(ModelView.now(Organization)).flatMap { orga =>
-            OptionT.liftF(user.permissionsIn(orga).map(_.has(perm))).collect {
-              case true => toCheck // Has Orga perm
-            }
-          }
+          for {
+            orga     <- toCheck.toMaybeOrganization(ModelView.now(Organization)).value.get
+            hasPerms <- user.permissionsIn[Model[Organization], UIO](orga).map(_.has(perm))
+            res      <- if (hasPerms) ZIO.succeed(toCheck) else ZIO.fail(None)
+          } yield res
       }
     }
 
     def getOrCreate(
         username: String,
         user: User,
-        ifInsert: Model[User] => F[Unit]
-    ): F[Model[User]] = {
-      def like = ModelView.now(User).find(_.name.toLowerCase === username.toLowerCase)
+        ifInsert: Model[User] => UIO[Unit]
+    ): UIO[Model[User]] = {
+      val like = ModelView.now(User).find(_.name.toLowerCase === username.toLowerCase)
 
-      like.value.flatMap {
-        case Some(u) => F.pure(u)
-        case None    => service.insert(user).flatTap(ifInsert)
-      }
+      like.value.someOrElseM(service.insert(user).tap(ifInsert))
     }
 
-    def createSession(user: Model[User]): F[Model[Session]] = {
+    def createSession(user: Model[User]): UIO[Model[Session]] = {
       val maxAge     = config.ore.session.maxAge
       val expiration = OffsetDateTime.now().plus(maxAge.toMillis, ChronoUnit.MILLIS)
       val token      = UUID.randomUUID().toString
@@ -138,22 +132,21 @@ object UserBase {
       * @param token  Token of session
       * @return       Session if found and has not expired
       */
-    private def getSession(token: String): OptionT[F, Model[Session]] =
-      ModelView.now(Session).find(_.token === token).flatMap { session =>
+    private def getSession(token: String): IO[Option[Nothing], Model[Session]] =
+      ModelView.now(Session).find(_.token === token).value.get.flatMap { session =>
         if (session.hasExpired)
-          OptionT(service.delete(session).as(None: Option[Model[Session]]))
+          service.delete(session) *> ZIO.fail(None)
         else
-          OptionT.some[F](session)
+          ZIO.succeed(session)
       }
 
-    def current(implicit session: Request[_], mdc: OreMDC): OptionT[F, Model[User]] =
-      OptionT
-        .fromOption[F](session.cookies.get("_oretoken"))
+    def current(implicit session: Request[_], mdc: OreMDC): IO[Option[Nothing], Model[User]] =
+      ZIO
+        .fromOption(session.cookies.get("_oretoken"))
         .flatMap(cookie => getSession(cookie.value))
-        .flatMap(s => ModelView.now(User).get(s.userId))
+        .flatMap(s => ModelView.now(User).get(s.userId).value)
+        .someOrFail(None)
   }
-
-  def apply[F[_]](implicit userBase: UserBase[F]): UserBase[F] = userBase
 
   trait UserOrdering
   object UserOrdering {

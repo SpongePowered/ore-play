@@ -1,8 +1,8 @@
 package ore.discourse
 
-import scala.language.higherKinds
+import zio.{IO, UIO}
 
-trait DiscourseApi[F[_]] {
+trait DiscourseApi {
 
   /**
     * Creates a new topic as the specified poster.
@@ -18,7 +18,7 @@ trait DiscourseApi[F[_]] {
       title: String,
       content: String,
       categoryId: Option[Int]
-  ): F[Either[DiscourseError, DiscoursePost]]
+  ): IO[DiscourseError, DiscoursePost]
 
   /**
     * Creates a new post as the specified user.
@@ -28,7 +28,7 @@ trait DiscourseApi[F[_]] {
     * @param content  Raw content
     * @return         New post or list of errors
     */
-  def createPost(poster: String, topicId: Int, content: String): F[Either[DiscourseError, DiscoursePost]]
+  def createPost(poster: String, topicId: Int, content: String): IO[DiscourseError, DiscoursePost]
 
   /**
     * Updates a topic as the specified user.
@@ -44,7 +44,7 @@ trait DiscourseApi[F[_]] {
       topicId: Int,
       title: Option[String],
       categoryId: Option[Int]
-  ): F[Either[DiscourseError, Unit]]
+  ): IO[DiscourseError, Unit]
 
   /**
     * Updates a post as the specified user.
@@ -54,7 +54,7 @@ trait DiscourseApi[F[_]] {
     * @param content  Raw content
     * @return         List of errors
     */
-  def updatePost(poster: String, postId: Int, content: String): F[Either[DiscourseError, Unit]]
+  def updatePost(poster: String, postId: Int, content: String): IO[DiscourseError, Unit]
 
   /**
     * Deletes the specified topic.
@@ -62,7 +62,7 @@ trait DiscourseApi[F[_]] {
     * @param poster   User to delete as
     * @param topicId  Topic ID
     */
-  def deleteTopic(poster: String, topicId: Int): F[Either[DiscourseError, Unit]]
+  def deleteTopic(poster: String, topicId: Int): IO[DiscourseError, Unit]
 
   // Utils
 
@@ -71,6 +71,6 @@ trait DiscourseApi[F[_]] {
     *
     * @return True if available
     */
-  def isAvailable: F[Boolean]
+  def isAvailable: UIO[Boolean]
 
 }

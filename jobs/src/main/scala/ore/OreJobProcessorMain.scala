@@ -47,7 +47,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
     val taskModelServiceL = (slickDbLayer ++ transactorL) >>> modelServiceLayer
     val uioModelServiceL  = taskModelServiceL.map(h => Has(h.get.mapK(Lambda[Task ~> UIO](task => task.orDie))))
     val discourseApiL     = (configLayer ++ actorSystemLayer) >>> discourseApiLayer
-    val oreDiscourseL     = (discourseApiL ++ configLayer ++ taskModelServiceL) >>> oreDiscourseLayer
+    val oreDiscourseL     = (discourseApiL ++ configLayer ++ uioModelServiceL) >>> oreDiscourseLayer
     val oreEnvL           = uioModelServiceL ++ configLayer ++ oreDiscourseL
 
     val all: ZManaged[OreEnv with Has[SlickDb], Nothing, ExitCode] = for {
@@ -166,12 +166,12 @@ object OreJobProcessorMain extends zio.ManagedApp {
       }
       .toLayer
 
-  private val discourseApiLayer: ZLayer[Config with Has[ActorSystem], ExitCode, Has[DiscourseApi[Task]]] =
-    ZLayer.fromServicesM[OreJobsConfig, ActorSystem, Any, ExitCode, DiscourseApi[Task]] {
+  private val discourseApiLayer: ZLayer[Config with Has[ActorSystem], ExitCode, Has[DiscourseApi]] =
+    ZLayer.fromServicesM[OreJobsConfig, ActorSystem, Any, ExitCode, DiscourseApi] {
       (config: OreJobsConfig, system: ActorSystem) =>
         implicit val impSystem: ActorSystem = system
         val cfg                             = config.discourse.api
-        AkkaDiscourseApi[Task](
+        AkkaDiscourseApi(
           AkkaDiscourseSettings(
             cfg.key,
             cfg.admin,
@@ -180,11 +180,11 @@ object OreJobProcessorMain extends zio.ManagedApp {
             cfg.breaker.reset,
             cfg.breaker.timeout
           )
-        ).flatMapError(logErrorExitCode("Failed to create forums client"))
+        )
     }
 
   private val oreDiscourseLayer
-      : ZLayer[Has[DiscourseApi[Task]] with Has[OreJobsConfig] with Has[ModelService[Task]], ExitCode, Discourse] = {
+      : ZLayer[Has[DiscourseApi] with Has[OreJobsConfig] with Has[ModelService[UIO]], ExitCode, Discourse] = {
     def readFile(file: String): Task[String] = {
       fs2.io
         .readInputStream(ZIO(this.getClass.getClassLoader.getResourceAsStream(file)), 1024, blocker)
@@ -193,16 +193,16 @@ object OreJobProcessorMain extends zio.ManagedApp {
         .string
     }
 
-    ZLayer.fromServicesM[DiscourseApi[Task], OreJobsConfig, ModelService[Task], Any, ExitCode, OreDiscourseApi[Task]] {
+    ZLayer.fromServicesM[DiscourseApi, OreJobsConfig, ModelService[UIO], Any, ExitCode, OreDiscourseApi] {
       (discourseClient, config, service) =>
-        val cfg                                     = config.discourse
-        implicit val impService: ModelService[Task] = service
-        implicit val impConfig: OreJobsConfig       = config
+        val cfg                                    = config.discourse
+        implicit val impService: ModelService[UIO] = service
+        implicit val impConfig: OreJobsConfig      = config
 
         val f = for {
           projectTopic <- readFile("discourse/project_topic.md")
           versionPost  <- readFile("discourse/version_post.md")
-        } yield new OreDiscourseApiEnabled[Task](
+        } yield new OreDiscourseApiEnabled(
           discourseClient,
           cfg.categoryDefault,
           cfg.categoryDeleted,

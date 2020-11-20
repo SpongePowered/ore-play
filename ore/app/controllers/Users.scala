@@ -80,7 +80,6 @@ class Users(
           // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
           sponge <- this.sso
             .authenticate(sso.get, sig.get)(isNonceValid)
-            .get
             .orElseFail(Redirect(ShowHome).withError("error.loginFailed"))
           fromSponge = sponge.toUser
           // Complete authentication
@@ -139,7 +138,7 @@ class Users(
     for {
       u <- users
         .withName(username)
-        .toZIOWithError(notFound)
+        .orElseFail(notFound)
       // TODO include orga projects?
       t1 <- (
         getOrga(username).option,
@@ -173,7 +172,7 @@ class Users(
       val tagline = request.body
 
       for {
-        user <- users.withName(username).toZIOWithError(NotFound)
+        user <- users.withName(username).orElseFail(NotFound)
         _ <- {
           if (tagline.length > maxLen)
             IO.fail(Redirect(ShowUser(user)).withError(request.messages.apply("error.tagline.tooLong", maxLen)))

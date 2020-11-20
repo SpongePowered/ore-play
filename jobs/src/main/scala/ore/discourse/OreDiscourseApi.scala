@@ -3,13 +3,12 @@ package ore.discourse
 import ore.db.Model
 import ore.models.project.{Project, Version}
 
-import cats.tagless.autoFunctorK
+import zio.IO
 
 /**
   * Manages forum threads and posts for Ore models.
   */
-@autoFunctorK
-trait OreDiscourseApi[+F[_]] {
+trait OreDiscourseApi {
 
   /**
     * Creates a new topic for the specified [[Project]].
@@ -17,7 +16,7 @@ trait OreDiscourseApi[+F[_]] {
     * @param project Project to create topic for.
     * @return        True if successful
     */
-  def createProjectTopic(project: Model[Project]): F[Either[DiscourseError, Model[Project]]]
+  def createProjectTopic(project: Model[Project]): IO[DiscourseError, Model[Project]]
 
   /**
     * Updates a [[Project]]'s forum topic with the appropriate content.
@@ -25,7 +24,7 @@ trait OreDiscourseApi[+F[_]] {
     * @param project  Project to update topic for
     * @return         True if successful
     */
-  def updateProjectTopic(project: Model[Project]): F[Either[DiscourseError, Unit]]
+  def updateProjectTopic(project: Model[Project]): IO[DiscourseError, Unit]
 
   /**
     * Posts a new reply to a [[Project]]'s forum topic.
@@ -35,7 +34,7 @@ trait OreDiscourseApi[+F[_]] {
     * @param content  Post content
     * @return         Error Discourse returns
     */
-  def postDiscussionReply(topicId: Int, poster: String, content: String): F[Either[DiscourseError, DiscoursePost]]
+  def postDiscussionReply(topicId: Int, poster: String, content: String): IO[DiscourseError, DiscoursePost]
 
   /**
     * Posts a new "Version release" to a [[Project]]'s forum topic.
@@ -44,7 +43,7 @@ trait OreDiscourseApi[+F[_]] {
     * @param version Version of project
     * @return
     */
-  def createVersionPost(project: Model[Project], version: Model[Version]): F[Either[DiscourseError, Model[Version]]]
+  def createVersionPost(project: Model[Project], version: Model[Version]): IO[DiscourseError, Model[Version]]
 
   /**
     * Updates a [[Version]]s forum post with the appropriate content.
@@ -52,7 +51,7 @@ trait OreDiscourseApi[+F[_]] {
     * @param version The version to update post for
     * @return True if successful
     */
-  def updateVersionPost(project: Model[Project], version: Model[Version]): F[Either[DiscourseError, Unit]]
+  def updateVersionPost(project: Model[Project], version: Model[Version]): IO[DiscourseError, Unit]
 
   /**
     * Delete a forum topic.
@@ -60,5 +59,5 @@ trait OreDiscourseApi[+F[_]] {
     * @param topicId Topic to delete
     * @return         True if deleted
     */
-  def deleteTopic(topicId: Int): F[Either[DiscourseError, Unit]]
+  def deleteTopic(topicId: Int): IO[DiscourseError, Unit]
 }

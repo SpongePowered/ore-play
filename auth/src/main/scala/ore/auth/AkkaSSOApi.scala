@@ -4,38 +4,32 @@ import java.net.URLEncoder
 import java.security.SecureRandom
 import java.util.{Base64, Locale}
 
-import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
+import scala.jdk.DurationConverters._
 import scala.util.Try
-
-import ore.external.Cacher
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, Uri}
 import akka.stream.Materializer
-import cats.Monad
-import cats.data.OptionT
-import cats.effect.{Concurrent, Timer}
-import cats.effect.syntax.all._
-import cats.syntax.all._
 import com.typesafe.scalalogging
+import zio.clock.Clock
+import zio.{IO, UIO, URIO, ZIO}
 
-class AkkaSSOApi[F[_]](
+class AkkaSSOApi(
     loginUrl: String,
     signupUrl: String,
     verifyUrl: String,
     secret: String,
-    cachedAvailable: F[Boolean]
-)(implicit F: Monad[F])
-    extends SSOApi[F] {
+    cachedAvailable: UIO[Boolean]
+) extends SSOApi {
 
   private val Logger = scalalogging.Logger("SSO")
 
   private val CharEncoding = "UTF-8"
   private val rand         = new SecureRandom
 
-  override def isAvailable: F[Boolean] = cachedAvailable
+  override def isAvailable: UIO[Boolean] = cachedAvailable
 
   private def nonce(): String = BigInt(130, rand).toString(32)
 
@@ -73,14 +67,16 @@ class AkkaSSOApi[F[_]](
   private def generateSignature(payload: String): String =
     CryptoUtils.hmac_sha256(secret, payload.getBytes(this.CharEncoding))
 
-  override def authenticate(payload: String, sig: String)(isNonceValid: String => F[Boolean]): F[Option[AuthUser]] = {
+  override def authenticate(payload: String, sig: String)(
+      isNonceValid: String => UIO[Boolean]
+  ): IO[Option[Nothing], AuthUser] = {
     Logger.debug("Authenticating SSO payload...")
     Logger.debug(payload)
     Logger.debug("Signed with : " + sig)
 
     if (generateSignature(payload) != sig) {
       Logger.debug("<FAILURE> Could not verify payload against signature.")
-      F.pure(None)
+      ZIO.fail(None)
     } else {
       // decode payload
       val query = Uri.Query(Base64.getMimeDecoder.decode(payload))
@@ -104,23 +100,22 @@ class AkkaSSOApi[F[_]](
         )
       }
 
-      OptionT
-        .fromOption[F](info)
-        .semiflatMap { case (nonce, user) => isNonceValid(nonce).tupleRight(user) }
-        .subflatMap {
+      ZIO
+        .fromOption(info)
+        .flatMap { case (nonce, user) => isNonceValid(nonce).map(_ -> user) }
+        .flatMap {
           case (false, _) =>
             Logger.debug("<FAILURE> Invalid nonce.")
-            None
+            ZIO.fail(None)
           case (true, user) =>
             Logger.debug("<SUCCESS> " + user)
-            Some(user)
+            ZIO.succeed(user)
         }
-        .value
     }
   }
 }
 object AkkaSSOApi {
-  def apply[F[_]](
+  def apply(
       loginUrl: String,
       signupUrl: String,
       verifyUrl: String,
@@ -128,24 +123,21 @@ object AkkaSSOApi {
       timeout: FiniteDuration,
       reset: FiniteDuration
   )(
-      implicit F: Concurrent[F],
-      cacher: Cacher[F],
-      timer: Timer[F],
+      implicit
       system: ActorSystem,
       mat: Materializer
-  ): F[AkkaSSOApi[F]] = {
-    def futureToF[A](future: => Future[A]) = {
-      import system.dispatcher
-      F.async[A](callback => future.onComplete(t => callback(t.toEither)))
-    }
-
-    val cachedIsAvailable = cacher.cache(reset)(
-      futureToF(Http().singleRequest(HttpRequest(HttpMethods.HEAD, loginUrl)))
-        .flatTap(r => F.delay(r.discardEntityBytes()))
+  ): URIO[Clock, AkkaSSOApi] = {
+    val cachedIsAvailable =
+      ZIO
+        .fromFuture(_ => Http().singleRequest(HttpRequest(HttpMethods.HEAD, loginUrl)))
+        .tap(r => ZIO.effectTotal(r.discardEntityBytes()))
         .map(_.status.isSuccess())
-        .timeoutTo(timeout, false.pure)
-    )
+        .timeout(timeout.toJava)
+        .someOrElse(false)
+        .option
+        .someOrElse(false)
+        .cached(reset.toJava)
 
-    cachedIsAvailable.map(new AkkaSSOApi[F](loginUrl, signupUrl, verifyUrl, secret, _))
+    cachedIsAvailable.map(isAvailable => new AkkaSSOApi(loginUrl, signupUrl, verifyUrl, secret, isAvailable))
   }
 }

@@ -16,7 +16,7 @@ import cats.data.{EitherT, OptionT}
 import com.google.common.base.Preconditions.checkArgument
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.{IO, ZIO}
+import zio.{IO, ZEnv, ZIO}
 
 /**
   * A helper class for some common functions of controllers.
@@ -192,26 +192,26 @@ object ActionHelpers {
   }
 
   private[sugar] def zioToFuture[A](
-      io: ZIO[Blocking with Clock, Nothing, A]
-  )(implicit runtime: zio.Runtime[Blocking with Clock]): Future[A] =
+      io: ZIO[ZEnv, Nothing, A]
+  )(implicit runtime: zio.Runtime[ZEnv]): Future[A] =
     //TODO: If Sentry can't differentiate different errors here, log the error, and throw an exception ignored by Sentry instead
     runtime.unsafeRunToFuture(io)
 
   class OreActionBuilderOps[R[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
 
     def asyncF(
-        fr: ZIO[Blocking, Result, Result]
-    )(implicit runtime: zio.Runtime[Blocking with Clock]): Action[AnyContent] =
+        fr: ZIO[ZEnv, Result, Result]
+    )(implicit runtime: zio.Runtime[ZEnv]): Action[AnyContent] =
       action.async(zioToFuture(fr.either.map(_.merge)))
 
     def asyncF(
-        fr: R[B] => ZIO[Blocking, Result, Result]
-    )(implicit runtime: zio.Runtime[Blocking with Clock]): Action[B] =
+        fr: R[B] => ZIO[ZEnv, Result, Result]
+    )(implicit runtime: zio.Runtime[ZEnv]): Action[B] =
       action.async(r => zioToFuture(fr(r).either.map(_.merge)))
 
     def asyncF[A](
         bodyParser: BodyParser[A]
-    )(fr: R[A] => ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking with Clock]): Action[A] =
+    )(fr: R[A] => ZIO[ZEnv, Result, Result])(implicit runtime: zio.Runtime[ZEnv]): Action[A] =
       action.async(bodyParser)(r => zioToFuture(fr(r).either.map(_.merge)))
   }
 }

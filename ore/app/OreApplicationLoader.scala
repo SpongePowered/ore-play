@@ -5,7 +5,6 @@ import java.time.Duration
 import javax.inject.Provider
 
 import scala.annotation.unused
-import scala.concurrent.duration.FiniteDuration
 
 import play.api.cache.caffeine.CaffeineCacheComponents
 import play.api.cache.{DefaultSyncCacheApi, SyncCacheApi}
@@ -19,7 +18,6 @@ import play.api.routing.Router
 import play.api.{
   ApplicationLoader,
   BuiltInComponentsFromContext,
-  Configuration,
   LoggerConfigurator,
   OptionalSourceMapper,
   Application => PlayApplication
@@ -41,7 +39,6 @@ import form.OreForms
 import mail.{EmailFactory, Mailer, SpongeMailer}
 import ore.auth.{AkkaSSOApi, AkkaSpongeAuthApi, SSOApi, SpongeAuthApi}
 import ore.db.ModelService
-import ore.external.Cacher
 import ore.markdown.{FlexmarkRenderer, MarkdownRenderer}
 import ore.models.project.ProjectTask
 import ore.models.project.factory.{OreProjectFactory, ProjectFactory}
@@ -56,7 +53,7 @@ import akka.actor.ActorSystem
 import cats.arrow.FunctionK
 import cats.effect.{ContextShift, Resource}
 import cats.tagless.syntax.all._
-import cats.{Defer, ~>}
+import cats.~>
 import com.softwaremill.macwire._
 import com.typesafe.scalalogging.Logger
 import doobie.util.transactor.Strategy
@@ -202,10 +199,10 @@ class OreComponents(context: ApplicationLoader.Context)
 
   lazy val statTracker: StatTracker[UIO] = (wire[StatTracker.StatTrackerInstant[Task]]: StatTracker[Task])
     .imapK(taskToUIO)(uioToTask)
-  lazy val spongeAuthApiTask: SpongeAuthApi[Task] = {
+  implicit lazy val spongeAuthApi: SpongeAuthApi = {
     val api = config.auth.api
     runtime.unsafeRun(
-      AkkaSpongeAuthApi[Task](
+      AkkaSpongeAuthApi(
         AkkaSpongeAuthApi.AkkaSpongeAuthSettings(
           api.key,
           api.url,
@@ -216,19 +213,11 @@ class OreComponents(context: ApplicationLoader.Context)
       )
     )
   }
-  implicit lazy val spongeAuthApi: SpongeAuthApi[UIO] = spongeAuthApiTask.mapK(taskToUIO)
-  lazy val ssoApiTask: SSOApi[Task] = {
-    val cacher = util.ZIOCacher.instance[Any, Throwable]
-    implicit val taskCacher: Cacher[Task] = new Cacher[Task] {
-      override def cache[A](duration: FiniteDuration)(fa: Task[A]): Task[Task[A]] =
-        cacher.cache(duration)(fa).provide(runtime.environment).map(_.provide(runtime.environment))
-    }
+  lazy val ssoApi: SSOApi = {
     val sso = config.auth.sso
-    runtime.unsafeRun(AkkaSSOApi[Task](sso.loginUrl, sso.signupUrl, sso.verifyUrl, sso.secret, sso.timeout, sso.reset))
+    runtime.unsafeRun(AkkaSSOApi(sso.loginUrl, sso.signupUrl, sso.verifyUrl, sso.secret, sso.timeout, sso.reset))
   }
-  lazy val ssoApi: SSOApi[UIO]                   = ssoApiTask.imapK(taskToUIO)(uioToTask)
-  implicit lazy val userBaseTask: UserBase[Task] = wire[UserBase.UserBaseF[Task]]
-  implicit lazy val userBaseUIO: UserBase[UIO]   = wire[UserBase.UserBaseF[UIO]]
+  implicit lazy val userBase: UserBase = wire[UserBase.UserBaseF]
   implicit lazy val projectBase: ProjectBase[UIO] = {
     implicit val providedProjectFiles: ProjectFiles[Task] =
       projectFiles.mapK(OreComponents.provideFnK[Blocking, Nothing](runtime.environment))
@@ -248,8 +237,7 @@ class OreComponents(context: ApplicationLoader.Context)
 
     (wire[ProjectBase.ProjectBaseF[Task]]: ProjectBase[Task]).mapK(taskToUIO)
   }
-  implicit lazy val orgBase: OrganizationBase[UIO] =
-    (wire[OrganizationBase.OrganizationBaseF[Task]]: OrganizationBase[Task]).mapK(taskToUIO)
+  implicit lazy val orgBase: OrganizationBase = wire[OrganizationBase.OrganizationBaseF]
 
   lazy val bakery: Bakery     = wire[Bakery]
   lazy val forms: OreForms    = wire[OreForms]

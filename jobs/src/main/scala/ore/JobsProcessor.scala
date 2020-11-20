@@ -6,16 +6,15 @@ import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 import ore.db.access.ModelView
-import ore.db.impl.schema.{ProjectTable, VersionTable}
 import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.{ProjectTable, VersionTable}
 import ore.db.{Model, ObjId}
 import ore.discourse.DiscourseError
-import ore.models.{Job, JobInfo}
 import ore.models.project.{Project, Version}
+import ore.models.{Job, JobInfo}
 
 import akka.pattern.CircuitBreakerOpenException
 import com.typesafe.scalalogging
-import cats.syntax.all._
 import slick.lifted.TableQuery
 import zio._
 import zio.clock.Clock
@@ -131,7 +130,7 @@ object JobsProcessor {
     }
 
   def handleDiscourseErrors(job: Model[Job.TypedJob])(
-      program: Discourse => ZIO[Any, Throwable, Either[DiscourseError, Unit]]
+      program: Discourse => ZIO[Any, DiscourseError, Unit]
   ): ZIO[Db with Discourse with Config, Either[Unit, String], Model[Job.TypedJob]] = {
     def retryIn(error: Option[String], errorDescriptor: Option[String])(duration: FiniteDuration) =
       updateJob(
@@ -151,15 +150,6 @@ object JobsProcessor {
 
     ZIO
       .accessM[Discourse](program)
-      .catchSome {
-        case _: TimeoutException =>
-          ZIO.succeed(Left(()))
-
-        case e: CircuitBreakerOpenException => retryIn(None, None)(e.remainingDuration).catchAll(ZIO.succeed(_))
-      }
-      .orDie
-      .absolve
-      .as(job)
       .catchAll {
         case DiscourseError.RatelimitError(waitTime) => retryIn(None, None)(waitTime)
 
@@ -180,27 +170,30 @@ object JobsProcessor {
           retryInConfig(Some(e), Some(s"status_error_${statusCode.intValue}"))(_.jobs.timeouts.statusError)
         case DiscourseError.NotAvailable => retryInConfig(None, None)(_.jobs.timeouts.notAvailable)
       }
+      .unrefineWith {
+        case _: TimeoutException            => ZIO.succeed(Left(()))
+        case e: CircuitBreakerOpenException => retryIn(None, None)(e.remainingDuration).catchAll(ZIO.succeed(_))
+      }(ZIO.succeed(_))
+      .flatMapError(identity)
+      .as(job)
   }
 
   private def updateProjectTopic(job: Model[Job.TypedJob], project: Model[Project]) =
     handleDiscourseErrors(job) { env =>
       if (project.topicId.isDefined) env.get.updateProjectTopic(project)
-      else env.get.createProjectTopic(project).map(_.void)
+      else env.get.createProjectTopic(project).unit
     }
 
   private def updateVersionPost(job: Model[Job.TypedJob], project: Model[Project], version: Model[Version]) = {
     handleDiscourseErrors(job) { env =>
       val doVersion = (project: Model[Project]) =>
         if (version.postId.isDefined) env.get.updateVersionPost(project, version)
-        else env.get.createVersionPost(project, version).map(_.void)
+        else env.get.createVersionPost(project, version).unit
 
       if (project.topicId.isDefined) {
         doVersion(project)
       } else {
-        env.get.createProjectTopic(project).flatMap {
-          case Left(e)      => ZIO.succeed(Left(e))
-          case Right(value) => doVersion(value)
-        }
+        env.get.createProjectTopic(project).flatMap(doVersion)
       }
     }
   }
@@ -209,6 +202,6 @@ object JobsProcessor {
     handleDiscourseErrors(job)(_.get.deleteTopic(topicId))
 
   private def postReply(job: Model[Job.TypedJob], topicId: Int, poster: String, content: String) =
-    handleDiscourseErrors(job)(_.get.postDiscussionReply(topicId, poster, content).map(_.void))
+    handleDiscourseErrors(job)(_.get.postDiscussionReply(topicId, poster, content).unit)
 
 }

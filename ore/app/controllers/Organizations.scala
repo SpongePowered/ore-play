@@ -18,14 +18,14 @@ import views.{html => views}
 
 import cats.data.OptionT
 import zio.interop.catz._
-import zio.{IO, Task, UIO}
+import zio.{IO, Task}
 
 /**
   * Controller for handling Organization based actions.
   */
 class Organizations(forms: OreForms)(
     implicit oreComponents: OreControllerComponents,
-    auth: SpongeAuthApi[UIO],
+    auth: SpongeAuthApi,
     messagesApi: MessagesApi
 ) extends OreBaseController {
 
@@ -74,7 +74,6 @@ class Organizations(forms: OreForms)(
               val formData = request.body
               organizations
                 .create(formData.name, user.id, formData.build())
-                .absolve
                 .bimap(
                   error => Redirect(failCall).withErrors(error),
                   organization => Redirect(routes.Users.showProjects(organization.name))
@@ -122,7 +121,7 @@ class Organizations(forms: OreForms)(
       .asyncF { implicit request =>
         implicit val lang: Lang = request.lang
 
-        auth.changeAvatarUri(request.user.name, organization).map {
+        auth.changeAvatarUri(request.user.name, organization).either.map {
           case Left(_) =>
             Redirect(routes.Users.showProjects(organization)).withError(messagesApi("organization.avatarFailed"))
           case Right(uri) => Redirect(uri.toString())
@@ -141,10 +140,10 @@ class Organizations(forms: OreForms)(
       .asyncF(parse.form(forms.OrganizationMemberRemove)) { implicit request =>
         val res = for {
           user <- users.withName(request.body)
-          _    <- OptionT.liftF(request.data.orga.memberships.removeMember(request.data.orga)(user.id))
+          _    <- request.data.orga.memberships.removeMember(request.data.orga)(user.id)
         } yield Redirect(ShowUser(organization))
 
-        res.getOrElse(BadRequest)
+        res.orElseFail(BadRequest)
       }
 
   /**

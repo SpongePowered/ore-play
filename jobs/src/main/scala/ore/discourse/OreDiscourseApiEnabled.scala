@@ -4,15 +4,15 @@ import java.text.MessageFormat
 
 import ore.OreJobsConfig
 import ore.db.access.ModelView
-import ore.db.{Model, ModelService}
 import ore.db.impl.OrePostgresDriver.api._
+import ore.db.{Model, ModelService}
 import ore.models.project.{Page, Project, Version, Visibility}
+import ore.models.user.User
 import ore.syntax._
 
-import cats.data.EitherT
-import cats.effect.Effect
-import cats.syntax.all._
 import com.typesafe.scalalogging
+import com.typesafe.scalalogging.Logger
+import zio.{IO, UIO, ZIO}
 
 /**
   * A base implementation of [[OreDiscourseApi]] that uses [[DiscourseApi]].
@@ -23,30 +23,29 @@ import com.typesafe.scalalogging
   * @param versionReleasePostTemplate Version release template
   * @param admin An admin account to fall back to if no user is specified as poster
   */
-class OreDiscourseApiEnabled[F[_]](
-    api: DiscourseApi[F],
+class OreDiscourseApiEnabled(
+    api: DiscourseApi,
     categoryDefault: Int,
     categoryDeleted: Int,
     topicTemplate: String,
     versionReleasePostTemplate: String,
     admin: String
 )(
-    implicit service: ModelService[F],
-    config: OreJobsConfig,
-    F: Effect[F]
-) extends OreDiscourseApi[F] {
+    implicit service: ModelService[UIO],
+    config: OreJobsConfig
+) extends OreDiscourseApi {
 
-  private val MDCLogger           = scalalogging.Logger.takingImplicit[DiscourseMDC]("Discourse")
-  protected[discourse] val Logger = scalalogging.Logger(MDCLogger.underlying)
+  private val MDCLogger                   = scalalogging.Logger.takingImplicit[DiscourseMDC]("Discourse")
+  protected[discourse] val Logger: Logger = scalalogging.Logger(MDCLogger.underlying)
 
-  private def homePage(project: Model[Project]): F[Model[Page]] =
+  private def homePage(project: Model[Project]): UIO[Model[Page]] =
     ModelView
       .now(Page)
       .find(p => p.projectId === project.id.value && p.name === config.ore.pages.home.name)
       .value
       .flatMap {
-        case Some(value) => F.pure(value)
-        case None        => F.raiseError(new Exception("No homepage found for project"))
+        case Some(value) => ZIO.succeed(value)
+        case None        => ZIO.die(new Exception("No homepage found for project"))
       }
 
   /**
@@ -55,7 +54,7 @@ class OreDiscourseApiEnabled[F[_]](
     * @param project Project to create topic for.
     * @return        True if successful
     */
-  def createProjectTopic(project: Model[Project]): F[Either[DiscourseError, Model[Project]]] = {
+  def createProjectTopic(project: Model[Project]): IO[DiscourseError, Model[Project]] = {
     val title = Templates.projectTitle(project)
 
     implicit val mdc: DiscourseMDC = DiscourseMDC(project.ownerName, None, title)
@@ -68,31 +67,27 @@ class OreDiscourseApiEnabled[F[_]](
         categoryId = Some(categoryDefault)
       )
 
-    def sanityCheck(check: Boolean, msg: => String) = if (!check) F.raiseError[Unit](new Exception(msg)) else F.unit
+    def sanityCheck(check: Boolean, msg: => String) = if (!check) ZIO.die(new Exception(msg)) else ZIO.unit
 
-    val res = for {
-      homePage <- EitherT.right[DiscourseError](homePage(project))
+    for {
+      homePage <- homePage(project)
       content = Templates.projectTopic(project, homePage.contents)
-      topic <- EitherT(createTopicProgram(content))
+      topic <- createTopicProgram(content)
       // Topic created!
       // Catch some unexpected cases (should never happen)
-      _ <- EitherT.right[DiscourseError](sanityCheck(topic.isTopic, "project post isn't topic?"))
-      _ <- EitherT.right[DiscourseError](
-        sanityCheck(topic.username == project.ownerName, "project post user isn't owner?")
+      _ <- sanityCheck(topic.isTopic, "project post isn't topic?")
+      _ <- sanityCheck(topic.username == project.ownerName, "project post user isn't owner?")
+      _ <- ZIO.effectTotal(
+        MDCLogger.debug(s"""|New project topic:
+                            |Project: ${project.url}
+                            |Topic ID: ${topic.topicId}
+                            |Post ID: ${topic.postId}""".stripMargin)
       )
-      _ = MDCLogger.debug(s"""|New project topic:
-                              |Project: ${project.url}
-                              |Topic ID: ${topic.topicId}
-                              |Post ID: ${topic.postId}""".stripMargin)
-      project <- EitherT.right[DiscourseError](
-        service.update(project)(_.copy(topicId = Some(topic.topicId), postId = Some(topic.postId)))
-      )
+      project <- service.update(project)(_.copy(topicId = Some(topic.topicId), postId = Some(topic.postId)))
     } yield project
-
-    res.value
   }
 
-  def updateProjectTopic(project: Model[Project]): F[Either[DiscourseError, Unit]] = {
+  def updateProjectTopic(project: Model[Project]): IO[DiscourseError, Unit] = {
     require(project.topicId.isDefined, "undefined topic id")
     require(project.postId.isDefined, "undefined post id")
 
@@ -114,35 +109,36 @@ class OreDiscourseApiEnabled[F[_]](
     val updatePostProgram = (content: String) =>
       api.updatePost(poster = ownerName, postId = postId.get, content = content)
 
-    val res = for {
-      homePage <- EitherT.right[DiscourseError](homePage(project))
+    for {
+      homePage <- homePage(project)
       content = Templates.projectTopic(project, homePage.contents)
-      _ <- EitherT(updateTopicProgram)
-      _ <- EitherT(updatePostProgram(content))
-      _ = MDCLogger.debug(s"Project topic updated for ${project.url}.")
+      _ <- updateTopicProgram
+      _ <- updatePostProgram(content)
+      _ <- ZIO.effectTotal(MDCLogger.debug(s"Project topic updated for ${project.url}."))
     } yield ()
-
-    res.value
   }
 
-  def postDiscussionReply(topicId: Int, poster: String, content: String): F[Either[DiscourseError, DiscoursePost]] =
+  def postDiscussionReply(topicId: Int, poster: String, content: String): IO[DiscourseError, DiscoursePost] =
     api.createPost(poster = poster, topicId = topicId, content = content)
 
-  def createVersionPost(project: Model[Project], version: Model[Version]): F[Either[DiscourseError, Model[Version]]] = {
-    EitherT
-      .liftF(project.user)
-      .flatMapF { user =>
+  def createVersionPost(project: Model[Project], version: Model[Version]): IO[DiscourseError, Model[Version]] = {
+    ModelView
+      .now(User)
+      .get(project.userId)
+      .value
+      .someOrFailException
+      .orDie
+      .flatMap { user =>
         postDiscussionReply(
           project.topicId.get,
           user.name,
           content = Templates.versionRelease(project, version, version.description)
         )
       }
-      .semiflatMap(post => service.update(version)(_.copy(postId = Some(post.postId))))
-      .value
+      .flatMap(post => service.update(version)(_.copy(postId = Some(post.postId))))
   }
 
-  def updateVersionPost(project: Model[Project], version: Model[Version]): F[Either[DiscourseError, Unit]] = {
+  def updateVersionPost(project: Model[Project], version: Model[Version]): IO[DiscourseError, Unit] = {
     require(project.topicId.isDefined, "undefined topic id")
     require(version.postId.isDefined, "undefined post id")
 
@@ -153,7 +149,7 @@ class OreDiscourseApiEnabled[F[_]](
     api.updatePost(poster = ownerName, postId = postId.get, content = content)
   }
 
-  def deleteTopic(topicId: Int): F[Either[DiscourseError, Unit]] =
+  def deleteTopic(topicId: Int): IO[DiscourseError, Unit] =
     api.deleteTopic(admin, topicId)
 
   /**

@@ -1,7 +1,7 @@
 package controllers.sugar
 
-import java.time.temporal.ChronoUnit
 import java.time.OffsetDateTime
+import java.time.temporal.ChronoUnit
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -25,14 +25,13 @@ import ore.models.user.{SignOn, User}
 import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
 import ore.util.OreMDC
-import util.syntax._
 
 import cats.syntax.all._
 import com.typesafe.scalalogging
+import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.interop.catz._
-import zio._
 
 /**
   * A set of actions used by Ore.
@@ -49,11 +48,11 @@ trait Actions extends Calls with ActionHelpers { self =>
   type RIO[-R, +A]    = ZIO[R, Nothing, A]
   type ParRIO[-R, +A] = zio.interop.ParIO[R, Nothing, A]
 
-  implicit def service: ModelService[UIO]           = oreComponents.uioEffects.service
-  def sso: SSOApi[UIO]                              = oreComponents.uioEffects.sso
-  implicit def users: UserBase[UIO]                 = oreComponents.uioEffects.users
-  implicit def projects: ProjectBase[UIO]           = oreComponents.uioEffects.projects
-  implicit def organizations: OrganizationBase[UIO] = oreComponents.uioEffects.organizations
+  implicit def service: ModelService[UIO]      = oreComponents.uioEffects.service
+  def sso: SSOApi                              = oreComponents.uioEffects.sso
+  implicit def users: UserBase                 = oreComponents.uioEffects.users
+  implicit def projects: ProjectBase[UIO]      = oreComponents.uioEffects.projects
+  implicit def organizations: OrganizationBase = oreComponents.uioEffects.organizations
 
   implicit def projectFiles: ProjectFiles[RIO[Blocking, *]] = oreComponents.projectFiles
 
@@ -64,16 +63,16 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   val AuthTokenName = "_oretoken"
 
-  implicit def zioRuntime: zio.Runtime[Blocking with Clock] = oreComponents.zioRuntime
+  implicit def zioRuntime: zio.Runtime[ZEnv] = oreComponents.zioRuntime
 
-  protected def zioToFuture[A](zio: RIO[Blocking, A]): Future[A] =
+  protected def zioToFuture[A](zio: RIO[ZEnv, A]): Future[A] =
     ActionHelpers.zioToFuture(zio)
 
   /** Called when a [[User]] tries to make a request they do not have permission for */
   def onUnauthorized(implicit request: Request[_]): IO[Result, Nothing] = {
     val noRedirect           = request.flash.get("noRedirect")
     implicit val mdc: OreMDC = OreMDC.NoMDC
-    users.current.isEmpty
+    users.current.isFailure
       .map { currentUserEmpty =>
         if (noRedirect.isEmpty && currentUserEmpty)
           Redirect(controllers.routes.Users.logIn(None, None, Some(request.path)))
@@ -218,7 +217,7 @@ trait Actions extends Calls with ActionHelpers { self =>
       val auth = for {
         ssoSome <- ZIO.fromOption(sso)
         sigSome <- ZIO.fromOption(sig)
-        res     <- self.sso.authenticate(ssoSome, sigSome)(isNonceValid).get
+        res     <- self.sso.authenticate(ssoSome, sigSome)(isNonceValid)
       } yield res
 
       zioToFuture(
@@ -238,11 +237,10 @@ trait Actions extends Calls with ActionHelpers { self =>
         zioToFuture(
           users
             .requestPermission(request.user, username, Permission.EditOwnUserSettings)(request)
-            .transform {
-              case None    => Some(Unauthorized) // No Permission
-              case Some(_) => None               // Permission granted => No Filter
-            }
-            .value
+            .fold(
+              _ => Some(Unauthorized), // No Permission
+              _ => None                // Permission granted => No Filter
+            )
         )
       }
     }
@@ -273,13 +271,13 @@ trait Actions extends Calls with ActionHelpers { self =>
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: Request[A]): Future[Either[Result, AuthRequest[A]]] =
-      maybeAuthRequest(request, users.current(request, OreMDC.NoMDC).toZIO)
+      maybeAuthRequest(request, users.current(request, OreMDC.NoMDC))
 
   }
 
   private def maybeAuthRequest[A](
       request: Request[A],
-      userF: IO[Unit, Model[User]]
+      userF: IO[Option[Nothing], Model[User]]
   ): Future[Either[Result, AuthRequest[A]]] = {
     val authRequest = for {
       user       <- userF
@@ -444,9 +442,9 @@ trait Actions extends Calls with ActionHelpers { self =>
   }
 
   def getOrga(organization: String): IO[Unit, Model[Organization]] =
-    organizations.withName(organization).get.orElseFail(())
+    organizations.withName(organization).mapError(_ => ())
 
   def getUserData(request: OreRequest[_], userName: String): IO[Unit, UserData] =
-    users.withName(userName)(request).semiflatMap(UserData.of(request, _)).toZIO
+    users.withName(userName)(request).flatMap(UserData.of(request, _)).mapError(_ => ())
 
 }

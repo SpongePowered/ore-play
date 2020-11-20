@@ -1,8 +1,5 @@
 package ore.external
 
-import scala.language.higherKinds
-
-import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
 import ore.external.AkkaClientApi.ClientSettings
@@ -16,21 +13,17 @@ import akka.pattern.CircuitBreaker
 import akka.stream.Materializer
 import akka.util.ByteString
 import cats.Applicative
-import cats.data.EitherT
-import cats.effect.Concurrent
-import cats.effect.concurrent.Ref
-import cats.syntax.all._
 import com.typesafe.scalalogging.Logger
 import io.circe.{Decoder, Json}
+import zio._
 
-abstract class AkkaClientApi[F[_], E[_], ErrorType](
+abstract class AkkaClientApi[E[_], ErrorType](
     serviceName: String,
-    counter: Ref[F, Long],
+    counter: Ref[Long],
     settings: ClientSettings
 )(
     implicit system: ActorSystem,
     mat: Materializer,
-    F: Concurrent[F],
     E: Applicative[E]
 ) {
 
@@ -44,65 +37,62 @@ abstract class AkkaClientApi[F[_], E[_], ErrorType](
 
   protected def Logger: Logger
 
-  protected val breaker =
+  protected val breaker: CircuitBreaker =
     CircuitBreaker(system.scheduler, settings.breakerMaxFailures, settings.breakerTimeoutDur, settings.breakerResetDur)
 
   breaker.onOpen {
     Logger.error(s"Lost connection to $serviceName. Circuit breaker opened")
   }
 
-  private def nextCounter: F[Long] = counter.modify(c => (c + 1, c))
+  private def nextCounter: UIO[Long] = counter.modify(c => (c + 1, c))
 
   protected def apiUri(f: Uri.Path => Uri.Path): Uri = settings.apiUri.withPath(f(settings.apiUri.path))
 
-  private def debugF[A](before: => String, after: A => String, fa: F[A]): F[A] = {
+  private def debugF[R, E0, A](before: => String, after: A => String, fa: ZIO[R, E0, A]): ZIO[R, E0, A] = {
     if (Logger.underlying.isDebugEnabled) {
-      nextCounter.flatMap { c =>
-        F.delay(Logger.debug(s"$c $before")) *> fa.flatTap(res => F.delay(Logger.debug(s"$c ${after(res)}")))
-      }
+      for {
+        c   <- nextCounter
+        _   <- ZIO.effectTotal(Logger.debug(s"$c $before"))
+        res <- fa
+        _   <- ZIO.effectTotal(Logger.debug(s"$c ${after(res)}"))
+      } yield res
     } else fa
   }
 
-  private def futureToF[A](future: => Future[A]) = {
-    import system.dispatcher
-    F.async[A](callback => future.onComplete(t => callback(t.toEither)))
-  }
-
-  protected def makeRequest(request: HttpRequest): F[HttpResponse] = {
+  protected def makeRequest(request: HttpRequest): UIO[HttpResponse] = {
     debugF(
       s"Making request: $request",
-      res => s"Request response: $res",
-      futureToF(breaker.withCircuitBreaker(Http().singleRequest(request)))
+      (res: HttpResponse) => s"Request response: $res",
+      ZIO.fromFuture(_ => breaker.withCircuitBreaker(Http().singleRequest(request))).orDie
     )
   }
 
-  private def unmarshallResponse[A](response: HttpResponse)(implicit um: Unmarshaller[HttpResponse, A]): F[A] =
-    futureToF(Unmarshal(response).to[A])
+  private def unmarshallResponse[A](
+      response: HttpResponse
+  )(implicit um: Unmarshaller[HttpResponse, A]): UIO[A] =
+    ZIO.fromFuture(ec => Unmarshal(response).to[A](um, ec, mat)).orDie
 
-  protected def gatherStatusErrors(response: HttpResponse): F[Either[E[ErrorType], HttpResponse]] = {
-    if (response.status.isSuccess()) F.pure(Right(response))
+  protected def gatherStatusErrors(response: HttpResponse): IO[E[ErrorType], HttpResponse] = {
+    if (response.status.isSuccess()) ZIO.succeed(response)
     else if (response.entity.isKnownEmpty())
-      F.delay(response.entity.discardBytes())
-        .as(Left(E.pure(createStatusError(response.status, None))))
+      ZIO.effectTotal(response.entity.discardBytes()) *> ZIO.fail(E.pure(createStatusError(response.status, None)))
     else {
-      unmarshallResponse[String](response)
-        .map(e => Left(E.pure(createStatusError(response.status, Some(e)))))
+      unmarshallResponse[String](response).flatMap(e => ZIO.fail(E.pure(createStatusError(response.status, Some(e)))))
     }
   }
 
   protected def gatherJsonErrors[A: Decoder](json: Json): Either[E[ErrorType], A]
 
-  protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): F[Either[E[ErrorType], A]] = {
+  protected def runRequest[A: Decoder](request: HttpRequest): IO[E[ErrorType], A] = {
     val requestWithAccept =
       if (request.header[Accept].isDefined) request
       else request.withHeaders(request.headers :+ Accept(MediaRange(MediaTypes.`application/json`)))
 
-    EitherT
-      .liftF(makeRequest(requestWithAccept))
-      .flatMapF(gatherStatusErrors)
-      .semiflatMap(unmarshallResponse[Json])
-      .subflatMap(gatherJsonErrors[A])
-      .value
+    makeRequest(requestWithAccept)
+      .flatMap(gatherStatusErrors)
+      .flatMap(unmarshallResponse[Json])
+      .map(gatherJsonErrors[A])
+      .absolve
   }
 }
 object AkkaClientApi {

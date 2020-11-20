@@ -181,9 +181,7 @@ class Projects(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
           poster <- {
             ZIO
               .fromOption(formData.poster)
-              .flatMap { posterName =>
-                users.requestPermission(request.user, posterName, Permission.PostAsOrganization).toZIO
-              }
+              .flatMap(users.requestPermission(request.user, _, Permission.PostAsOrganization))
               .orElseFail(request.user)
               .either
               .map(_.merge)
@@ -371,8 +369,8 @@ class Projects(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
     Authenticated.asyncF { implicit request =>
       val user = request.user
       val res = for {
-        orga       <- organizations.withName(behalf).get
-        orgaUser   <- users.withName(behalf).toZIO
+        orga       <- organizations.withName(behalf)
+        orgaUser   <- users.withName(behalf)
         role       <- orgaUser.projectRoles(ModelView.now(ProjectUserRole)).get(id).toZIO
         scopedData <- ScopedOrganizationData.of(Some(user), orga)
         _          <- if (scopedData.permissions.has(Permission.ManageProjectMembers)) ZIO.succeed(()) else ZIO.fail(())
@@ -506,7 +504,7 @@ class Projects(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory
     MemberEditAction(author, slug).asyncF(parse.form(forms.ProjectMemberRemove)) { implicit request =>
       users
         .withName(request.body)
-        .toZIOWithError(BadRequest)
+        .orElseFail(BadRequest)
         .flatMap { user =>
           val project = request.data.project
           MembershipDossier

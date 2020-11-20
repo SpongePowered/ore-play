@@ -1,13 +1,13 @@
 package db.impl.access
 
-import scala.language.higherKinds
+import scala.concurrent.duration._
+import scala.jdk.DurationConverters._
 
 import ore.OreConfig
-import ore.auth.SpongeAuthApi
+import ore.auth.{AuthUser, SpongeAuthApi}
 import ore.data.user.notification.NotificationType
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{OrganizationTable, UserTable}
 import ore.db.{DbRef, Model, ModelService, ObjId}
 import ore.models.organization.Organization
 import ore.models.user.role.OrganizationUserRole
@@ -16,16 +16,15 @@ import ore.permission.role.Role
 import ore.util.OreMDC
 import util.syntax._
 
-import cats.Parallel
-import cats.data.{EitherT, NonEmptyList}
-import cats.effect.Sync
+import cats.data.NonEmptyList
 import cats.syntax.all._
-import cats.tagless.autoFunctorK
 import com.typesafe.scalalogging
-import slick.lifted.TableQuery
+import zio.blocking.Blocking
+import zio.clock.Clock
+import zio.interop.catz._
+import zio.{IO, Schedule, UIO, ZIO}
 
-@autoFunctorK
-trait OrganizationBase[+F[_]] {
+trait OrganizationBase {
 
   /**
     * Creates a new [[Organization]]. This method creates a new user on the
@@ -39,7 +38,7 @@ trait OrganizationBase[+F[_]] {
       name: String,
       ownerId: DbRef[User],
       members: Set[OrganizationUserRole]
-  )(implicit mdc: OreMDC): F[Either[List[String], Model[Organization]]]
+  )(implicit mdc: OreMDC): ZIO[Clock with Blocking, List[String], Model[Organization]]
 
   /**
     * Returns an [[Organization]] with the specified name if it exists.
@@ -47,7 +46,7 @@ trait OrganizationBase[+F[_]] {
     * @param name Organization name
     * @return     Organization with name if exists, None otherwise
     */
-  def withName(name: String): F[Option[Model[Organization]]]
+  def withName(name: String): IO[Option[Nothing], Model[Organization]]
 }
 
 object OrganizationBase {
@@ -55,13 +54,11 @@ object OrganizationBase {
   /**
     * Default live implementation of [[OrganizationBase]]
     */
-  class OrganizationBaseF[F[_]](
-      implicit val service: ModelService[F],
+  class OrganizationBaseF(
+      implicit val service: ModelService[UIO],
       config: OreConfig,
-      auth: SpongeAuthApi[F],
-      F: Sync[F],
-      par: Parallel[F]
-  ) extends OrganizationBase[F] {
+      auth: SpongeAuthApi
+  ) extends OrganizationBase {
 
     private val Logger    = scalalogging.Logger("Organizations")
     private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
@@ -70,8 +67,8 @@ object OrganizationBase {
         name: String,
         ownerId: DbRef[User],
         members: Set[OrganizationUserRole]
-    )(implicit mdc: OreMDC): F[Either[List[String], Model[Organization]]] = {
-      val logging = F.delay {
+    )(implicit mdc: OreMDC): ZIO[Clock with Blocking, List[String], Model[Organization]] = {
+      val logging = ZIO.effectTotal {
         MDCLogger.debug("Creating Organization...")
         MDCLogger.debug("Name     : " + name)
         MDCLogger.debug("Owner ID : " + ownerId)
@@ -86,15 +83,34 @@ object OrganizationBase {
 
       // Replace all invalid characters to not throw invalid email error when trying to create org with invalid username
       val dummyEmail   = name.replaceAll("[^a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]", "") + '@' + config.ore.orgs.dummyEmailDomain
-      val spongeResult = EitherT.right[List[String]](logging) *> EitherT(auth.createDummyUser(name, dummyEmail))
+      val spongeResult = logging *> auth.createDummyUser(name, dummyEmail)
+
+      def waitTilUserExists(authUser: AuthUser) = {
+        val hasUser = ModelView.now(User).get(authUser.id).isDefined
+
+        //Do a quick check first if the user is already present
+        hasUser.flatMap {
+          case true => ZIO.succeed(true)
+          case false =>
+            val untilHasUser = Schedule.recurUntilM[Any, Any](_ => hasUser)
+            val sleepWhileWaiting =
+              Schedule.exponential(50.millis.toJava).fold(0.seconds)(_ + _.toScala).untilOutput(_ > 20.seconds)
+
+            ZIO.unit.repeat(untilHasUser && sleepWhileWaiting) *> hasUser
+        }
+      }
 
       // Check for error
       spongeResult
-        .leftMap { err =>
-          MDCLogger.debug("<FAILURE> " + err)
-          err
+        .flatMapError(err => ZIO.effectTotal(MDCLogger.debug("<FAILURE> " + err)).as(err))
+        .flatMap { spongeUser =>
+          waitTilUserExists(spongeUser).flatMap {
+            case true => ZIO.succeed(spongeUser)
+            // Exit early if we never got the user
+            case false => ZIO.fail(List("Timed out while waiting for SSO sync"))
+          }
         }
-        .semiflatMap { spongeUser =>
+        .flatMap { spongeUser =>
           MDCLogger.debug("<SUCCESS> " + spongeUser)
           // Next we will create the Organization on Ore itself. This contains a
           // reference to the Sponge user ID, the organization's username and a
@@ -109,14 +125,14 @@ object OrganizationBase {
             )
           )
         }
-        .semiflatMap { org =>
+        .flatMap { org =>
           // Every organization model has a regular User companion. Organizations
           // are just normal users with additional information. Adding the
           // Organization global role signifies that this User is an Organization
           // and should be treated as such.
           for {
-            userOrg <- org.toUser.getOrElseF(F.raiseError(new IllegalStateException("User not created")))
-            _       <- userOrg.globalRoles.addAssoc(Role.Organization.toDbRole.id.value)
+            userOrg <- org.toUser.value.someOrElseM(ZIO.die(new IllegalStateException("User not created")))
+            _       <- userOrg.globalRoles[UIO].addAssoc(Role.Organization.toDbRole.id.value)
             _ <- // Add the owner
             org.memberships.addRole(org)(
               ownerId,
@@ -150,7 +166,6 @@ object OrganizationBase {
             org
           }
         }
-        .value
     }
 
     /**
@@ -159,9 +174,7 @@ object OrganizationBase {
       * @param name Organization name
       * @return     Organization with name if exists, None otherwise
       */
-    def withName(name: String): F[Option[Model[Organization]]] =
-      ModelView.now(Organization).find(_.name.toLowerCase === name.toLowerCase).value
+    def withName(name: String): IO[Option[Nothing], Model[Organization]] =
+      ModelView.now(Organization).find(_.name.toLowerCase === name.toLowerCase).value.get
   }
-
-  def apply[F[_]](implicit organizationBase: OrganizationBase[F]): OrganizationBase[F] = organizationBase
 }

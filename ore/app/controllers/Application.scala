@@ -123,7 +123,7 @@ final class Application(forms: OreForms, val errorHandler: HttpErrorHandler)(
     FlagAction.asyncF { implicit request =>
       for {
         flag        <- ModelView.now(Flag).get(flagId).toZIOWithError(NotFound)
-        user        <- users.current.value
+        user        <- users.current.option
         _           <- flag.markResolved(resolved, user)
         flagCreator <- flag.user[Task].orDie
         _ <- UserActionLogger.log(
@@ -281,7 +281,7 @@ final class Application(forms: OreForms, val errorHandler: HttpErrorHandler)(
 
   def userAdmin(user: String): Action[AnyContent] = UserAdminAction.asyncF { implicit request =>
     for {
-      u    <- users.withName(user).toZIOWithError(notFound)
+      u    <- users.withName(user).orElseFail(notFound)
       orga <- u.toMaybeOrganization(ModelView.now(Organization)).value
       projectRoles <- orga.fold(
         service.runDBIO(u.projectRoles(ModelView.raw(ProjectUserRole)).result)
@@ -302,7 +302,7 @@ final class Application(forms: OreForms, val errorHandler: HttpErrorHandler)(
     UserAdminAction.asyncF(parse.form(forms.UserAdminUpdate)) { implicit request =>
       users
         .withName(userName)
-        .toZIOWithError(NotFound)
+        .orElseFail(NotFound)
         .flatMap { user =>
           //TODO: Make the form take json directly
           val (thing, action, data) = request.body

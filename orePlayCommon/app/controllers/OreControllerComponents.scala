@@ -1,7 +1,5 @@
 package controllers
 
-import scala.language.higherKinds
-
 import scala.concurrent.ExecutionContext
 
 import play.api.http.FileMimeTypes
@@ -17,23 +15,23 @@ import ore.models.project.io.ProjectFiles
 
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.{UIO, ZIO}
+import zio.{UIO, ZEnv, ZIO}
 
 trait OreControllerComponents extends ControllerComponents {
   def uioEffects: OreControllerEffects[UIO]
   def bakery: Bakery
   def config: OreConfig
   def projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]]
-  def zioRuntime: zio.Runtime[Blocking with Clock]
+  def zioRuntime: zio.Runtime[ZEnv]
   def assetsFinder: AssetsFinder
 }
 
 trait OreControllerEffects[F[_]] {
   def service: ModelService[F]
-  def sso: SSOApi[F]
-  def users: UserBase[F]
+  def sso: SSOApi
+  def users: UserBase
   def projects: ProjectBase[F]
-  def organizations: OrganizationBase[F]
+  def organizations: OrganizationBase
 }
 
 case class DefaultOreControllerComponents(
@@ -47,14 +45,14 @@ case class DefaultOreControllerComponents(
     fileMimeTypes: FileMimeTypes,
     executionContext: ExecutionContext,
     projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
-    zioRuntime: zio.Runtime[Blocking with Clock],
+    zioRuntime: zio.Runtime[ZEnv],
     assetsFinder: AssetsFinder
 ) extends OreControllerComponents
 
 case class DefaultOreControllerEffects[F[_]](
     service: ModelService[F],
-    sso: SSOApi[F],
-    users: UserBase[F],
+    sso: SSOApi,
+    users: UserBase,
     projects: ProjectBase[F],
-    organizations: OrganizationBase[F]
+    organizations: OrganizationBase
 ) extends OreControllerEffects[F]

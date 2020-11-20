@@ -20,6 +20,8 @@ lazy val externalCommon = project.settings(
     Deps.cats,
     Deps.catsEffect,
     Deps.catsTagless,
+    Deps.zio,
+    Deps.zioCats,
     Deps.circe,
     Deps.circeDerivation,
     Deps.circeParser,

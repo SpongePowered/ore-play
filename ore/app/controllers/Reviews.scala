@@ -219,7 +219,7 @@ final class Reviews(forms: OreForms)(
           recentReview <- version
             .mostRecentUnfinishedReview(ModelView.now(Review))
             .toZIOWithError(Ok("Review"))
-          currentUser <- users.current.toZIOWithError(Ok("Review"))
+          currentUser <- users.current.orElseFail(Ok("Review"))
           _ <- {
             if (recentReview.userId == currentUser.id.value) {
               recentReview.addMessage(Message(request.body.trim))

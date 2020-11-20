@@ -8,23 +8,20 @@ import ore.external.AkkaClientApi
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
 import akka.stream.Materializer
-import cats.data.EitherT
-import cats.effect.Concurrent
-import cats.effect.concurrent.Ref
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import com.typesafe.scalalogging.Logger
 import io.circe._
+import zio.{IO, Ref, UIO, ZIO}
 
-class AkkaDiscourseApi[F[_]] private (
+class AkkaDiscourseApi private (
     settings: AkkaDiscourseSettings,
-    counter: Ref[F, Long]
+    counter: Ref[Long]
 )(
     implicit system: ActorSystem,
-    mat: Materializer,
-    F: Concurrent[F]
-) extends AkkaClientApi[F, cats.Id, DiscourseError]("Discourse", counter, settings)
-    with DiscourseApi[F] {
+    mat: Materializer
+) extends AkkaClientApi[cats.Id, DiscourseError]("Discourse", counter, settings)
+    with DiscourseApi {
 
   protected val Logger: Logger = scalalogging.Logger("DiscourseApi")
 
@@ -83,7 +80,7 @@ class AkkaDiscourseApi[F[_]] private (
       title: String,
       content: String,
       categoryId: Option[Int]
-  ): F[Either[DiscourseError, DiscoursePost]] = {
+  ): IO[DiscourseError, DiscoursePost] = {
     val base = Seq(
       "title" -> title,
       "raw"   -> content
@@ -91,7 +88,7 @@ class AkkaDiscourseApi[F[_]] private (
 
     val withCat = categoryId.fold(base)(i => base :+ ("category" -> i.toString))
 
-    makeUnmarshallRequestEither[DiscoursePost](
+    runRequest[DiscoursePost](
       HttpRequest(
         HttpMethods.POST,
         apiUri(_ / "posts.json"),
@@ -101,13 +98,13 @@ class AkkaDiscourseApi[F[_]] private (
     )
   }
 
-  override def createPost(poster: String, topicId: Int, content: String): F[Either[DiscourseError, DiscoursePost]] = {
+  override def createPost(poster: String, topicId: Int, content: String): IO[DiscourseError, DiscoursePost] = {
     val params = Seq(
       "topic_id" -> topicId.toString,
       "raw"      -> content
     )
 
-    makeUnmarshallRequestEither[DiscoursePost](
+    runRequest[DiscoursePost](
       HttpRequest(
         HttpMethods.POST,
         apiUri(_ / "posts.json"),
@@ -122,59 +119,54 @@ class AkkaDiscourseApi[F[_]] private (
       topicId: Int,
       title: Option[String],
       categoryId: Option[Int]
-  ): F[Either[DiscourseError, Unit]] = {
-    if (title.isEmpty && categoryId.isEmpty) F.pure(Right(()))
+  ): IO[DiscourseError, Unit] = {
+    if (title.isEmpty && categoryId.isEmpty) ZIO.unit
     else {
       val base = Seq("topic_id" -> topicId.toString)
 
       val withTitle = title.fold(base)(t => base :+ ("title"                      -> t))
       val withCat   = categoryId.fold(withTitle)(c => withTitle :+ ("category_id" -> c.toString))
 
-      makeUnmarshallRequestEither[Json](
+      runRequest[Json](
         HttpRequest(
           HttpMethods.PUT,
           apiUri(_ / "t" / "-" / s"$topicId.json"),
           headers = authHeaders(Some(poster)),
           entity = FormData(withCat: _*).toEntity
         )
-      ).map(_.void)
+      ).unit
     }
   }
 
-  override def updatePost(poster: String, postId: Int, content: String): F[Either[DiscourseError, Unit]] = {
-    makeUnmarshallRequestEither[Json](
+  override def updatePost(poster: String, postId: Int, content: String): IO[DiscourseError, Unit] = {
+    runRequest[Json](
       HttpRequest(
         HttpMethods.PUT,
         apiUri(_ / "posts" / s"$postId.json"),
         headers = authHeaders(Some(poster)),
         entity = FormData("post[raw]" -> content).toEntity
       )
-    ).map(_.void)
+    ).unit
   }
 
-  override def deleteTopic(poster: String, topicId: Int): F[Either[DiscourseError, Unit]] =
-    EitherT
-      .liftF(
-        makeRequest(
-          HttpRequest(
-            HttpMethods.DELETE,
-            apiUri(_ / "t" / s"$topicId.json"),
-            headers = authHeaders(Some(poster))
-          )
-        )
+  override def deleteTopic(poster: String, topicId: Int): IO[DiscourseError, Unit] =
+    makeRequest(
+      HttpRequest(
+        HttpMethods.DELETE,
+        apiUri(_ / "t" / s"$topicId.json"),
+        headers = authHeaders(Some(poster))
       )
-      .flatMapF(gatherStatusErrors)
-      .semiflatMap(resp => F.delay(resp.discardEntityBytes()))
-      .void
-      .value
+    ).flatMap(gatherStatusErrors)
+      .flatMap(resp => ZIO.effectTotal(resp.discardEntityBytes()))
+      .unit
 
-  override def isAvailable: F[Boolean] = breaker.isClosed.pure[F]
+  override def isAvailable: UIO[Boolean] = ZIO.effectTotal(breaker.isClosed)
 }
 object AkkaDiscourseApi {
-  def apply[F[_]: Concurrent](
+  def apply(
       settings: AkkaDiscourseSettings
-  )(implicit system: ActorSystem, mat: Materializer): F[AkkaDiscourseApi[F]] =
-    Ref.of[F, Long](0L).map(counter => new AkkaDiscourseApi(settings, counter))
+  )(implicit system: ActorSystem, mat: Materializer): UIO[AkkaDiscourseApi] =
+    Ref.make(0L).map(counter => new AkkaDiscourseApi(settings, counter))
 
   case class AkkaDiscourseSettings(
       apiKey: String,

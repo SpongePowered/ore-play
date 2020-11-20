@@ -1,22 +1,19 @@
 package ore.discourse
 
-import scala.language.higherKinds
+import zio.{IO, UIO, ZIO}
 
-import cats.Applicative
-import cats.syntax.all._
+class DisabledDiscourseApi extends DiscourseApi {
 
-class DisabledDiscourseApi[F[_]](implicit F: Applicative[F]) extends DiscourseApi[F] {
-
-  private def notEnabled[A]: F[Either[DiscourseError, A]] = F.pure(Left(DiscourseError.NotAvailable))
+  private def notEnabled[A]: IO[DiscourseError, A] = ZIO.fail(DiscourseError.NotAvailable)
 
   override def createTopic(
       poster: String,
       title: String,
       content: String,
       categoryId: Option[Int]
-  ): F[Either[DiscourseError, DiscoursePost]] = notEnabled
+  ): IO[DiscourseError, DiscoursePost] = notEnabled
 
-  override def createPost(poster: String, topicId: Int, content: String): F[Either[DiscourseError, DiscoursePost]] =
+  override def createPost(poster: String, topicId: Int, content: String): IO[DiscourseError, DiscoursePost] =
     notEnabled
 
   override def updateTopic(
@@ -24,11 +21,11 @@ class DisabledDiscourseApi[F[_]](implicit F: Applicative[F]) extends DiscourseAp
       topicId: Int,
       title: Option[String],
       categoryId: Option[Int]
-  ): F[Either[DiscourseError, Unit]] = notEnabled
+  ): IO[DiscourseError, Unit] = notEnabled
 
-  override def updatePost(poster: String, postId: Int, content: String): F[Either[DiscourseError, Unit]] = notEnabled
+  override def updatePost(poster: String, postId: Int, content: String): IO[DiscourseError, Unit] = notEnabled
 
-  override def deleteTopic(poster: String, topicId: Int): F[Either[DiscourseError, Unit]] = notEnabled
+  override def deleteTopic(poster: String, topicId: Int): IO[DiscourseError, Unit] = notEnabled
 
-  override def isAvailable: F[Boolean] = false.pure
+  override def isAvailable: UIO[Boolean] = ZIO.succeed(false)
 }
