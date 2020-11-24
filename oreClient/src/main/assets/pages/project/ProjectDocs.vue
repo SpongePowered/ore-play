@@ -261,7 +261,12 @@ export default {
       return Array.isArray(this.page) ? this.page.join('/') : this.page
     },
     currentPage() {
-      return this.pages.filter((p) => isEqual(p.slug, this.splitPage))[0]
+      return this.pages.filter((p) =>
+        isEqual(
+          p.slug.map((s) => s.toLowerCase()),
+          this.splitPage.map((s) => s.toLowerCase())
+        )
+      )[0]
     },
     ...mapState('project', ['project', 'permissions', 'members']),
   },
