@@ -110,7 +110,7 @@ trait ProjectFactory {
       versionExistsQuery = project
         .versions(ModelView.later(Version))
         .exists(_.versionString.toLowerCase === versionString.toLowerCase)
-      res <- service.runDBIO(Query((hashExistsQuery, versionExistsQuery)).map(t => t._1 && t._2).result.head)
+      res <- service.runDBIO(Query((hashExistsQuery, versionExistsQuery)).map(t => t._1 || t._2).result.head)
     } yield res
   }
 
