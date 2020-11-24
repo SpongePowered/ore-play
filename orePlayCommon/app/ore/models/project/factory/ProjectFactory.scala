@@ -63,26 +63,9 @@ trait ProjectFactory {
     // file extension constraints
     if (!pluginFileName.endsWith(".zip") && !pluginFileName.endsWith(".jar"))
       ZIO.fail("error.plugin.fileExtension")
-    // check user's public key validity
     else {
-      // move uploaded files to temporary directory while the project creation
-      // process continues
-      val tmpDir = this.env.tmp.resolve(owner.name)
-      val createDirs = ZIO.whenM(fileIO.notExists(tmpDir)) {
-        fileIO.createDirectories(tmpDir)
-      }
-
-      val moveToNewPluginPath = fileIO.executeBlocking(
-        uploadData.pluginFile.moveTo(tmpDir.resolve(pluginFileName), replace = true)
-      )
-
-      val loadData = createDirs *> moveToNewPluginPath.flatMap { newPluginPath =>
-        // create and load a new PluginFile instance for further processing
-        val plugin = new PluginFile(newPluginPath, owner)
-        plugin.loadMeta[Task]
-      }
-
-      loadData.orDie.absolve
+      // create and load a new PluginFile instance for further processing
+      new PluginFile(uploadData.pluginFile, owner).loadMeta[Task].orDie.absolve
     }
   }
 
