@@ -372,6 +372,12 @@ export default {
         content: newContent,
       }).then(() => {
         this.description = newContent
+        this.$store.commit({
+          type: 'replaceAlert',
+          level: 'success',
+          message: `[${new Date().toLocaleTimeString()}] Updated the contents of ${this.currentPage.name}`,
+          tag: 'updatePage',
+        })
       })
     },
     deletePage() {

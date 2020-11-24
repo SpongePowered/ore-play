@@ -199,7 +199,7 @@
                     versionObj.name +
                     '/visibility'
                   "
-                  :callback="(visibility) => (versionObj.visibility = visibility)"
+                  :callback="updateVisibility"
                 />
               </template>
 
@@ -678,6 +678,12 @@ export default {
         changelog: newDescription,
       }).then((res) => {
         this.versionDescription = newDescription
+        this.$store.commit({
+          type: 'replaceAlert',
+          level: 'success',
+          message: `[${new Date().toLocaleTimeString()}] Updated the changelog of ${this.version}`,
+          tag: 'updateVersionDescription',
+        })
       })
     },
     setVisibility(visibility) {
@@ -685,10 +691,27 @@ export default {
         visibility,
         comment: this.modalComment,
       }).then((res) => {
-        this.$refs.restoreModal.hide()
-        this.$refs.deleteModal.hide()
-
         this.versionObj.visibility = visibility
+
+        // eslint-disable-next-line no-unused-expressions
+        this.$refs?.restoreModal?.hide()
+        // eslint-disable-next-line no-unused-expressions
+        this.$refs?.deleteModal?.hide()
+
+        if (!this.permissions.includes('see_hidden')) {
+          this.$router.push({ name: 'versions' })
+        } else {
+          this.updateVisibility()
+        }
+      })
+    },
+    updateVisibility(visibility) {
+      this.versionObj.visibility = visibility
+      this.$store.commit({
+        type: 'replaceAlert',
+        level: 'success',
+        message: `[${new Date().toLocaleTimeString()}] Set the visibility of ${this.version} to ${visibility}`,
+        tag: 'setVisiblity',
       })
     },
     updateDiscoursePost() {
@@ -707,6 +730,12 @@ export default {
     hardDeleteVersion() {
       API.versionRequest(this.project.namespace, this.version, '', 'DELETE').then((res) => {
         this.$refs.hardDeleteModal.hide()
+        this.$store.commit({
+          type: 'replaceAlert',
+          level: 'success',
+          message: `Hard deleted ${this.version}`,
+          tag: 'hardDeleteVersion',
+        })
 
         this.$router.push({ name: 'versions' })
       })

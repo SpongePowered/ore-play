@@ -13,6 +13,7 @@ const mutations = {
   addAlert(state, payload) {
     state.alerts[payload.level].push({
       message: payload.message,
+      tag: payload.tag,
     })
   },
   addAlerts(state, payload) {
@@ -22,11 +23,22 @@ const mutations = {
       })
     )
   },
+  replaceAlert(state, payload) {
+    mutations.dismissAlertsByTag(state, payload)
+    mutations.addAlert(state, payload)
+  },
   dismissAlert(state, payload) {
     state.alerts[payload.level].splice(payload.index, 1)
   },
   dismissAlertsByType(state, payload) {
     Vue.set(state.alerts, payload.level, [])
+  },
+  dismissAlertsByTag(state, payload) {
+    Vue.set(
+      state.alerts,
+      payload.level,
+      state.alerts[payload.level].filter((m) => m.tag !== payload.tag)
+    )
   },
   dismissAllAlerts(state, payload) {
     Object.keys(state.alerts).forEach((v) => {
