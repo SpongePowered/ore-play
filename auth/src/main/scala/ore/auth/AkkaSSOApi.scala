@@ -9,6 +9,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
 import ore.external.Cacher
+import ore.util.CryptoUtils
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http

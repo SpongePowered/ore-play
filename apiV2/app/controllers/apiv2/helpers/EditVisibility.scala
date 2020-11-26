@@ -28,6 +28,8 @@ import zio.{IO, UIO, ZIO}
       deletePerm: Permission,
       insertDiscourseUpdateJob: UIO[Unit],
       doHardDelete: Model[A] => UIO[Unit],
+      createVisibilityChangeWebhookActions: (Visibility, Visibility) => UIO[Unit],
+      createDeleteWebhookActions: UIO[Unit],
       createLog: (String, String) => UIO[Unit]
   )(implicit jsonWrite: Writeable[Json], hide: Hideable[UIO, A]): ZIO[Any, Result, Result] = {
     import play.api.mvc.Results._
@@ -50,8 +52,13 @@ import zio.{IO, UIO, ZIO}
     val permChecks = if (scopePerms.has(Permission.Reviewer)) ZIO.unit else nonReviewerChecks
 
     val projectAction =
-      if (toChange.hVisibility == Visibility.New) doHardDelete(toChange)
-      else toChange.setVisibility(visibility, comment, changer)
+      if (toChange.hVisibility == Visibility.New) createDeleteWebhookActions *> doHardDelete(toChange)
+      else
+        createVisibilityChangeWebhookActions(visibility, toChange.hVisibility) *> toChange.setVisibility(
+          visibility,
+          comment,
+          changer
+        )
 
     val log = createLog(visibility.nameKey, toChange.hVisibility.nameKey)
 

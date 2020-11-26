@@ -1,4 +1,4 @@
-package ore.auth
+package ore.util
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
@@ -41,7 +41,7 @@ object CryptoUtils {
 
   //https://stackoverflow.com/a/9855338
   private val hexArray = "0123456789abcdef".toCharArray
-  private def bytesToHex(bytes: Array[Byte]): String = {
+  def bytesToHex(bytes: Array[Byte]): String = {
     val hexChars = new Array[Char](bytes.length * 2)
     var j        = 0
     while (j < bytes.length) {

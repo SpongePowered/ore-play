@@ -6,12 +6,14 @@ import play.api.mvc.{Action, AnyContent}
 
 import controllers.OreControllerComponents
 import controllers.apiv2.helpers.{APIScope, ApiError, ApiErrors}
+import controllers.sugar.Requests.ApiRequest
+import controllers.sugar.ResolvedAPIScope
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
 import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.PageTable
-import ore.models.project.{Page, Project}
+import ore.models.project.{Page, Project, Webhook}
 import ore.permission.Permission
 import ore.util.StringUtils
 import util.PatchDecoder
@@ -33,63 +35,78 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
 ) extends AbstractApiV2Controller(lifecycle) {
 
   def showPages(projectOwner: String, projectSlug: String): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
-      service.runDbCon(APIV2Queries.pageList(projectOwner, projectSlug).to[Vector]).flatMap { pages =>
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(projectOwner, projectSlug)).asyncF { request =>
+      service.runDbCon(APIV2Queries.pageList(request.scope.id).to[Vector]).flatMap { pages =>
         if (pages.isEmpty) ZIO.fail(NotFound)
-        else ZIO.succeed(Ok(APIV2.PageList(pages.map(t => APIV2.PageListEntry(t._3, t._4, t._5)))))
+        else ZIO.succeed(Ok(APIV2.PageList(pages.map(t => APIV2.PageListEntry(t._2, t._3, t._4)))))
       }
     }
 
+  private def getPageOpt(
+      page: String
+  )(
+      implicit request: ApiRequest[ResolvedAPIScope.ProjectScope, _]
+  ): ZIO[Any, Option[Nothing], (DbRef[Page], String, Option[String])] =
+    service
+      .runDbCon(APIV2Queries.getPage(request.scope.id, page).option)
+      .get
+
+  private def getPage(
+      page: String
+  )(
+      implicit request: ApiRequest[ResolvedAPIScope.ProjectScope, _]
+  ): ZIO[Any, Status, (DbRef[Page], String, Option[String])] =
+    getPage(page).orElseFail(NotFound)
+
   def showPageAction(projectOwner: String, projectSlug: String, page: String): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
-      service.runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, page).option).get.orElseFail(NotFound).map {
-        case (_, _, name, contents) =>
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(projectOwner, projectSlug)).asyncF { request =>
+      service.runDbCon(APIV2Queries.getPage(request.scope.id, page).option).get.orElseFail(NotFound).map {
+        case (_, name, contents) =>
           Ok(APIV2.Page(name, contents))
       }
     }
 
   def putPage(projectOwner: String, projectSlug: String, page: String): Action[APIV2.Page] =
     ApiAction(Permission.EditPage, APIScope.ProjectScope(projectOwner, projectSlug))
-      .asyncF(parseCirce.decodeJson[APIV2.Page]) { c =>
-        val newName = StringUtils.compact(c.body.name)
-        val content = c.body.content
+      .asyncF(parseCirce.decodeJson[APIV2.Page]) { implicit r =>
+        val newName = StringUtils.compact(r.body.name)
+        val content = r.body.content
 
-        val pageArr  = page.split("/")
-        val pageInit = pageArr.init.mkString("/")
-        val slug     = StringUtils.slugify(pageArr.last) //TODO: Check ASCII
+        val pageArr    = page.split("/").toIndexedSeq
+        val pageParent = pageArr.init.mkString("/")
+        val slug       = StringUtils.slugify(pageArr.last) //TODO: Check ASCII
 
-        val updateExisting =
-          service.runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, page).option).get.flatMap {
-            case (_, id, _, _) =>
-              service
-                .runDBIO(
-                  TableQuery[PageTable].filter(_.id === id).map(p => (p.name, p.contents)).update((newName, content))
-                )
-                .as(Ok(APIV2.Page(newName, content)))
-          }
+        val updateExisting = getPageOpt(page).flatMap {
+          case (id, _, _) =>
+            addWebhookJob(
+              Webhook.WebhookEventType.PageUpdated,
+              APIV2.PageUpdateWithSlug(newName, pageArr, pageArr, content.isDefined, content),
+              ???
+            ) *> service
+              .runDBIO(
+                TableQuery[PageTable].filter(_.id === id).map(p => (p.name, p.contents)).update((newName, content))
+              )
+              .as(Ok(APIV2.Page(newName, content)))
+        }
 
-        def insertNewPage(projectId: DbRef[Project], parentId: Option[DbRef[Page]]) =
-          service
-            .insert(Page(projectId, parentId, newName, slug, isDeletable = true, content))
+        def insertNewPage(parentId: Option[DbRef[Page]]) = {
+          addWebhookJob(
+            Webhook.WebhookEventType.PageCreated,
+            APIV2.PageWithSlug(newName, pageArr, content.isDefined, content),
+            ???
+          ) *> service
+            .insert(Page(r.scope.id, parentId, newName, slug, isDeletable = true, content))
             .as(Created(APIV2.Page(newName, content)))
+        }
 
         val createNew =
           if (page.contains("/")) {
-            service
-              .runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, pageInit).option)
-              .get
-              .orElseFail(NotFound)
-              .flatMap {
-                case (projectId, parentId, _, _) =>
-                  insertNewPage(projectId, Some(parentId))
-              }
+            getPage(pageParent).flatMap {
+              case (parentId, _, _) =>
+                insertNewPage(Some(parentId))
+            }
           } else {
-            projects
-              .withSlug(projectOwner, projectSlug)
-              .get
-              .orElseFail(NotFound)
-              .map(_.id)
-              .flatMap(insertNewPage(_, None))
+            insertNewPage(None)
           }
 
         if (page == Page.homeName && content.fold(0)(_.length) < Page.minLength)
@@ -109,29 +126,42 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
 
         res match {
           case Validated.Valid(a) =>
-            val newName = a.copy[Option](
+            val edits = a.copy[Option](
               name = a.name.map(StringUtils.compact)
             )
 
-            val slug = newName.name.map(StringUtils.slugify)
+            val slug = edits.name.map(StringUtils.slugify)
 
-            val oldPage =
-              service.runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, page).option).get.orElseFail(NotFound)
-            val newParent = newName.parent
-              .map(
-                _.map(p => service.runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, p).option).get.map(_._2)).sequence
-              )
-              .sequence
-              .orElseFail(BadRequest(ApiError("Unknown parent")))
+            val oldPage = getPage(page)
+            val newParent =
+              edits.parent
+                .map(_.map(p => getPageOpt(p).map(_._1)).sequence)
+                .sequence
+                .orElseFail(BadRequest(ApiError("Unknown parent")))
 
             val runRename = (oldPage <&> newParent).flatMap {
-              case ((_, id, name, contents), parentId) =>
-                service
-                  .runDbCon(APIV2Queries.patchPage(newName, slug, id, parentId).run)
-                  .as(Ok(APIV2.Page(newName.name.getOrElse(name), newName.content.getOrElse(contents))))
+              case ((id, name, contents), parentId) =>
+                val oldSlug   = page.split("/").toIndexedSeq
+                val oldParent = oldSlug.dropRight(1)
+                val newParent = edits.parent.map(_.fold(IndexedSeq.empty[String])(_.split("/").toIndexedSeq))
+
+                addWebhookJob(
+                  Webhook.WebhookEventType.PageUpdated,
+                  APIV2.PageUpdateWithSlug(
+                    edits.name.getOrElse(name),
+                    oldSlug,
+                    newParent.getOrElse(oldParent.toList) :+ slug.getOrElse(oldSlug.last),
+                    edits.content.getOrElse(contents).isDefined,
+                    edits.content.getOrElse(contents)
+                  ),
+                  ???
+                ) *>
+                  service
+                    .runDbCon(APIV2Queries.patchPage(edits, slug, id, parentId).run)
+                    .as(Ok(APIV2.Page(edits.name.getOrElse(name), edits.content.getOrElse(contents))))
             }
 
-            if (newName.content.flatten.fold(0)(_.length) > Page.maxLengthPage)
+            if (edits.content.flatten.fold(0)(_.length) > Page.maxLengthPage)
               ZIO.fail(BadRequest(ApiError("Too long content")))
             else runRename
           case Validated.Invalid(e) => ZIO.fail(BadRequest(ApiErrors(e.map(_.show))))
@@ -139,21 +169,20 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
       }
 
   def deletePage(projectOwner: String, projectSlug: String, page: String): Action[AnyContent] =
-    ApiAction(Permission.EditPage, APIScope.ProjectScope(projectOwner, projectSlug)).asyncF {
-      service
-        .runDbCon(APIV2Queries.getPage(projectOwner, projectSlug, page).option)
-        .get
-        .orElseFail(NotFound)
+    ApiAction(Permission.EditPage, APIScope.ProjectScope(projectOwner, projectSlug)).asyncF { implicit request =>
+      getPage(page)
         .flatMap {
-          case (_, id, _, _) =>
+          case (id, _, _) =>
             //TODO: In the future when we represent the tree in a better way, just promote all children one level up
             service.deleteWhere(Page)(p =>
               p.id === id && p.isDeletable && TableQuery[PageTable].filter(_.parentId === id).size === 0
             )
         }
-        .map {
-          case 0 => BadRequest(ApiError("Page not deletable"))
-          case _ => NoContent
+        .flatMap {
+          case 0 => ZIO.succeed(BadRequest(ApiError("Page not deletable")))
+          case _ =>
+            addWebhookJob(Webhook.WebhookEventType.PageUpdated, APIV2.PageSlug(page.split("/").toIndexedSeq), ???)
+              .as(NoContent)
         }
     }
 }

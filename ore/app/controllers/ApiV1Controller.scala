@@ -8,7 +8,6 @@ import play.api.mvc._
 
 import controllers.sugar.Requests.AuthedProjectRequest
 import form.OreForms
-import ore.auth.CryptoUtils
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.ProjectApiKeyTable
@@ -22,6 +21,7 @@ import ore.models.user.{LoggedActionProject, LoggedActionType, User}
 import ore.permission.Permission
 import ore.permission.role.Role
 import ore.rest.{FakeChannel, OreRestfulApiV1, OreWrites}
+import ore.util.CryptoUtils
 import _root_.util.syntax._
 import _root_.util.{StatusZ, UserActionLogger}
 

@@ -1,6 +1,7 @@
 package util
 
 import controllers.sugar.Requests.{ApiRequest, AuthRequest}
+import controllers.sugar.ResolvedAPIScope
 import ore.StatTracker
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.models.user.{LoggedActionCommon, LoggedActionType}
@@ -38,7 +39,7 @@ object UserActionLogger {
   }
 
   def logApi[F[_], Ctx, M: ModelQuery](
-      request: ApiRequest[_],
+      request: ApiRequest[_ <: ResolvedAPIScope, _],
       action: LoggedActionType[Ctx],
       ctxId: DbRef[Ctx],
       newState: String,
@@ -47,7 +48,7 @@ object UserActionLogger {
     logApiOption(request, action, Some(ctxId), newState, oldState)(createAction)
 
   def logApiOption[F[_], Ctx, M: ModelQuery](
-      request: ApiRequest[_],
+      request: ApiRequest[_ <: ResolvedAPIScope, _],
       action: LoggedActionType[Ctx],
       ctxId: Option[DbRef[Ctx]],
       newState: String,

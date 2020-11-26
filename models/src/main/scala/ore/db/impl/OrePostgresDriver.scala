@@ -11,7 +11,7 @@ import ore.data.user.notification.NotificationType
 import ore.data.{Color, DownloadType, Prompt}
 import ore.db.OreProfile
 import ore.models.Job
-import ore.models.project.{ReviewState, TagColor, Version, Visibility}
+import ore.models.project.{ReviewState, TagColor, Version, Visibility, Webhook}
 import ore.models.user.{LoggedActionContext, LoggedActionType}
 import ore.permission.Permission
 import ore.permission.role.{Role, RoleCategory}
@@ -93,6 +93,9 @@ trait OrePostgresDriver
     implicit val langTypeMapper: BaseColumnType[Locale] =
       MappedJdbcType.base[Locale, String](_.toLanguageTag, Locale.forLanguageTag)
 
+    implicit val webhookEventTypeMapper: BaseColumnType[Webhook.WebhookEventType] =
+      MappedJdbcType.base[Webhook.WebhookEventType, String](_.value, Webhook.WebhookEventType.withValue)
+
     implicit val permissionTypeMapper: BaseColumnType[Permission] = new DriverJdbcType[Permission] {
       override def sqlType: Int = java.sql.Types.BIT
 
@@ -136,6 +139,16 @@ trait OrePostgresDriver
       str => utils.SimpleArrayUtils.fromString[Prompt](s => Prompt.withValue(Integer.parseInt(s)))(str).orNull,
       value => utils.SimpleArrayUtils.mkString[Prompt](_.value.toString)(value)
     ).to(_.toList)
+
+    implicit val webhookEventTypeListMapper: DriverJdbcType[List[Webhook.WebhookEventType]] =
+      new AdvancedArrayJdbcType[Webhook.WebhookEventType](
+        "varchar",
+        str =>
+          utils.SimpleArrayUtils
+            .fromString[Webhook.WebhookEventType](s => Webhook.WebhookEventType.withValue(s))(str)
+            .orNull,
+        value => utils.SimpleArrayUtils.mkString[Webhook.WebhookEventType](_.value)(value)
+      ).to(_.toList)
 
     implicit val roleCategoryTypeMapper: JdbcType[RoleCategory] = pgEnumForValueEnum("ROLE_CATEGORY", RoleCategory)
     implicit val jobStateTypeMapper: JdbcType[Job.JobState]     = pgEnumForValueEnum("JOB_STATE", Job.JobState)

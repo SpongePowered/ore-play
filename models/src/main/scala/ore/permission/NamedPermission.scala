@@ -23,6 +23,7 @@ object NamedPermission extends Enum[NamedPermission] {
   case object EditVersion   extends NamedPermission(Permission.EditVersion)
   case object DeleteVersion extends NamedPermission(Permission.DeleteVersion)
   case object EditTags      extends NamedPermission(Permission.EditChannel)
+  case object EditWebhooks  extends NamedPermission(Permission.EditWebhooks)
 
   case object CreateOrganization extends NamedPermission(Permission.CreateOrganization)
   case object PostAsOrganization extends NamedPermission(Permission.PostAsOrganization)

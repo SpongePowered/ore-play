@@ -50,6 +50,7 @@ package object permission {
     val EditVersion   = Permission(1L << 13)
     val DeleteVersion = Permission(1L << 14)
     val EditChannel   = Permission(1L << 15) //To become edit tags later
+    val EditWebhooks  = Permission(1L << 16)
 
     val CreateOrganization        = Permission(1L << 20)
     val PostAsOrganization        = Permission(1L << 21)

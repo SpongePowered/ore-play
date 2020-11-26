@@ -14,7 +14,9 @@ import ore.discourse.AkkaDiscourseApi.AkkaDiscourseSettings
 import ore.discourse.{AkkaDiscourseApi, DiscourseApi, OreDiscourseApi, OreDiscourseApiEnabled}
 import ore.models.Job
 
+import ackcord.requests.{Ratelimiter, RequestSettings, Requests}
 import akka.actor.{ActorSystem, Terminated}
+import akka.http.scaladsl.model.headers.`User-Agent`
 import cats.effect.{Blocker, ConcurrentEffect, Resource}
 import cats.tagless.syntax.all._
 import cats.~>
@@ -48,7 +50,8 @@ object OreJobProcessorMain extends zio.ManagedApp {
     val uioModelServiceL  = taskModelServiceL.map(h => Has(h.get.mapK(Lambda[Task ~> UIO](task => task.orDie))))
     val discourseApiL     = (configLayer ++ actorSystemLayer) >>> discourseApiLayer
     val oreDiscourseL     = (discourseApiL ++ configLayer ++ taskModelServiceL) >>> oreDiscourseLayer
-    val oreEnvL           = uioModelServiceL ++ configLayer ++ oreDiscourseL
+    val discordL          = (actorSystemLayer ++ configLayer) >>> discordLayer
+    val oreEnvL           = uioModelServiceL ++ configLayer ++ oreDiscourseL ++ discordL ++ actorSystemLayer
 
     val all: ZManaged[OreEnv with Has[SlickDb], Nothing, ExitCode] = for {
       maxConnections <- ZManaged.access[Has[SlickDb]](_.get.source.maxConnections.getOrElse(32))
@@ -145,7 +148,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
   private val modelServiceLayer: ZLayer[Has[SlickDb] with Has[Transactor[Task]], Nothing, Has[ModelService[Task]]] =
     ZLayer.fromServices[SlickDb, Transactor[Task], ModelService[Task]](new OreModelService(_, _))
 
-  private val actorSystemLayer: ZLayer[Any, Nothing, Has[ActorSystem]] =
+  private val actorSystemLayer: ZLayer[Any, Nothing, Actors] =
     ZManaged
       .make(UIO(ActorSystem("OreJobs"))) { system =>
         val terminate: ZIO[Any, Unit, Terminated] = ZIO
@@ -166,7 +169,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
       }
       .toLayer
 
-  private val discourseApiLayer: ZLayer[Config with Has[ActorSystem], ExitCode, Has[DiscourseApi[Task]]] =
+  private val discourseApiLayer: ZLayer[Config with Actors, ExitCode, Has[DiscourseApi[Task]]] =
     ZLayer.fromServicesM[OreJobsConfig, ActorSystem, Any, ExitCode, DiscourseApi[Task]] {
       (config: OreJobsConfig, system: ActorSystem) =>
         implicit val impSystem: ActorSystem = system
@@ -212,6 +215,25 @@ object OreJobProcessorMain extends zio.ManagedApp {
         )
 
         f.flatMapError(logErrorExitCode("Failed to create ore discourse client"))
+    }
+  }
+
+  private val discordLayer: ZLayer[Actors with Config, ExitCode, Discord] = {
+    import akka.actor.typed.scaladsl.adapter._
+    ZLayer.fromServicesM[ActorSystem, OreJobsConfig, Any, ExitCode, Requests] { (actors, config) =>
+      ZIO(actors.spawn(Ratelimiter(), "DiscordRatelimiter"))
+        .map { ratelimiter =>
+          new Requests(
+            RequestSettings(
+              credentials = None,
+              ratelimitActor = ratelimiter,
+              userAgent = `User-Agent`(config.webhooks.discordUserAgent)
+            )
+          )(
+            actors.toTyped
+          )
+        }
+        .flatMapError(logErrorExitCode("Failed to create discord requests ratelimiter"))
     }
   }
 }

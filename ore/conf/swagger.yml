@@ -59,6 +59,34 @@ servers:
   - url: /api/v2
 
 components:
+  parameters:
+    webhookEventTypeHeader:
+      in: header
+      name: Ore-Webhook-EventType
+      description: Tells you what event this corresponds to without parsing the body
+      required: true
+      schema:
+        $ref: '#/components/schemas/WebhookEventType'
+    webhookTimestampHeader:
+      in: header
+      name: Ore-Webhook-Timestamp
+      description: When this request was sent. Use this to avoid replay attacks.
+      required: true
+      schema:
+        type: integer
+        format: unix-time
+    webhookSignatureHeader:
+      in: header
+      name: Ore-Webhook-HMACSignature
+      description: >-
+        A signature of the timestamp header's value, and the body.
+        Can be gotten through `hmac(secret, bytesOf(timestamp) ++ bytesOf(body))`.
+        Use this to ensure that the request is legit.
+      required: true
+      schema:
+        type: string
+        format: byte
+
   schemas:
     DeployVersionInfo:
       description: >-
@@ -149,6 +177,21 @@ components:
         - only_relevance
         - recent_downloads
         - recent_views
+    WebhookEventType:
+      type: string
+      enum:
+        - ping
+        - version_created
+        - version_changelog_edited
+        - version_edited
+        - version_visibility_change
+        - version_deleted
+        - page_created
+        - page_updated
+        - page_deleted
+        - member_added
+        - member_changed
+        - member_removed
     models.protocols.APIV2.Project:
       title: Project
     models.protocols.APIV2.Role:

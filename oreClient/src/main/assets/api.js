@@ -110,7 +110,7 @@ export class API {
       if (data.type !== 'user') {
         throw new Error('Expected user session from user authentication')
       } else {
-        localStorage.setItem('api_session', JSON.stringify(data))
+        sessionStorage.setItem('api_session', JSON.stringify(data))
         return data.session
       }
     } else {
@@ -126,7 +126,7 @@ export class API {
       if (data.type !== 'public') {
         throw new Error('Expected public session from public authentication')
       } else {
-        localStorage.setItem('public_api_session', JSON.stringify(data))
+        sessionStorage.setItem('public_api_session', JSON.stringify(data))
         return data.session
       }
     }
@@ -138,9 +138,9 @@ export class API {
     let session
 
     if (this.hasUser()) {
-      session = parseJsonOrNull(localStorage.getItem('api_session'))
+      session = parseJsonOrNull(sessionStorage.getItem('api_session'))
     } else {
-      session = parseJsonOrNull(localStorage.getItem('public_api_session'))
+      session = parseJsonOrNull(sessionStorage.getItem('public_api_session'))
     }
 
     if (session !== null && !isNaN(new Date(session.expires).getTime()) && new Date(session.expires) < nowWithPadding) {
@@ -156,9 +156,9 @@ export class API {
 
   static invalidateSession() {
     if (window.isLoggedIn) {
-      localStorage.removeItem('api_session')
+      sessionStorage.removeItem('api_session')
     } else {
-      localStorage.removeItem('public_api_session')
+      sessionStorage.removeItem('public_api_session')
     }
   }
 }

@@ -8,7 +8,8 @@ import pureconfig.generic.auto._
 case class OreJobsConfig(
     ore: OreJobsConfig.Ore,
     discourse: OreJobsConfig.Discourse,
-    jobs: OreJobsConfig.Jobs
+    jobs: OreJobsConfig.Jobs,
+    webhooks: OreJobsConfig.Webhooks
 )
 
 object OreJobsConfig {
@@ -47,5 +48,9 @@ object OreJobsConfig {
       unknownError: FiniteDuration,
       statusError: FiniteDuration,
       notAvailable: FiniteDuration
+  )
+
+  case class Webhooks(
+      discordUserAgent: String
   )
 }

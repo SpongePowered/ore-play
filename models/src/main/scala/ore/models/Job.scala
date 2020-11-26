@@ -5,9 +5,11 @@ import java.time.OffsetDateTime
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.JobTable
 import ore.db.{DbRef, ModelQuery}
-import ore.models.project.{Project, Version}
+import ore.models.project.{Project, Version, Webhook}
 
 import enumeratum.values._
+import cats.syntax.all._
+import io.circe.Json
 import slick.lifted.TableQuery
 
 case class JobInfo(
@@ -58,7 +60,13 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
   }
   object JobType extends StringEnum[JobType] {
     override def values: IndexedSeq[JobType] =
-      IndexedSeq(UpdateDiscourseProjectTopic, UpdateDiscourseVersionPost, DeleteDiscourseTopic, PostDiscourseReply)
+      IndexedSeq(
+        UpdateDiscourseProjectTopic,
+        UpdateDiscourseVersionPost,
+        DeleteDiscourseTopic,
+        PostDiscourseReply,
+        PostWebhookResponse
+      )
   }
 
   sealed trait TypedJob {
@@ -169,5 +177,85 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
         content       <- properties.get("content").toRight("No content found")
       } yield PostDiscourseReply(info, topicId, poster, content)
     }
+  }
+
+  case class PostWebhookResponse(
+      info: JobInfo,
+      projectOwner: String,
+      projectSlug: String,
+      webhookId: DbRef[Webhook],
+      webhookSecret: String,
+      callbackUrl: String,
+      webhookType: Webhook.WebhookEventType,
+      data: Json
+  ) extends TypedJob {
+    override def toJob: Job =
+      Job(
+        info,
+        Map(
+          "project_owner"    -> projectOwner,
+          "project_slug"     -> projectSlug,
+          "webhook_id"       -> webhookId.toString,
+          "webhook_secret"   -> webhookSecret,
+          "webhook_callback" -> callbackUrl,
+          "webhook_type"     -> webhookType.value,
+          "webhook_data"     -> data.noSpaces
+        )
+      )
+
+    override def withoutError: TypedJob = copy(info = info.withoutError)
+  }
+  object PostWebhookResponse extends JobType("post_webhook") {
+    def newJob(
+        projectOwner: String,
+        projectSlug: String,
+        webhookId: DbRef[Webhook],
+        webhookSecret: String,
+        callbackUrl: String,
+        webhookType: Webhook.WebhookEventType,
+        data: Json
+    ): PostWebhookResponse =
+      PostWebhookResponse(
+        JobInfo.newJob(this),
+        projectOwner,
+        projectSlug,
+        webhookId,
+        webhookSecret,
+        callbackUrl,
+        webhookType,
+        data
+      )
+
+    override type CaseClass = PostWebhookResponse
+
+    override def toCaseClass(info: JobInfo, properties: Map[String, String]): Either[String, PostWebhookResponse] =
+      for {
+        projectOwner <- properties.get("project_owner").toRight("No project owner found")
+        projectSlug  <- properties.get("project_slug").toRight("No project slug found")
+        webhookId <- properties
+          .get("webhook_id")
+          .toRight("No webhook id found")
+          .flatMap(_.toLongOption.toRight("Invalid webhook id"))
+        webhookSecret <- properties.get("webhook_secret").toRight("No webhook secret found")
+        callbackUrl   <- properties.get("webhook_callback").toRight("No callback url found")
+        webhookType <- properties
+          .get("webhook_type")
+          .toRight("No webhook type found")
+          .flatMap(Webhook.WebhookEventType.withValueEither(_).leftMap(_.getMessage()))
+        data <- properties
+          .get("webhook_data")
+          .toRight("No webhook data found")
+          .flatMap(s => io.circe.parser.parse(s).leftMap(_.show))
+      } yield PostWebhookResponse(
+        info,
+        projectOwner,
+        projectSlug,
+        webhookId,
+        webhookSecret,
+        callbackUrl,
+        webhookType,
+        data
+      )
+
   }
 }
