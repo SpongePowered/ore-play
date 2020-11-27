@@ -375,7 +375,7 @@ export default {
         this.$store.commit({
           type: 'replaceAlert',
           level: 'success',
-          message: `[${new Date().toLocaleTimeString()}] Updated the contents of ${this.currentPage.name}`,
+          message: `[${new Date().toLocaleTimeString()}] Updated the contents of ${this.currentPage.name.join('/')}`,
           tag: 'updatePage',
         })
       })
