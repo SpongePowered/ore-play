@@ -5,6 +5,7 @@ import java.time.LocalDate
 import db.impl.query.APIV2Queries
 import ore.OreConfig
 import ore.data.project.Category
+import ore.models.project.Version
 import ore.permission.Permission
 
 import org.junit.runner.RunWith
@@ -59,20 +60,32 @@ class APIV2QueriesSpec extends DbSpec {
         Some("foo"),
         List(Category.AdminTools),
         List("Foo" -> Some("Bar")),
-        Some("Foo"),
+        List(Version.Stability.Stable),
         Some("Foo"),
         canSeeHidden = false,
-        Some(0L)
+        owner = Some("Foo"),
+        currentUserId = Some(0L),
+        exactSearch = false
       )
     )
   }
 
   test("ProjectMembers") {
-    check(APIV2Queries.projectMembers("Foo", 20L, 0L))
+    check(APIV2Queries.projectMembers("Foo", "bar", 20L, 0L))
   }
 
   test("VersionCountQuery") {
-    check(APIV2Queries.versionCountQuery("Foo", List("Foo:Bar"), canSeeHidden = false, Some(0L)))
+    check(
+      APIV2Queries.versionCountQuery(
+        "Foo",
+        "Bar",
+        List("Foo" -> Some("Bar"), "Baz" -> None),
+        canSeeHidden = false,
+        stability = List(Version.Stability.Stable),
+        releaseType = List(Version.ReleaseType.MajorUpdate),
+        currentUserId = Some(0L)
+      )
+    )
   }
 
   test("UserQuery") {
@@ -80,10 +93,10 @@ class APIV2QueriesSpec extends DbSpec {
   }
 
   test("ProjectStats") {
-    check(APIV2Queries.projectStats("foo", LocalDate.now().minusDays(30), LocalDate.now()))
+    check(APIV2Queries.projectStats("foo", "bar", LocalDate.now().minusDays(30), LocalDate.now()))
   }
 
   test("VersionStats") {
-    check(APIV2Queries.versionStats("foo", "bar", LocalDate.now().minusDays(30), LocalDate.now()))
+    check(APIV2Queries.versionStats("foo", "bar", "baz", LocalDate.now().minusDays(30), LocalDate.now()))
   }
 }

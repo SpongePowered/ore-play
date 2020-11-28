@@ -17,6 +17,7 @@ object Version {
 
   val circe           = "0.13.0"
   val circeDerivation = "0.13.0-M4"
+  val circeYaml       = "0.13.1"
 
   val akka         = "2.6.9"
   val akkaHttp     = "10.1.12"
@@ -26,6 +27,8 @@ object Version {
   val macWire    = "2.3.7"
   val scalaCache = "0.28.0"
   val flexmark   = "0.62.2"
+
+  val squeal = "0.0.2"
 }
 
 object Deps {
@@ -50,6 +53,9 @@ object Deps {
   val circe           = "io.circe" %% "circe-core"                   % Version.circe
   val circeDerivation = "io.circe" %% "circe-derivation-annotations" % Version.circeDerivation
   val circeParser     = "io.circe" %% "circe-parser"                 % Version.circe
+  val circeYaml       = "io.circe" %% "circe-yaml"                   % Version.circeYaml
+
+  val tomlScala = "tech.sparse" %% "toml-scala" % "0.2.2"
 
   val akkaHttp                 = "com.typesafe.akka" %% "akka-http"                  % Version.akkaHttp
   val akkaHttpCore             = "com.typesafe.akka" %% "akka-http-core"             % Version.akkaHttp
@@ -90,6 +96,8 @@ object Deps {
     "ext-wikilink"
   ).map(flexmarkDep)
 
+  lazy val squealCategoryMacro = "net.katsstuff" %% "squeal-category-macro" % Version.squeal
+
   val pluginMeta = "org.spongepowered" % "plugin-meta" % "0.4.1"
 
   val javaxMail = "javax.mail"     % "mail"            % "1.4.7"
@@ -102,6 +110,7 @@ object Deps {
     //specs2 % Test,
     "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0"        % Test,
     "org.scalatestplus"      %% "junit-4-12"         % "3.2.2.0"      % Test,
-    "org.tpolecat"           %% "doobie-scalatest"   % Version.doobie % Test
+    "org.tpolecat"           %% "doobie-scalatest"   % Version.doobie % Test,
+    "com.github.pathikrit"   %% "better-files"       % "3.9.1"        % Test
   )
 }

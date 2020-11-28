@@ -29,20 +29,26 @@ object Requests {
       session: Option[String],
       expires: OffsetDateTime,
       globalPerms: Permission
-  )
+  ) {
 
-  case class ApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) with OreMDC {
+    def permissionIn[B: HasScope, F[_]](b: B)(implicit service: ModelService[F], F: Applicative[F]): F[Permission] =
+      if (b.scope == GlobalScope) F.pure(globalPerms)
+      else
+        key
+          .map(_.permissionsIn(b))
+          .orElse(user.map(_.permissionsIn(b)))
+          .getOrElse(F.pure(globalPerms))
+  }
+
+  case class ApiRequest[A](apiInfo: ApiAuthInfo, scopePermission: Permission, request: Request[A])
+      extends WrappedRequest[A](request)
+      with OreMDC {
     def user: Option[Model[User]] = apiInfo.user
 
     def globalPermissions: Permission = apiInfo.globalPerms
 
     def permissionIn[B: HasScope, F[_]](b: B)(implicit service: ModelService[F], F: Applicative[F]): F[Permission] =
-      if (b.scope == GlobalScope) F.pure(apiInfo.globalPerms)
-      else
-        apiInfo.key
-          .map(_.permissionsIn(b))
-          .orElse(apiInfo.user.map(_.permissionsIn(b)))
-          .getOrElse(F.pure(globalPermissions))
+      apiInfo.permissionIn(b)
 
     override def logMessage(s: String): String = {
       user.foreach(mdcPutUser)
@@ -134,12 +140,10 @@ object Requests {
     * A request that holds a [[Project]].
     *
     * @param data Project data to hold
-    * @param scoped scoped Project data to hold
     * @param request Request to wrap
     */
   sealed class ProjectRequest[A](
       val data: ProjectData,
-      val scoped: ScopedProjectData,
       val headerData: HeaderData,
       val request: Request[A]
   ) extends WrappedRequest[A](request)
@@ -158,15 +162,13 @@ object Requests {
     * A request that holds a Project and a [[AuthRequest]].
     *
     * @param data Project data to hold
-    * @param scoped scoped Project data to hold
     * @param request An [[AuthRequest]]
     */
   final case class AuthedProjectRequest[A](
       override val data: ProjectData,
-      override val scoped: ScopedProjectData,
       override val headerData: HeaderData,
       override val request: AuthRequest[A]
-  ) extends ProjectRequest[A](data, scoped, headerData, request)
+  ) extends ProjectRequest[A](data, headerData, request)
       with ScopedRequest[A]
       with OreRequest[A] {
 

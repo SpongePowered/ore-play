@@ -23,6 +23,8 @@ lazy val externalCommon = project.settings(
     Deps.circe,
     Deps.circeDerivation,
     Deps.circeParser,
+    Deps.circeYaml,
+    Deps.tomlScala,
     Deps.akkaHttp,
     Deps.akkaHttpCore,
     Deps.akkaStream,
@@ -121,60 +123,32 @@ lazy val apiV2 = project
       Deps.circeDerivation,
       Deps.circeParser,
       Deps.scalaCache,
-      Deps.scalaCacheCatsEffect
+      Deps.scalaCacheCatsEffect,
+      Deps.squealCategoryMacro
     ),
     libraryDependencies ++= Deps.playTestDeps
   )
 
 lazy val oreClient = project
-  .enablePlugins(ScalaJSBundlerPlugin)
+  .enablePlugins(WebpackPlugin)
   .settings(
     Settings.commonSettings,
     name := "ore-client",
-    useYarn := true,
-    scalaJSUseMainModuleInitializer := false,
-    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },
-    webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack.config.dev.js"),
-    webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack.config.prod.js"),
-    webpackMonitoredDirectories += baseDirectory.value / "assets",
-    includeFilter in webpackMonitoredFiles := "*.vue" || "*.js",
-    webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
-    webpackBundlingMode in fullOptJS := BundlingMode.LibraryOnly(),
-    version in startWebpackDevServer := NPMDeps.webpackDevServer,
-    version in webpack := NPMDeps.webpack,
-    npmDependencies in Compile ++= Seq(
-      NPMDeps.vue,
-      NPMDeps.lodash,
-      NPMDeps.queryString,
-      NPMDeps.fontAwesome,
-      NPMDeps.fontAwesomeSolid,
-      NPMDeps.fontAwesomeRegular,
-      NPMDeps.fontAwesomeBrands
+    Assets / webpackDevConfig := baseDirectory.value / "webpack.config.dev.js",
+    Assets / webpackProdConfig := baseDirectory.value / "webpack.config.prod.js",
+    Assets / webpackMonitoredDirectories += baseDirectory.value / "src" / "main" / "assets",
+    Assets / webpackMonitoredFiles / includeFilter := "*.vue" || "*.js",
+    webpackMonitoredFiles in Assets ++= Seq(
+      baseDirectory.value / "webpack.config.common.js",
+      baseDirectory.value / ".postcssrc.js",
+      baseDirectory.value / ".browserlistrc"
     ),
-    npmDevDependencies in Compile ++= Seq(
-      NPMDeps.webpackMerge,
-      NPMDeps.vueLoader,
-      NPMDeps.vueTemplateCompiler,
-      NPMDeps.cssLoader,
-      NPMDeps.vueStyleLoader,
-      NPMDeps.babelLoader,
-      NPMDeps.babel,
-      NPMDeps.babelPresetEnv,
-      NPMDeps.webpackTerser,
-      NPMDeps.miniCssExtractor,
-      NPMDeps.optimizeCssAssets,
-      NPMDeps.sassLoader,
-      NPMDeps.postCssLoader,
-      NPMDeps.autoprefixer,
-      NPMDeps.nodeSass,
-      NPMDeps.webpackCopy,
-      NPMDeps.webpackBundleAnalyzer
-    )
+    pipelineStages := Seq(digest, gzip)
   )
 
 lazy val ore = project
-  .enablePlugins(PlayScala, SwaggerPlugin, WebScalaJSBundlerPlugin, BuildInfoPlugin)
-  .dependsOn(orePlayCommon, apiV2)
+  .enablePlugins(PlayScala, SwaggerPlugin, BuildInfoPlugin)
+  .dependsOn(orePlayCommon, apiV2, oreClient)
   .settings(
     Settings.commonSettings,
     Settings.playCommonSettings,
@@ -193,10 +167,7 @@ lazy val ore = project
     libraryDependencies ++= Deps.flexmarkDeps,
     libraryDependencies ++= Seq(
       WebjarsDeps.jQuery,
-      WebjarsDeps.fontAwesome,
-      WebjarsDeps.filesize,
       WebjarsDeps.moment,
-      WebjarsDeps.clipboard,
       WebjarsDeps.chartJs,
       WebjarsDeps.swaggerUI
     ),
@@ -204,17 +175,23 @@ lazy val ore = project
     swaggerRoutesFile := "apiv2.routes",
     swaggerDomainNameSpaces := Seq(
       "models.protocols.APIV2",
-      "controllers.apiv2.ApiV2Controller"
+      "controllers.apiv2.AbstractApiV2Controller",
+      "controllers.apiv2.Users",
+      "controllers.apiv2.Authentication",
+      "controllers.apiv2.Keys",
+      "controllers.apiv2.Permissions",
+      "controllers.apiv2.Projects",
+      "controllers.apiv2.Users",
+      "controllers.apiv2.Versions",
+      "controllers.apiv2.Members",
+      "controllers.apiv2.helpers"
     ),
     swaggerNamingStrategy := "snake_case",
     swaggerAPIVersion := "2.0",
     swaggerV3 := true,
     PlayKeys.playMonitoredFiles += baseDirectory.value / "swagger.yml",
     PlayKeys.playMonitoredFiles += baseDirectory.value / "swagger-custom-mappings.yml",
-    scalaJSProjects := Seq(oreClient),
-    pipelineStages in Assets += scalaJSPipeline,
     WebKeys.exportedMappings in Assets := Seq(),
-    PlayKeys.playMonitoredFiles += (oreClient / baseDirectory).value / "assets",
     buildInfoKeys := Seq[BuildInfoKey](version, scalaVersion, resolvers, libraryDependencies),
     buildInfoOptions += BuildInfoOption.BuildTime,
     buildInfoPackage := "ore",
