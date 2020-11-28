@@ -493,7 +493,7 @@ class Versions(
           }
       }
 
-  def editDiscourseSettings(
+  def editVersionDiscourseSettings(
       projectOwner: String,
       projectSlug: String,
       version: String

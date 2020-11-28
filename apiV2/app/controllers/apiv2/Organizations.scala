@@ -31,12 +31,12 @@ class Organizations(
         .map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
     }
 
-  def showMembers(organization: String, limit: Option[Long], offset: Long): Action[AnyContent] =
+  def showOrgMembers(organization: String, limit: Option[Long], offset: Long): Action[AnyContent] =
     CachingApiAction(Permission.ViewPublicInfo, APIScope.OrganizationScope(organization)).asyncF { implicit r =>
       Members.membersAction(APIV2Queries.orgaMembers(organization, _, _), limit, offset)
     }
 
-  def updateMembers(organization: String): Action[List[Members.MemberUpdate]] =
+  def updateOrgMembers(organization: String): Action[List[Members.MemberUpdate]] =
     ApiAction(Permission.ManageOrganizationMembers, APIScope.OrganizationScope(organization))
       .asyncF(parseCirce.decodeJson[List[Members.MemberUpdate]]) { implicit r =>
         Members.updateMembers[Organization, OrganizationUserRole, OrganizationRoleTable](

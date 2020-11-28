@@ -182,7 +182,9 @@ lazy val ore = project
       "controllers.apiv2.Permissions",
       "controllers.apiv2.Projects",
       "controllers.apiv2.Users",
-      "controllers.apiv2.Versions"
+      "controllers.apiv2.Versions",
+      "controllers.apiv2.Members",
+      "controllers.apiv2.helpers"
     ),
     swaggerNamingStrategy := "snake_case",
     swaggerAPIVersion := "2.0",

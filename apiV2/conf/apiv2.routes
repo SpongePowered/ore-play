@@ -22,14 +22,14 @@
 #    content:
 #      application/json:
 #        schema:
-#          $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.ApiSessionProperties'
+#          $ref: '#/components/schemas/controllers.apiv2.Authentication.ApiSessionProperties'
 #  responses:
 #    200:
 #      description: Ok
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.ReturnedApiSession'
+#            $ref: '#/components/schemas/controllers.apiv2.Authentication.ReturnedApiSession'
 #    400:
 #      description: Sent if the requested expiration can't be used.
 #    401:
@@ -74,14 +74,14 @@ DELETE /sessions/current                                     @controllers.apiv2.
 #    content:
 #      application/json:
 #        schema:
-#          $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.KeyToCreate'
+#          $ref: '#/components/schemas/controllers.apiv2.Keys.KeyToCreate'
 #  responses:
 #    200:
 #      description: Ok
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.CreatedApiKey'
+#            $ref: '#/components/schemas/controllers.apiv2.Keys.CreatedApiKey'
 #
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
@@ -130,7 +130,7 @@ DELETE  /keys                                                @controllers.apiv2.
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.KeyPermissions'
+#            $ref: '#/components/schemas/controllers.apiv2.Permissions.KeyPermissions'
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 ###
@@ -156,7 +156,7 @@ GET     /permissions                                         @controllers.apiv2.
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PermissionCheck'
+#            $ref: '#/components/schemas/controllers.apiv2.Permissions.PermissionCheck'
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 ###
@@ -182,7 +182,7 @@ GET     /permissions/hasAll                                  @controllers.apiv2.
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PermissionCheck'
+#            $ref: '#/components/schemas/controllers.apiv2.Permissions.PermissionCheck'
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 ###
@@ -224,7 +224,7 @@ GET     /permissions/hasAny                                  @controllers.apiv2.
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedProjectResult'
+#            $ref: '#/components/schemas/controllers.apiv2.Projects.PaginatedProjectResult'
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 #    403:
@@ -242,7 +242,7 @@ GET     /projects                                            @controllers.apiv2.
 #    content:
 #      application/json:
 #        schema:
-#          $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.ApiV2ProjectTemplate'
+#          $ref: '#/components/schemas/controllers.apiv2.Projects.ApiV2ProjectTemplate'
 #  responses:
 #    201:
 #      description: Ok
@@ -296,11 +296,14 @@ GET     /projects/:projectOwner/:projectSlug                                  @c
 #          properties:
 #            name:
 #              type: string
-#            owner_name:
-#              type: string
+#            namespace:
+#              type: object
+#              properties:
+#                owner:
+#                  type: string
 #            category:
 #              $ref: '#/components/schemas/Category'
-#            description:
+#            summary:
 #              type: string
 #              nullable: true
 #            settings:
@@ -312,7 +315,6 @@ GET     /projects/:projectOwner/:projectSlug                                  @c
 #                    type: string
 #                  maxItems: 5
 #                  uniqueItems: true
-#                  nullable: true
 #                homepage:
 #                  type: string
 #                  nullable: true
@@ -326,7 +328,14 @@ GET     /projects/:projectOwner/:projectSlug                                  @c
 #                  type: string
 #                  nullable: true
 #                license:
-#                  $ref: '#/components/schemas/models.protocols.APIV2.ProjectLicense'
+#                  type: object
+#                  properties:
+#                    name:
+#                      type: string
+#                      nullable: true
+#                    url:
+#                      type: string
+#                      nullable: true
 #                forum_sync:
 #                  type: boolean
 #
@@ -388,6 +397,8 @@ DELETE  /projects/:projectOwner/:projectSlug                                  @c
 #        application/json:
 #          schema:
 #            type: object
+#            required:
+#              - description
 #            properties:
 #              description:
 #                 type: string
@@ -429,7 +440,7 @@ GET     /projects/:projectOwner/:projectSlug/description                      @c
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:projectOwner/:projectSlug/members                          @controllers.apiv2.Projects.showMembers(projectOwner, projectSlug, limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:projectOwner/:projectSlug/members                          @controllers.apiv2.Projects.showProjectMembers(projectOwner, projectSlug, limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Updates the members of a project
@@ -458,7 +469,7 @@ GET     /projects/:projectOwner/:projectSlug/members                          @c
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-POST    /projects/:projectOwner/:projectSlug/members                          @controllers.apiv2.Projects.updateMembers(projectOwner, projectSlug)
+POST    /projects/:projectOwner/:projectSlug/members                          @controllers.apiv2.Projects.updateProjectMembers(projectOwner, projectSlug)
 
 ###
 #  summary: Returns the stats for a project
@@ -474,10 +485,12 @@ POST    /projects/:projectOwner/:projectSlug/members                          @c
 #      description: The project slug of project to return the stats for
 #    - name: fromDate
 #      description: The first date to include in the result
-#      format: date
+#      schema:
+#        format: date
 #    - name: toDate
 #      description: The last date to include in the result
-#      format: date
+#      schema:
+#        format: date
 #  responses:
 #    200:
 #      description: Ok
@@ -552,7 +565,7 @@ POST    /projects/:projectOwner/:projectSlug/visibility                       @c
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-POST    /projects/:projectOwner/:projectSlug/external/_discourse              @controllers.apiv2.Projects.editDiscourseSettings(projectOwner, projectSlug)
+POST    /projects/:projectOwner/:projectSlug/external/_discourse              @controllers.apiv2.Projects.editProjectDiscourseSettings(projectOwner, projectSlug)
 
 
 
@@ -583,7 +596,7 @@ POST    /projects/:projectOwner/:projectSlug/external/_discourse              @c
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedVersionResult'
+#            $ref: '#/components/schemas/controllers.apiv2.Versions.PaginatedVersionResult'
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 #    403:
@@ -636,7 +649,18 @@ GET     /projects/:projectOwner/:projectSlug/versions/:name                   @c
 #    content:
 #      application/json:
 #        schema:
-#          $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.EditableVersion'
+#          type: object
+#          properties:
+#            stability:
+#              $ref: '#/components/schemas/Stability'
+#            release_type:
+#              nullable: true
+#              oneOf:
+#                - $ref: '#/components/schemas/ReleaseType'
+#            platforms:
+#              type: array
+#              items:
+#                $ref: '#/components/schemas/controllers.apiv2.Versions.SimplePlatform'
 #  responses:
 #    200:
 #      description: Ok
@@ -789,7 +813,7 @@ PUT     /projects/:projectOwner/:projectSlug/versions/:name/changelog          @
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-POST    /projects/:projectOwner/:projectSlug/versions/:name/external/_discourse  @controllers.apiv2.Versions.editDiscourseSettings(projectOwner, projectSlug, name)
+POST    /projects/:projectOwner/:projectSlug/versions/:name/external/_discourse  @controllers.apiv2.Versions.editVersionDiscourseSettings(projectOwner, projectSlug, name)
 
 ###
 #  summary: Returns the stats for a version
@@ -807,10 +831,12 @@ POST    /projects/:projectOwner/:projectSlug/versions/:name/external/_discourse 
 #      description: The version to return the stats for
 #    - name: fromDate
 #      description: The first date to include in the result
-#      format: date
+#      schema:
+#        format: date
 #    - name: toDate
 #      description: The last date to include in the result
-#      format: date
+#      schema:
+#        format: date
 #  responses:
 #    200:
 #      description: Ok
@@ -826,7 +852,7 @@ POST    /projects/:projectOwner/:projectSlug/versions/:name/external/_discourse 
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:projectOwner/:projectSlug/versions/:name/stats          @controllers.apiv2.Versions.showVersionStats(projectOwner, projectSlug, name, fromDate: String, toDate: String)
+GET     /projects/:projectOwner/:projectSlug/versions/:version/stats             @controllers.apiv2.Versions.showVersionStats(projectOwner, projectSlug, version, fromDate: String, toDate: String)
 
 ###
 #  summary: Scan a plugin file.
@@ -847,6 +873,8 @@ GET     /projects/:projectOwner/:projectSlug/versions/:name/stats          @cont
 #      multipart/form-data:
 #        schema:
 #          type: object
+#          required:
+#            - plugin-file
 #          properties:
 #            plugin-file:
 #              type: string
@@ -884,6 +912,9 @@ PUT    /projects/:projectOwner/:projectSlug/versions/scan                     @c
 #      multipart/form-data:
 #        schema:
 #          type: object
+#          required:
+#            - plugin-file
+#            - plugin-info
 #          properties:
 #            plugin-info:
 #              $ref: '#/components/schemas/DeployVersionInfo'
@@ -924,8 +955,6 @@ POST    /projects/:projectOwner/:projectSlug/versions                         @c
 #      description: The owner of the project to return the pages for
 #    - name: projectSlug
 #      description: The project slug of project to return the pages for
-#    - name: page
-#      description: The slug of the pages to return
 #  responses:
 #    200:
 #      description: Ok
@@ -1003,7 +1032,7 @@ GET     /projects/:projectOwner/:projectSlug/_pages/*page       @controllers.api
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-#+nocsrf
++nocsrf
 PUT     /projects/:projectOwner/:projectSlug/_pages/*page                     @controllers.apiv2.Pages.putPage(projectOwner, projectSlug, page)
 
 ###
@@ -1020,7 +1049,16 @@ PUT     /projects/:projectOwner/:projectSlug/_pages/*page                     @c
 #    content:
 #      application/json:
 #        schema:
-#          $ref: '#/components/schemas/controllers.apiv2.Pages.PatchPage'
+#          type: object
+#          properties:
+#            name:
+#              type: string
+#            content:
+#              type: string
+#              nullable: true
+#            parent:
+#              type: string
+#              nullable: true
 #  responses:
 #    200:
 #      description: Page updated
@@ -1033,7 +1071,7 @@ PUT     /projects/:projectOwner/:projectSlug/_pages/*page                     @c
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-#+nocsrf
++nocsrf
 PATCH   /projects/:projectOwner/:projectSlug/_pages/*page                     @controllers.apiv2.Pages.patchPage(projectOwner, projectSlug, page)
 
 ###
@@ -1053,11 +1091,11 @@ PATCH   /projects/:projectOwner/:projectSlug/_pages/*page                     @c
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-#+nocsrf
++nocsrf
 DELETE   /projects/:projectOwner/:projectSlug/_pages/*page                     @controllers.apiv2.Pages.deletePage(projectOwner, projectSlug, page)
 
 ### NoDocs ###
-#+nocsrf
++nocsrf
 GET      /projects/:projectOwner/:projectSlug/_projectData                     @controllers.apiv2.Projects.projectData(projectOwner, projectSlug)
 
 ### NoDocs ###
@@ -1187,7 +1225,7 @@ GET     /users/:user/memberships                             @controllers.apiv2.
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedCompactProjectResult'
+#            $ref: '#/components/schemas/controllers.apiv2.Users.PaginatedCompactProjectResult'
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 #    403:
@@ -1215,7 +1253,7 @@ GET     /users/:user/starred                                 @controllers.apiv2.
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedCompactProjectResult'
+#            $ref: '#/components/schemas/controllers.apiv2.Users.PaginatedCompactProjectResult'
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 #    403:
@@ -1277,7 +1315,7 @@ GET     /organizations/:organization                         @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /organizations/:organization/members                 @controllers.apiv2.Organizations.showMembers(organization, limit: Option[Long], offset: Long ?= 0)
+GET     /organizations/:organization/members                 @controllers.apiv2.Organizations.showOrgMembers(organization, limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Updates the members of an organization
@@ -1304,4 +1342,4 @@ GET     /organizations/:organization/members                 @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-POST    /organizations/:organization/members                 @controllers.apiv2.Organizations.updateMembers(organization)
+POST    /organizations/:organization/members                 @controllers.apiv2.Organizations.updateOrgMembers(organization)

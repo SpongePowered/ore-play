@@ -301,12 +301,17 @@ class Projects(
         }
       }
 
-  def showMembers(projectOwner: String, projectSlug: String, limit: Option[Long], offset: Long): Action[AnyContent] =
+  def showProjectMembers(
+      projectOwner: String,
+      projectSlug: String,
+      limit: Option[Long],
+      offset: Long
+  ): Action[AnyContent] =
     CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(projectOwner, projectSlug)).asyncF { implicit r =>
       Members.membersAction(APIV2Queries.projectMembers(projectOwner, projectSlug, _, _), limit, offset)
     }
 
-  def updateMembers(projectOwner: String, projectSlug: String): Action[List[Members.MemberUpdate]] =
+  def updateProjectMembers(projectOwner: String, projectSlug: String): Action[List[Members.MemberUpdate]] =
     ApiAction(Permission.ManageProjectMembers, APIScope.ProjectScope(projectOwner, projectSlug))
       .asyncF(parseCirce.decodeJson[List[Members.MemberUpdate]]) { implicit r =>
         Members.updateMembers[Project, ProjectUserRole, ProjectRoleTable](
@@ -412,7 +417,10 @@ class Projects(
         .as(NoContent)
     }
 
-  def editDiscourseSettings(projectOwner: String, projectSlug: String): Action[Projects.DiscourseModifyTopicSettings] =
+  def editProjectDiscourseSettings(
+      projectOwner: String,
+      projectSlug: String
+  ): Action[Projects.DiscourseModifyTopicSettings] =
     ApiAction(Permission.EditAdminSettings, APIScope.ProjectScope(projectOwner, projectSlug))
       .asyncF(parseCirce.decodeJson[Projects.DiscourseModifyTopicSettings]) { implicit request =>
         projects
