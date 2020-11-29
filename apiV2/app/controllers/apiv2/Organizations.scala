@@ -15,7 +15,6 @@ import ore.permission.Permission
 
 import io.circe.syntax._
 import zio.interop.catz._
-import zio._
 
 class Organizations(
     val errorHandler: HttpErrorHandler,
@@ -33,16 +32,16 @@ class Organizations(
 
   def showOrgMembers(organization: String, limit: Option[Long], offset: Long): Action[AnyContent] =
     CachingApiAction(Permission.ViewPublicInfo, APIScope.OrganizationScope(organization)).asyncF { implicit r =>
-      Members.membersAction(APIV2Queries.orgaMembers(organization, _, _), limit, offset)
+      Members.membersAction(APIV2Queries.orgaMembers(r.scope.id, _, _), limit, offset)
     }
 
   def updateOrgMembers(organization: String): Action[List[Members.MemberUpdate]] =
     ApiAction(Permission.ManageOrganizationMembers, APIScope.OrganizationScope(organization))
       .asyncF(parseCirce.decodeJson[List[Members.MemberUpdate]]) { implicit r =>
         Members.updateMembers[Organization, OrganizationUserRole, OrganizationRoleTable](
-          getSubject = organizations.withName(organization).someOrFail(NotFound),
+          getSubject = r.organization,
           allowOrgMembers = false,
-          getMembersQuery = APIV2Queries.orgaMembers(organization, _, _),
+          getMembersQuery = APIV2Queries.orgaMembers(r.scope.id, _, _),
           createRole = OrganizationUserRole(_, _, _),
           roleCompanion = OrganizationUserRole,
           notificationType = NotificationType.OrganizationInvite,

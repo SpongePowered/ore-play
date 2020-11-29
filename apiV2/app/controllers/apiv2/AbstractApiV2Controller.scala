@@ -9,15 +9,14 @@ import play.api.inject.ApplicationLifecycle
 import play.api.mvc._
 
 import controllers.apiv2.helpers.{APIScope, ApiError, ApiErrors}
-import controllers.sugar.CircePlayController
-import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
+import controllers.sugar.{CircePlayController, ResolvedAPIScope}
+import controllers.sugar.Requests.ApiRequest
 import controllers.{OreBaseController, OreControllerComponents}
 import db.impl.query.APIV2Queries
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{OrganizationTable, ProjectTable, UserTable}
 import ore.models.api.ApiSession
 import ore.permission.Permission
-import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 
 import akka.http.scaladsl.model.ErrorInfo
 import akka.http.scaladsl.model.headers.{Authorization, HttpCredentials}
@@ -83,39 +82,37 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
     } yield res
   }
 
-  def apiAction(scope: APIScope): ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
-    def executionContext: ExecutionContext = ec
+  def apiAction[S <: ResolvedAPIScope](scope: APIScope[S]): ActionRefiner[Request, ApiRequest[S, *]] =
+    new ActionRefiner[Request, ApiRequest[S, *]] {
+      def executionContext: ExecutionContext = ec
 
-    override protected def refine[A](request: Request[A]): Future[Either[Result, ApiRequest[A]]] = {
-      def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> "OreApi")
+      override protected def refine[A](request: Request[A]): Future[Either[Result, ApiRequest[S, A]]] = {
+        def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> "OreApi")
 
-      val authRequest = for {
-        creds <- parseAuthHeader(request).mapError(_.toResult)
-        token <- ZIO
-          .fromOption(creds.params.get("session"))
-          .orElseFail(unAuth("No session specified"))
-        info <- service
-          .runDbCon(APIV2Queries.getApiAuthInfo(token).option)
-          .get
-          .orElseFail(unAuth("Invalid session"))
-        scopePerms <- {
-          val res: IO[Result, Permission] =
-            apiScopeToRealScope(scope).flatMap(info.permissionIn(_)).orElseFail(NotFound)
-          res
-        }
-        res <- {
-          if (info.expires.isBefore(OffsetDateTime.now())) {
-            service.deleteWhere(ApiSession)(_.token === token) *> IO.fail(unAuth("Api session expired"))
-          } else ZIO.succeed(ApiRequest(info, scopePerms, request))
-        }
-      } yield res
+        val authRequest = for {
+          creds <- parseAuthHeader(request).mapError(_.toResult)
+          token <- ZIO
+            .fromOption(creds.params.get("session"))
+            .orElseFail(unAuth("No session specified"))
+          info <- service
+            .runDbCon(APIV2Queries.getApiAuthInfo(token).option)
+            .get
+            .orElseFail(unAuth("Invalid session"))
+          resolvedScope <- apiScopeToResolvedScope(scope).orElseFail(NotFound)
+          scopePerms    <- info.permissionIn(resolvedScope)
+          res <- {
+            if (info.expires.isBefore(OffsetDateTime.now())) {
+              service.deleteWhere(ApiSession)(_.token === token) *> IO.fail(unAuth("Api session expired"))
+            } else ZIO.succeed(ApiRequest(info, scopePerms, resolvedScope, request))
+          }
+        } yield res
 
-      zioToFuture(authRequest.either)
+        zioToFuture(authRequest.either)
+      }
     }
-  }
 
-  def apiScopeToRealScope(scope: APIScope): IO[Unit, Scope] = scope match {
-    case APIScope.GlobalScope => UIO.succeed(GlobalScope)
+  def apiScopeToResolvedScope[S <: ResolvedAPIScope](scope: APIScope[S]): IO[Unit, S] = scope match {
+    case APIScope.GlobalScope => UIO.succeed(ResolvedAPIScope.GlobalScope.asInstanceOf[S])
     case APIScope.ProjectScope(projectOwner, projectSlug) =>
       service
         .runDBIO(
@@ -127,7 +124,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
         )
         .get
         .orElseFail(())
-        .map(ProjectScope)
+        .map(ResolvedAPIScope.ProjectScope(projectOwner, projectSlug, _).asInstanceOf[S])
     case APIScope.OrganizationScope(organizationName) =>
       val q = for {
         u <- TableQuery[UserTable]
@@ -139,14 +136,14 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
         .runDBIO(q.result.headOption)
         .get
         .orElseFail(())
-        .map(OrganizationScope)
+        .map(ResolvedAPIScope.OrganizationScope(organizationName, _).asInstanceOf[S])
   }
 
   def createApiScope(
       projectOwner: Option[String],
       projectSlug: Option[String],
       organizationName: Option[String]
-  ): Either[Result, APIScope] = {
+  ): Either[Result, APIScope[_ <: ResolvedAPIScope]] = {
     val projectOwnerName = projectOwner.zip(projectSlug)
 
     if ((projectOwner.isDefined || projectSlug.isDefined) && projectOwnerName.isEmpty) {
@@ -162,32 +159,23 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
     }
   }
 
-  def permissionsInApiScope(
-      projectOwner: Option[String],
-      projectSlug: Option[String],
-      organizationName: Option[String]
-  )(
-      implicit request: ApiRequest[_]
-  ): IO[Result, (APIScope, Permission)] =
-    for {
-      apiScope <- ZIO.fromEither(createApiScope(projectOwner, projectSlug, organizationName))
-      scope    <- apiScopeToRealScope(apiScope).orElseFail(NotFound)
-      perms    <- request.permissionIn(scope)
-    } yield (apiScope, perms)
-
-  def permApiAction(perms: Permission): ActionFilter[ApiRequest] = new ActionFilter[ApiRequest] {
-    override protected def executionContext: ExecutionContext = ec
-
-    override protected def filter[A](request: ApiRequest[A]): Future[Option[Result]] =
-      if (request.scopePermission.has(perms)) Future.successful(None)
-      else Future.successful(Some(Forbidden))
-  }
-
-  def cachingAction: ActionFunction[ApiRequest, ApiRequest] =
-    new ActionFunction[ApiRequest, ApiRequest] {
+  def permApiAction[S <: ResolvedAPIScope](perms: Permission): ActionFilter[ApiRequest[S, *]] =
+    new ActionFilter[ApiRequest[S, *]] {
       override protected def executionContext: ExecutionContext = ec
 
-      override def invokeBlock[A](request: ApiRequest[A], block: ApiRequest[A] => Future[Result]): Future[Result] = {
+      override protected def filter[A](request: ApiRequest[S, A]): Future[Option[Result]] =
+        if (request.scopePermission.has(perms)) Future.successful(None)
+        else Future.successful(Some(Forbidden))
+    }
+
+  def cachingAction[S <: ResolvedAPIScope]: ActionFunction[ApiRequest[S, *], ApiRequest[S, *]] =
+    new ActionFunction[ApiRequest[S, *], ApiRequest[S, *]] {
+      override protected def executionContext: ExecutionContext = ec
+
+      override def invokeBlock[A](
+          request: ApiRequest[S, A],
+          block: ApiRequest[S, A] => Future[Result]
+      ): Future[Result] = {
         import scalacache.modes.scalaFuture._
         require(request.method == "GET")
 
@@ -204,9 +192,15 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
       }
     }
 
-  def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
+  def ApiAction[S <: ResolvedAPIScope](
+      perms: Permission,
+      scope: APIScope[S]
+  ): ActionBuilder[ApiRequest[S, *], AnyContent] =
     Action.andThen(apiAction(scope)).andThen(permApiAction(perms))
 
-  def CachingApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
+  def CachingApiAction[S <: ResolvedAPIScope](
+      perms: Permission,
+      scope: APIScope[S]
+  ): ActionBuilder[ApiRequest[S, *], AnyContent] =
     ApiAction(perms, scope).andThen(cachingAction)
 }

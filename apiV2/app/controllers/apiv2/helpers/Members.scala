@@ -20,6 +20,7 @@ import zio.{IO, UIO, ZIO}
 import zio.interop.catz._
 import play.api.mvc.Results._
 
+import controllers.sugar.ResolvedAPIScope
 import db.impl.access.UserBase
 import ore.db.access.ModelView
 import ore.db.impl.common.Named
@@ -49,7 +50,7 @@ object Members {
       limit: Option[Long],
       offset: Long
   )(
-      implicit r: ApiRequest[_],
+      implicit r: ApiRequest[_ <: ResolvedAPIScope, _],
       service: ModelService[UIO],
       writeJson: Writeable[Json]
   ): ZIO[Any, Nothing, Result] = {
@@ -76,7 +77,7 @@ object Members {
       notificationType: NotificationType,
       notificationLocalization: String
   )(
-      implicit r: ApiRequest[List[MemberUpdate]],
+      implicit r: ApiRequest[_ <: ResolvedAPIScope, List[MemberUpdate]],
       service: ModelService[UIO],
       users: UserBase[UIO],
       memberships: MembershipDossier.Aux[UIO, A, R, RT],

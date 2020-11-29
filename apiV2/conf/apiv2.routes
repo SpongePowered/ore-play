@@ -1100,6 +1100,14 @@ GET      /projects/:projectOwner/:projectSlug/_projectData                     @
 
 ### NoDocs ###
 GET      /projects/:pluginId/*path                                              @controllers.apiv2.Projects.redirectPluginId(pluginId, path)
+### NoDocs ###
+POST     /projects/:pluginId/*path                                              @controllers.apiv2.Projects.redirectPluginId(pluginId, path)
+### NoDocs ###
+PATCH    /projects/:pluginId/*path                                              @controllers.apiv2.Projects.redirectPluginId(pluginId, path)
+### NoDocs ###
+PUT      /projects/:pluginId/*path                                              @controllers.apiv2.Projects.redirectPluginId(pluginId, path)
+### NoDocs ###
+DELETE   /projects/:pluginId/*path                                              @controllers.apiv2.Projects.redirectPluginId(pluginId, path)
 
 ###
 #  summary: Searches the users on Ore

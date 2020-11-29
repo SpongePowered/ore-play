@@ -8,6 +8,7 @@ import controllers.apiv2.Users.UserSortingStrategy
 import controllers.apiv2.{Pages, Projects, Users, Versions}
 import controllers.sugar.Requests.ApiAuthInfo
 import models.protocols.APIV2
+import models.protocols.APIV2.Organization
 import models.querymodels._
 import ore.{OreConfig, OrePlatform}
 import ore.data.project.Category
@@ -345,7 +346,7 @@ object APIV2Queries extends DoobieOreProtocol {
     sql"""UPDATE """ ++ Fragment.const(table) ++ updates
   }
 
-  def updateProject(projectOwner: String, projectSlug: String, edits: Projects.EditableProject): Update0 = {
+  def updateProject(projectId: DbRef[Project], edits: Projects.EditableProject): Update0 = {
     val projectColumns = Projects.EditableProjectF[Column](
       Column.arg("name"),
       Projects.EditableProjectNamespaceF[Column](Column.arg("owner_name")),
@@ -372,34 +373,33 @@ object APIV2Queries extends DoobieOreProtocol {
       (fr", owner_id = u.id", fr"FROM users u", fr"AND u.name = $owner")
     }
 
-    (updateTable("projects", projectColumns, edits) ++ newOwnerSet ++ newOwnerFrom ++ fr" WHERE owner_name = $projectOwner AND lower(slug) = lower($projectSlug) " ++ newOwnerFilter).update
+    (updateTable("projects p", projectColumns, edits) ++ newOwnerSet ++ newOwnerFrom ++ fr" WHERE p.id = $projectId " ++ newOwnerFilter).update
   }
 
-  def projectMembers(projectOwner: String, projectSlug: String, limit: Long, offset: Long): Query0[APIV2.Member] =
+  def projectMembers(projectId: DbRef[Project], limit: Long, offset: Long): Query0[APIV2.Member] =
     sql"""|SELECT u.name, r.name, upr.is_accepted
           |  FROM projects p
           |         JOIN user_project_roles upr ON p.id = upr.project_id
           |         JOIN users u ON upr.user_id = u.id
           |         JOIN roles r ON upr.role_type = r.name
-          |  WHERE p.owner_name = $projectOwner AND lower(p.slug) = lower($projectSlug)
+          |  WHERE p.id = $projectId
           |  ORDER BY r.permission & ~B'1'::BIT(64) DESC LIMIT $limit OFFSET $offset""".stripMargin
       .query[APIV2QueryMember]
       .map(_.asProtocol)
 
-  def orgaMembers(organization: String, limit: Long, offset: Long): Query0[APIV2.Member] =
+  def orgaMembers(organizationId: DbRef[Organization], limit: Long, offset: Long): Query0[APIV2.Member] =
     sql"""|SELECT u.name, r.name, uor.is_accepted
           |  FROM organizations o
           |         JOIN user_organization_roles uor ON o.id = uor.organization_id
           |         JOIN users u ON uor.user_id = u.id
           |         JOIN roles r ON uor.role_type = r.name
-          |  WHERE o.name = $organization
+          |  WHERE o.id = $organizationId
           |  ORDER BY r.permission & ~B'1'::BIT(64) DESC LIMIT $limit OFFSET $offset""".stripMargin
       .query[APIV2QueryMember]
       .map(_.asProtocol)
 
   def versionSelectFrag(
-      projectOwner: String,
-      projectSlug: String,
+      projectId: DbRef[Project],
       versionName: Option[String],
       platforms: List[(String, Option[String])],
       stability: List[Version.Stability],
@@ -450,7 +450,7 @@ object APIV2Queries extends DoobieOreProtocol {
         }
 
     val filters = Fragments.whereAndOpt(
-      Some(fr"p.owner_name = $projectOwner AND lower(p.slug) = lower($projectSlug)"),
+      Some(fr"p.id = $projectId"),
       versionName.map(v => fr"pv.version_string = $v"),
       if (coarsePlatforms.isEmpty) None
       else
@@ -471,8 +471,7 @@ object APIV2Queries extends DoobieOreProtocol {
   }
 
   def versionQuery(
-      projectOwner: String,
-      projectSlug: String,
+      projectId: DbRef[Project],
       versionName: Option[String],
       platforms: List[(String, Option[String])],
       stability: List[Version.Stability],
@@ -483,8 +482,7 @@ object APIV2Queries extends DoobieOreProtocol {
       offset: Long
   )(implicit config: OreConfig): Query0[APIV2.Version] =
     (versionSelectFrag(
-      projectOwner,
-      projectSlug,
+      projectId,
       versionName,
       platforms,
       stability,
@@ -496,17 +494,15 @@ object APIV2Queries extends DoobieOreProtocol {
       .map(_.asProtocol)
 
   def singleVersionQuery(
-      projectOwner: String,
-      projectSlug: String,
+      projectId: DbRef[Project],
       versionName: String,
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]]
   )(implicit config: OreConfig): doobie.Query0[APIV2.Version] =
-    versionQuery(projectOwner, projectSlug, Some(versionName), Nil, Nil, Nil, canSeeHidden, currentUserId, 1, 0)
+    versionQuery(projectId, Some(versionName), Nil, Nil, Nil, canSeeHidden, currentUserId, 1, 0)
 
   def versionCountQuery(
-      projectOwner: String,
-      projectSlug: String,
+      projectId: DbRef[Project],
       platforms: List[(String, Option[String])],
       stability: List[Version.Stability],
       releaseType: List[Version.ReleaseType],
@@ -514,12 +510,11 @@ object APIV2Queries extends DoobieOreProtocol {
       currentUserId: Option[DbRef[User]]
   )(implicit config: OreConfig): Query0[Long] =
     (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(
-      versionSelectFrag(projectOwner, projectSlug, None, platforms, stability, releaseType, canSeeHidden, currentUserId)
+      versionSelectFrag(projectId, None, platforms, stability, releaseType, canSeeHidden, currentUserId)
     ) ++ fr"sq").query[Long]
 
   def updateVersion(
-      projectOwner: String,
-      projectSlug: String,
+      projectId: DbRef[Project],
       versionName: String,
       edits: Versions.DbEditableVersion
   ): Update0 = {
@@ -528,7 +523,7 @@ object APIV2Queries extends DoobieOreProtocol {
       Column.opt("release_type")
     )
 
-    (updateTable("project_versions", versionColumns, edits) ++ fr" FROM projects p WHERE project_id = p.id AND p.owner_name = $projectOwner AND lower(p.slug) = lower($projectSlug) AND version_string = $versionName").update
+    (updateTable("project_versions", versionColumns, edits) ++ fr" WHERE project_id = $projectId AND version_string = $versionName").update
   }
 
   def userSearchFrag(
@@ -756,8 +751,7 @@ object APIV2Queries extends DoobieOreProtocol {
   ): Query0[Long] = actionCountQuery(Fragment.const("project_watchers"), user, canSeeHidden, currentUserId)
 
   def projectStats(
-      projectOwner: String,
-      projectSlug: String,
+      projectId: DbRef[Project],
       startDate: LocalDate,
       endDate: LocalDate
   ): Query0[APIV2ProjectStatsQuery] =
@@ -766,25 +760,23 @@ object APIV2Queries extends DoobieOreProtocol {
           |         (SELECT generate_series($startDate::DATE, $endDate::DATE, INTERVAL '1 DAY') AS day) dates
           |             LEFT JOIN project_versions_downloads pvd ON dates.day = pvd.day
           |             LEFT JOIN project_views pv ON dates.day = pv.day AND pvd.project_id = pv.project_id
-          |    WHERE p.owner_name = $projectOwner AND lower(p.slug) = lower($projectSlug)
+          |    WHERE p.id = $projectId
           |      AND (pvd IS NULL OR pvd.project_id = p.id)
           |    GROUP BY pv.views, dates.day;""".stripMargin.query[APIV2ProjectStatsQuery]
 
   def versionStats(
-      projectOwner: String,
-      projectSlug: String,
+      projectId: DbRef[Project],
       versionString: String,
       startDate: LocalDate,
       endDate: LocalDate
   ): Query0[APIV2VersionStatsQuery] =
     sql"""|SELECT CAST(dates.day AS DATE), coalesce(pvd.downloads, 0) AS downloads
-          |    FROM projects p,
-          |         project_versions pv,
+          |    FROM project_versions pv,
           |         (SELECT generate_series($startDate::DATE, $endDate::DATE, INTERVAL '1 DAY') AS day) dates
           |             LEFT JOIN project_versions_downloads pvd ON dates.day = pvd.day
-          |    WHERE p.owner_name = $projectOwner AND lower(p.slug) = lower($projectSlug)
+          |    WHERE pv.project_id = $projectId
           |      AND pv.version_string = $versionString
-          |      AND (pvd IS NULL OR (pvd.project_id = p.id AND pvd.version_id = pv.id));""".stripMargin
+          |      AND (pvd IS NULL OR (pvd.project_id = $projectId AND pvd.version_id = pv.id));""".stripMargin
       .query[APIV2VersionStatsQuery]
 
   def canUploadToOrg(uploader: DbRef[User], orgName: String): Query0[(DbRef[User], Boolean)] =
@@ -798,51 +790,42 @@ object APIV2Queries extends DoobieOreProtocol {
           |             LEFT JOIN organization_trust ot ON ot.user_id = om.user_id AND ot.organization_id = o.id
           |    WHERE o.name = $orgName;""".stripMargin.query[(DbRef[User], Boolean)]
 
-  def getPage(
-      projectOwner: String,
-      projectSlug: String,
-      page: String
-  ): Query0[(DbRef[Project], DbRef[Page], String, Option[String])] =
-    sql"""|WITH RECURSIVE pages_rec(n, name, slug, contents, id, project_id) AS (
-          |    SELECT 2, pp.name, pp.slug, pp.contents, pp.id, pp.project_id
+  def getPage(projectId: DbRef[Project], page: String): Query0[(DbRef[Page], String, Option[String])] =
+    sql"""|WITH RECURSIVE pages_rec(n, name, slug, contents, id) AS (
+          |    SELECT 2, pp.name, pp.slug, pp.contents, pp.id
           |        FROM project_pages pp
-          |                 JOIN projects p ON pp.project_id = p.id
-          |        WHERE p.owner_name = $projectOwner AND lower(p.slug) = lower($projectSlug)
+          |        WHERE pp.project_id = $projectId
           |          AND lower(split_part($page, '/', 1)) = lower(pp.slug)
           |          AND pp.parent_id IS NULL
           |    UNION
-          |    SELECT pr.n + 1, pp.name, pp.slug, pp.contents, pp.id, pp.project_id
+          |    SELECT pr.n + 1, pp.name, pp.slug, pp.contents, pp.id
           |        FROM pages_rec pr,
           |             project_pages pp
-          |        WHERE pp.project_id = pr.project_id
+          |        WHERE pp.project_id = $projectId
           |          AND pp.parent_id = pr.id
           |          AND lower(split_part($page, '/', pr.n)) = lower(pp.slug)
           |)
-          |SELECT pp.project_id, pp.id, pp.name, pp.contents
+          |SELECT pp.id, pp.name, pp.contents
           |    FROM pages_rec pp
           |    WHERE lower(pp.slug) = lower(split_part($page, '/', array_length(regexp_split_to_array($page, '/'), 1)));""".stripMargin
-      .query[(DbRef[Project], DbRef[Page], String, Option[String])]
+      .query[(DbRef[Page], String, Option[String])]
 
-  def pageList(
-      projectOwner: String,
-      projectSlug: String
-  ): Query0[(DbRef[Project], DbRef[Page], List[String], List[String], Boolean)] =
-    sql"""|WITH RECURSIVE pages_rec(name, slug, id, project_id, navigational) AS (
-          |    SELECT ARRAY[pp.name]::TEXT[], ARRAY[pp.slug]::TEXT[], pp.id, pp.project_id, pp.contents IS NULL
+  def pageList(projectId: DbRef[Project]): Query0[(DbRef[Page], List[String], List[String], Boolean)] =
+    sql"""|WITH RECURSIVE pages_rec(name, slug, id, navigational) AS (
+          |    SELECT ARRAY[pp.name]::TEXT[], ARRAY[pp.slug]::TEXT[], pp.id, pp.contents IS NULL
           |        FROM project_pages pp
-          |                 JOIN projects p ON pp.project_id = p.id
-          |        WHERE p.owner_name = $projectOwner AND lower(p.slug) = lower($projectSlug)
+          |        WHERE pp.project_id = $projectId
           |          AND pp.parent_id IS NULL
           |    UNION
-          |    SELECT array_append(pr.name, pp.name::TEXT), array_append(pr.slug, pp.slug::TEXT), pp.id, pp.project_id, pp.contents IS NULL
+          |    SELECT array_append(pr.name, pp.name::TEXT), array_append(pr.slug, pp.slug::TEXT), pp.id, pp.contents IS NULL
           |        FROM pages_rec pr,
           |             project_pages pp
-          |        WHERE pp.project_id = pr.project_id
+          |        WHERE pp.project_id = $projectId
           |          AND pp.parent_id = pr.id
           |)
-          |SELECT pp.project_id, pp.id, pp.name, pp.slug, navigational
+          |SELECT pp.id, pp.name, pp.slug, navigational
           |    FROM pages_rec pp ORDER BY pp.name;""".stripMargin
-      .query[(DbRef[Project], DbRef[Page], List[String], List[String], Boolean)]
+      .query[(DbRef[Page], List[String], List[String], Boolean)]
 
   def patchPage(
       patch: Pages.PatchPageF[Option],
