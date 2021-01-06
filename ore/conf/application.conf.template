@@ -6,21 +6,21 @@
 application {
     baseUrl             =   "http://localhost:9000"
     baseUrl             =   ${?BASE_URL}
-    discourse-url       =   "https://forums.spongepowered.org"
-    discourse-cdn-url   =   "https://forums-cdn.spongepowered.org"
+    discourse-url       =   "https://discuss.powernukkit.org/"
+    discourse-cdn-url   =   "https://discuss.powernukkit.org/"
 
     uploadsDir = "uploads"
     uploadsDir = ${?UPLOADS_DIR}
 
     # Add a dot at the start of the url to trust all subdomains
-    trustedUrlHosts     =   [ ".spongepowered.org" ]
+    trustedUrlHosts     =   [ ".powernukkit.org" ]
 
     fakeUser {
         enabled    =   false
         id         =   -1
-        name       =   "Spongie"
-        username   =   "Spongie"
-        email      =   "spongie@spongepowered.org"
+        name       =   "Power"
+        username   =   "Power"
+        email      =   "power@powernukkit.org"
     }
 }
 
@@ -40,11 +40,11 @@ play {
         csp {
             directives = {
                 block-all-mixed-content = ""
-                script-src = ${play.filters.csp.nonce.pattern} "'self' https://forums.spongepowered.org https://forums-cdn.spongepowered.org"
-                style-src = "'self' 'unsafe-inline' https://fonts.googleapis.com https://forums-cdn.spongepowered.org"
+                script-src = ${play.filters.csp.nonce.pattern} "'self' https://discuss.powernukkit.org/ https://discuss.powernukkit.org/"
+                style-src = "'self' 'unsafe-inline' https://fonts.googleapis.com https://discuss.powernukkit.org/"
                 img-src = "'self' data: https: http:"
                 font-src = "'self' data: https://fonts.gstatic.com"
-                frame-src = "https://forums.spongepowered.org"
+                frame-src = "https://discuss.powernukkit.org/"
                 frame-ancestors = "'none'"
                 report-uri = ${?CSP_REPORT_URI}
                 report-to = ${?CSP_REPORT_TO}
@@ -52,7 +52,7 @@ play {
         }
 
         hosts {
-            allowed = [".spongepowered.org", "localhost:9000", "localhost:9443"]
+            allowed = [".powernukkit.org", "localhost:9000", "localhost:9443"]
         }
     }
 
@@ -153,7 +153,7 @@ ore {
 
     orgs {
         enabled = true
-        dummyEmailDomain = "ore.spongepowered.org"
+        dummyEmailDomain = "ore.powernukkit.org"
         createLimit = 5
     }
 
@@ -234,26 +234,6 @@ sponge {
 
     # Sponsors from high to low donation amounts
     sponsors = [
-        {
-          "name": "MC Server Hosting",
-          "image": "images/sponsors/mcserverhosting.png",
-          "link": "https://mcserverhosting.net/?ref=sponge"
-        },
-        {
-          "name": "CreeperHost",
-          "image": "images/sponsors/creeperhost.svg",
-          "link": "https://billing.creeperhost.net/link.php?id=8"
-        },
-        {
-          "name": "Triplequote",
-          "image": "images/sponsors/triplequote_black.svg",
-          "link": "https://triplequote.com/hydra"
-        },
-        {
-          "name": "JetBrains",
-          "image": "images/sponsors/jetbrains.svg",
-          "link": "https://www.jetbrains.com/"
-        },
         {
           "name": "YourKit",
           "image": "images/sponsors/yourkit.png",
