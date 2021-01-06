@@ -228,7 +228,7 @@ slick.dbs.default {
 
 # Sponge stuff
 sponge {
-    logo = "https://www.spongepowered.org/assets/img/icons/spongie-mark.svg"
+    logo = "https://powernukkit.org/logo.svg?v=2"
     service = "Ore"
 
     # Sponsors from high to low donation amounts
