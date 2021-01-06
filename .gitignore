@@ -183,8 +183,8 @@ local.properties
 node_modules
 
 # Ore
-jobs/src/main/resources/application.conf
-ore/conf/application.conf
+jobs/src/main/resources/ore-jobs-default-settings.conf
+ore/conf/ore-default-settings.conf
 /project/project/target
 uploads
 RUNNING_PID

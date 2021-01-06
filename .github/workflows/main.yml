@@ -68,8 +68,8 @@ jobs:
 
       - name: Copy config files
         run: |
-          cp ore/conf/application.conf.template ore/conf/application.conf
-          cp jobs/src/main/resources/application.conf.template jobs/src/main/resources/application.conf
+          cp ore/conf/ore-default-settings.conf.template ore/conf/ore-default-settings.conf
+          cp jobs/src/main/resources/ore-jobs-default-settings.conf.template jobs/src/main/resources/ore-jobs-default-settings.conf
 
       - name: Run compile
         run: sbt "oreAll/compile;ore/test;ore/assets"
