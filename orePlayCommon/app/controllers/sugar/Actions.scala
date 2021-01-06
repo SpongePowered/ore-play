@@ -311,7 +311,7 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   private def maybeProjectRequest[A](
       r: OreRequest[A],
-      projectF: IO[Unit, Model[Project]]
+      projectF: IO[Option[Nothing], Model[Project]]
   ): Future[Either[Result, ProjectRequest[A]]] = {
     implicit val request: OreRequest[A] = r
 
@@ -346,7 +346,7 @@ trait Actions extends Calls with ActionHelpers { self =>
         }
 
       for {
-        user <- ZIO.fromOption(optUser)
+        user <- ZIO.fromOption(optUser).orElseFail(())
 
         check1 = canEditAndNeedChangeOrApproval(project, user)
         check2 = user.permissionsIn[UIO](GlobalScope).map(_.has(Permission.SeeHidden))
@@ -368,7 +368,7 @@ trait Actions extends Calls with ActionHelpers { self =>
       case _ => UIO.succeed(false)
     }
 
-  def authedProjectActionImpl(projectF: IO[Unit, Model[Project]])(
+  def authedProjectActionImpl(projectF: IO[Option[Nothing], Model[Project]])(
       implicit ec: ExecutionContext
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
 
@@ -444,7 +444,7 @@ trait Actions extends Calls with ActionHelpers { self =>
   }
 
   def getOrga(organization: String): IO[Unit, Model[Organization]] =
-    organizations.withName(organization).get
+    organizations.withName(organization).get.orElseFail(())
 
   def getUserData(request: OreRequest[_], userName: String): IO[Unit, UserData] =
     users.withName(userName)(request).semiflatMap(UserData.of(request, _)).toZIO

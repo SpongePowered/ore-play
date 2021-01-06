@@ -33,6 +33,6 @@ class OrganizationTable(tag: Tag) extends ModelTable[Organization](tag, "organiz
         Some((id.unsafeToOption, createdAt.unsafeToOption, userId, name, ownerId))
     }
 
-    (id.?, createdAt.?, userId, name, ownerId) <> (applyFunc, unapplyFunc)
+    (id.?, createdAt.?, userId, name, ownerId).<>(applyFunc, unapplyFunc)
   }
 }

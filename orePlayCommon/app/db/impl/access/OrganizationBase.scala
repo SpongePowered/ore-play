@@ -71,7 +71,6 @@ object OrganizationBase {
         ownerId: DbRef[User],
         members: Set[OrganizationUserRole]
     )(implicit mdc: OreMDC): F[Either[List[String], Model[Organization]]] = {
-      import cats.instances.vector._
       val logging = F.delay {
         MDCLogger.debug("Creating Organization...")
         MDCLogger.debug("Name     : " + name)

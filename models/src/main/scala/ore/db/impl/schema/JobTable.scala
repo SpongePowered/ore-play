@@ -16,8 +16,9 @@ class JobTable(tag: Tag) extends ModelTable[Job](tag, "jobs") {
   def jobProperties       = column[Map[String, String]]("job_properties")
 
   def info =
-    (lastUpdated.?, retryAt.?, lastError.?, lastErrorDescriptor.?, state, jobType) <> ((JobInfo.apply _).tupled, JobInfo.unapply)
+    (lastUpdated.?, retryAt.?, lastError.?, lastErrorDescriptor.?, state, jobType)
+      .<>((JobInfo.apply _).tupled, JobInfo.unapply)
 
   def * =
-    (id.?, createdAt.?, (info, jobProperties)) <> (mkApply((Job.apply _).tupled), mkUnapply(Job.unapply))
+    (id.?, createdAt.?, (info, jobProperties)).<>(mkApply((Job.apply _).tupled), mkUnapply(Job.unapply))
 }

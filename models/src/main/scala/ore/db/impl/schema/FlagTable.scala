@@ -19,7 +19,10 @@ class FlagTable(tag: Tag) extends ModelTable[Flag](tag, "project_flags") {
   def resolvedBy = column[DbRef[User]]("resolved_by")
 
   override def * =
-    (id.?, createdAt.?, (projectId, userId, reason, comment, isResolved, resolvedAt.?, resolvedBy.?)) <> (mkApply(
-      (Flag.apply _).tupled
-    ), mkUnapply(Flag.unapply))
+    (id.?, createdAt.?, (projectId, userId, reason, comment, isResolved, resolvedAt.?, resolvedBy.?)).<>(
+      mkApply(
+        (Flag.apply _).tupled
+      ),
+      mkUnapply(Flag.unapply)
+    )
 }

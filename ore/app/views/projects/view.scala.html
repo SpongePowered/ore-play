@@ -33,7 +33,7 @@ Base template for Project overview.
 @meta = {
     <meta property="og:title" content="@p.project.ownerName / @p.project.name" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="@config.app.baseUrl@Projects.show(p.project.ownerName, p.project.slug)" />
+    <meta property="og:url" content="@config.application.baseUrl@Projects.show(p.project.ownerName, p.project.slug)" />
     <meta property="og:image" content="@p.iconUrl" />
     <meta property="og:site_name" content="@messages("general.appName")" />
     @defining(p.project.description.getOrElse("")) { description =>

@@ -41,8 +41,6 @@ object VersionData {
       F: MonadError[F, Throwable],
       par: Parallel[F]
   ): F[VersionData] = {
-    import cats.instances.list._
-    import cats.instances.option._
     val depsF = version.dependencies.parTraverse(dep => dep.project.value.tupleLeft(dep))
 
     (version.channel, version.reviewer(ModelView.now(User)).sequence.subflatMap(identity).map(_.name).value, depsF)

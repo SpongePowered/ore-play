@@ -13,7 +13,10 @@ class ApiKeyTable(tag: Tag) extends ModelTable[ApiKey](tag, "api_keys") {
   def rawKeyPermissions = column[Permission]("raw_key_permissions")
 
   override def * =
-    (id.?, createdAt.?, (name, ownerId, tokenIdentifier, rawKeyPermissions)) <> (mkApply((ApiKey.apply _).tupled), mkUnapply(
-      ApiKey.unapply
-    ))
+    (id.?, createdAt.?, (name, ownerId, tokenIdentifier, rawKeyPermissions)).<>(
+      mkApply((ApiKey.apply _).tupled),
+      mkUnapply(
+        ApiKey.unapply
+      )
+    )
 }

@@ -13,7 +13,10 @@ class SessionTable(tag: Tag) extends ModelTable[DbSession](tag, "user_sessions")
   def token      = column[String]("token")
 
   def * =
-    (id.?, createdAt.?, (expiration, userId, token)) <> (mkApply((DbSession.apply _).tupled), mkUnapply(
-      DbSession.unapply
-    ))
+    (id.?, createdAt.?, (expiration, userId, token)).<>(
+      mkApply((DbSession.apply _).tupled),
+      mkUnapply(
+        DbSession.unapply
+      )
+    )
 }

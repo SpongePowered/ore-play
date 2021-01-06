@@ -36,6 +36,6 @@ class DbRoleTable(tag: Tag) extends ModelTable[DbRole](tag, "roles") {
         Some((id.unsafeToOption, name, category, permission, title, color, isAssignable, rank))
     }
 
-    (id.?, name, category, permission, title, color, isAssignable, rank.?) <> (applyFunc, unapplyFunc)
+    (id.?, name, category, permission, title, color, isAssignable, rank.?).<>(applyFunc, unapplyFunc)
   }
 }

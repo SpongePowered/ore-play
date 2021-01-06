@@ -30,6 +30,6 @@ class VersionTagTable(tag: Tag)
       case Model(id, _, VersionTag(versionIds, name, data, color)) =>
         (id.unsafeToOption, versionIds, name, data, color)
     }
-    (id.?, versionId, name, data.?, color) <> (convertedApply, convertedUnapply.lift)
+    (id.?, versionId, name, data.?, color).<>(convertedApply, convertedUnapply.lift)
   }
 }

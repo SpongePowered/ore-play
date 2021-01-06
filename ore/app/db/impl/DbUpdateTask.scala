@@ -10,9 +10,8 @@ import ore.util.OreMDC
 
 import cats.syntax.all._
 import com.typesafe.scalalogging
-import doobie.`enum`.TransactionIsolation
 import zio.clock.Clock
-import zio.{Schedule, RIO, Task, UIO, ZIO, duration}
+import zio._
 
 class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit projects: ProjectBase[Task],
@@ -26,16 +25,19 @@ class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: 
 
   Logger.info("DbUpdateTask starting")
 
-  private val homepageSchedule: Schedule[Clock, Any, Int] = Schedule
-    .fixed(interval)
-    .tapInput(_ => UIO(Logger.debug(s"Updating homepage view")))
-
-  private val statSchedule: Schedule[Clock, Any, Int] =
+  private val homepageSchedule: Schedule[Any, Unit, Unit] =
     Schedule
       .fixed(interval)
-      .tapInput(_ => UIO(Logger.debug("Processing stats")))
+      .unit
+      .tapInput((_: Unit) => UIO(Logger.debug(s"Updating homepage view")))
 
-  private def runningTask(task: RIO[Clock, Unit], schedule: Schedule[Clock, Any, Int]) = {
+  private val statSchedule: Schedule[Any, Unit, Unit] =
+    Schedule
+      .fixed(interval)
+      .unit
+      .tapInput((_: Unit) => UIO(Logger.debug("Processing stats")))
+
+  private def runningTask(task: RIO[Clock, Unit], schedule: Schedule[Any, Unit, Unit]) = {
     val safeTask: ZIO[Clock, Nothing, Unit] = task.catchAll(e => UIO(Logger.error("Running DB task failed", e)))
 
     runtime.unsafeRunToFuture(safeTask.repeat(schedule))
@@ -43,23 +45,12 @@ class DbUpdateTask(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: 
 
   private val homepageTask = runningTask(projects.refreshHomePage(Logger), homepageSchedule)
 
-  private def runManyInTransaction(updates: Seq[doobie.Update0]) = {
-    import cats.instances.list._
-    import doobie._
-
-    service
-      .runDbCon(
-        for {
-          _ <- HC.setTransactionIsolation(TransactionIsolation.TransactionRepeatableRead)
-          _ <- updates.toList.traverse_(_.run)
-        } yield ()
-      )
-      .retry(Schedule.forever)
-  }
+  private def runMany(updates: Seq[doobie.Update0]) =
+    service.runDbCon(updates.toList.traverse_(_.run))
 
   private val statsTask = runningTask(
-    runManyInTransaction(StatTrackerQueries.processProjectViews) *>
-      runManyInTransaction(StatTrackerQueries.processVersionDownloads),
+    runMany(StatTrackerQueries.processProjectViews) *>
+      runMany(StatTrackerQueries.processVersionDownloads),
     statSchedule
   )
 

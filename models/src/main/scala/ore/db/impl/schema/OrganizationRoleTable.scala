@@ -13,7 +13,10 @@ class OrganizationRoleTable(tag: Tag)
   def organizationId = column[DbRef[Organization]]("organization_id")
 
   override def * =
-    (id.?, createdAt.?, (userId, organizationId, roleType, isAccepted)) <> (mkApply(
-      (OrganizationUserRole.apply _).tupled
-    ), mkUnapply(OrganizationUserRole.unapply))
+    (id.?, createdAt.?, (userId, organizationId, roleType, isAccepted)).<>(
+      mkApply(
+        (OrganizationUserRole.apply _).tupled
+      ),
+      mkUnapply(OrganizationUserRole.unapply)
+    )
 }

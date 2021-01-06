@@ -8,10 +8,10 @@ import sbt._
 
 object Settings {
 
-  val scalaVer = "2.13.2"
+  val scalaVer = "2.13.3"
 
   val commonSettings = Seq(
-    version := "2.0.0-M2.2",
+    version := "2.0.0-M2.4",
     scalaVersion := scalaVer,
     scalacOptions ++= Seq(
       "-deprecation",
@@ -29,7 +29,6 @@ object Settings {
       "-Xlint:inaccessible",
       "-Xlint:infer-any",
       "-Xlint:missing-interpolator",
-      "-Xlint:nullary-override",
       "-Xlint:nullary-unit",
       "-Xlint:option-implicit",
       "-Xlint:package-object-classes",

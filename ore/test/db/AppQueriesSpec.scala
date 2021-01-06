@@ -4,20 +4,18 @@ import java.time.LocalDate
 
 import scala.concurrent.duration._
 
-import play.api.Configuration
-
 import db.impl.query.{AppQueries, SharedQueries}
 import ore.OreConfig
 
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
+import pureconfig.ConfigSource
+import pureconfig.generic.auto._
 
 @RunWith(classOf[JUnitRunner])
 class AppQueriesSpec extends DbSpec {
 
-  implicit val config: OreConfig = new OreConfig(
-    Configuration.load(getClass.getClassLoader, System.getProperties, Map.empty, allowMissingApplicationConf = false)
-  )
+  implicit val config: OreConfig = ConfigSource.default.loadOrThrow[OreConfig]
 
   /* Relies on a view and as such can't test NULL stuff reliably
   test("GetHomeProjects") {

@@ -11,7 +11,10 @@ class ProjectApiKeyTable(tag: Tag) extends ModelTable[ProjectApiKey](tag, "proje
   def value     = column[String]("value")
 
   override def * =
-    (id.?, createdAt.?, (projectId, value)) <> (mkApply((ProjectApiKey.apply _).tupled), mkUnapply(
-      ProjectApiKey.unapply
-    ))
+    (id.?, createdAt.?, (projectId, value)).<>(
+      mkApply((ProjectApiKey.apply _).tupled),
+      mkUnapply(
+        ProjectApiKey.unapply
+      )
+    )
 }

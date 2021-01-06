@@ -42,7 +42,7 @@ class Users(
     messagesApi: MessagesApi
 ) extends OreBaseController {
 
-  private val baseUrl = this.config.app.baseUrl
+  private val baseUrl = this.config.application.baseUrl
 
   /**
     * Redirect to auth page for SSO authentication.
@@ -115,7 +115,7 @@ class Users(
   }
 
   private def redirectBack(url: String, user: Model[User]) =
-    Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.sessionMaxAge.toSeconds.toInt)
+    Redirect(this.baseUrl + url).authenticatedAs(user, this.config.ore.session.maxAge.toSeconds.toInt)
 
   /**
     * Clears the current session.
@@ -123,7 +123,7 @@ class Users(
     * @return Home page
     */
   def logOut(): Action[AnyContent] = Action {
-    Redirect(config.security.api.url + "/accounts/logout/")
+    Redirect(config.auth.api.url + "/accounts/logout/")
       .clearingSession()
       .flashing("noRedirect" -> "true")
   }
@@ -244,7 +244,6 @@ class Users(
     */
   def showNotifications(notificationFilter: Option[String], inviteFilter: Option[String]): Action[AnyContent] = {
     Authenticated.asyncF { implicit request =>
-      import cats.instances.vector._
       val user = request.user
 
       // Get visible notifications
@@ -266,7 +265,6 @@ class Users(
         iFilter(user).flatMap(i => i.toVector.parTraverse(invite => invite.subject[Task].orDie.tupleLeft(invite)))
 
       (notificationsF, invitesF).parMapN { (notifications, invites) =>
-        import cats.instances.option._
         Ok(
           views.users.notifications(
             Model.unwrapNested[Seq[(Model[Notification], Option[User])]](notifications),
@@ -327,7 +325,6 @@ class Users(
             service.runDbCon(UserQueries.allPossibleOrgPermissions(request.user.id).unique)
           ).parMapN(_.add(_).add(userData.userPerm))
         } yield {
-          import cats.instances.option._
 
           Ok(
             views.users.apiKeys(

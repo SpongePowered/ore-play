@@ -18,8 +18,6 @@ import util.{FileIO, TaskUtils}
 
 import cats.Parallel
 import cats.effect.syntax.all._
-import cats.instances.option._
-import cats.instances.vector._
 import cats.syntax.all._
 import cats.tagless.autoFunctorK
 import com.google.common.base.Preconditions._

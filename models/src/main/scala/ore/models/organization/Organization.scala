@@ -59,7 +59,6 @@ object Organization extends ModelCompanionPartial[Organization, OrganizationTabl
 
       override def transferOwner(m: Model[Organization])(newOwner: DbRef[User]): F[Model[Organization]] = {
         // Down-grade current owner to "Admin"
-        import cats.instances.vector._
         val oldOwner = m.ownerId
         for {
           t2 <- (memberships.getRoles(m)(oldOwner), memberships.getRoles(m)(newOwner)).parTupled

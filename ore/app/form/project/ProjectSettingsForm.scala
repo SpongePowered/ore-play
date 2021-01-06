@@ -54,7 +54,6 @@ case class ProjectSettingsForm(
       F: Async[F],
       par: Parallel[F]
   ): EitherT[F, String, Model[Project]] = {
-    import cats.instances.vector._
     logger.debug("Saving project settings")
     logger.debug(this.toString)
     val newOwnerId = this.ownerId.getOrElse(project.ownerId)
@@ -106,13 +105,10 @@ case class ProjectSettingsForm(
             pendingPathOpt.fold(F.unit) { pendingPath =>
               val iconDir = fileManager.getIconDir(newOwnerName, newProject.name)
 
-              val notExist   = fileIO.notExists(iconDir)
-              val createDirs = fileIO.createDirectories(iconDir)
-              val deleteFiles = fileIO.list(iconDir).use { ps =>
-                import cats.instances.lazyList._
-                fileIO.traverseLimited(ps)(p => fileIO.delete(p))
-              }
-              val move = fileIO.move(pendingPath, iconDir.resolve(pendingPath.getFileName))
+              val notExist    = fileIO.notExists(iconDir)
+              val createDirs  = fileIO.createDirectories(iconDir)
+              val deleteFiles = fileIO.list(iconDir).use(ps => fileIO.traverseLimited(ps)(p => fileIO.delete(p)))
+              val move        = fileIO.move(pendingPath, iconDir.resolve(pendingPath.getFileName))
 
               notExist.ifM(createDirs, F.unit) *> deleteFiles *> move.void
             }
@@ -145,7 +141,6 @@ case class ProjectSettingsForm(
           service
             .runDBIO(usersTable.filter(_.name.inSetBind(this.userUps)).map(_.id).result)
             .flatMap { userIds =>
-              import cats.instances.list._
               val roles = this.roleUps.traverse { role =>
                 Role.projectRoles
                   .find(_.value == role)
