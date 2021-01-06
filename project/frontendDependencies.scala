@@ -33,7 +33,7 @@ object NPMDeps {
   val miniCssExtractor  = "mini-css-extract-plugin"            -> "0.9.0"
   val optimizeCssAssets = "optimize-css-assets-webpack-plugin" -> "5.0.3"
   val autoprefixer      = "autoprefixer"                       -> "9.7.4"
-  val nodeSass          = "node-sass"                          -> "4.13.1"
+  val nodeSass          = "node-sass"                          -> "4.14.1"
 }
 
 object WebjarsDeps {

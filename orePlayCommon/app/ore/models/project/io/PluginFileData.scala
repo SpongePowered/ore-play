@@ -28,7 +28,6 @@ class PluginFileData(data: Seq[DataValue]) {
       case (key: String, values: Seq[DataValue]) =>
         // combine dependency lists that may come from different files
         if (values.lengthIs > 1) {
-          import cats.instances.vector._
           import cats.syntax.all._
 
           val (otherValues, depSeq) = values.toVector.partitionEither {

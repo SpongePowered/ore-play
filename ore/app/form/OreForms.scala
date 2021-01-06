@@ -314,11 +314,11 @@ class OreForms(
 
   lazy val NeedsChanges = Form(single("comment" -> text))
 
+  case class SyncSsoForm(sso: String, sig: String)
   lazy val SyncSso = Form(
-    tuple(
-      "sso"     -> nonEmptyText,
-      "sig"     -> nonEmptyText,
-      "api_key" -> nonEmptyText
-    )
+    mapping(
+      "sso" -> nonEmptyText,
+      "sig" -> nonEmptyText
+    )(SyncSsoForm.apply)(SyncSsoForm.unapply)
   )
 }

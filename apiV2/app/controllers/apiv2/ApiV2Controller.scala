@@ -72,7 +72,7 @@ class ApiV2Controller(
     def unAuth[A: Writeable](msg: A) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> "OreApi")
 
     for {
-      stringAuth <- ZIO.fromOption(request.headers.get(AUTHORIZATION)).mapError(Left.apply)
+      stringAuth <- ZIO.fromOption(request.headers.get(AUTHORIZATION)).orElseFail(Left(()))
       parsedAuth = Authorization.parseFromValueString(stringAuth).leftMap { es =>
         NonEmptyList
           .fromList(es)
@@ -117,7 +117,7 @@ class ApiV2Controller(
     }
   }
 
-  def apiScopeToRealScope(scope: APIScope): IO[Unit, Scope] = scope match {
+  def apiScopeToRealScope(scope: APIScope): IO[Option[Nothing], Scope] = scope match {
     case APIScope.GlobalScope => UIO.succeed(GlobalScope)
     case APIScope.ProjectScope(pluginId) =>
       service
@@ -150,7 +150,7 @@ class ApiV2Controller(
       //Techically we could make this faster by first checking if the global perms have the needed perms,
       //but then we wouldn't get the 404 on a non existent scope.
       val scopePerms: IO[Unit, Permission] =
-        apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, *]](_))
+        apiScopeToRealScope(scope).orElseFail(()).flatMap(request.permissionIn[Scope, IO[Unit, *]](_))
       val res = scopePerms.orElseFail(NotFound).ensure(Forbidden)(_.has(perms))
 
       zioToFuture(res.either.map(_.swap.toOption))

@@ -17,8 +17,6 @@ import ore.models.user.User
 import ore.permission.role.Role
 import util.syntax._
 
-import cats.instances.either._
-import cats.instances.vector._
 import cats.kernel.Order
 import cats.syntax.all._
 import io.circe.{DecodingFailure, Json}

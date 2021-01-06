@@ -21,7 +21,7 @@ object ZIOSyntax {
 
   class OptionTSyntax[A](private val o: OptionT[UIO, A]) extends AnyVal {
 
-    def toZIO: IO[Unit, A] = o.value.get
+    def toZIO: IO[Unit, A] = o.value.get.orElseFail(())
 
     def toZIOWithError[E](err: E): IO[E, A] = o.value.get.orElseFail(err)
   }

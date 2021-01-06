@@ -1,7 +1,5 @@
 package ore.discourse
 
-import scala.language.higherKinds
-
 import scala.concurrent.duration._
 
 import ore.discourse.AkkaDiscourseApi.AkkaDiscourseSettings
@@ -13,9 +11,9 @@ import akka.stream.Materializer
 import cats.data.EitherT
 import cats.effect.Concurrent
 import cats.effect.concurrent.Ref
-import cats.instances.either._
 import cats.syntax.all._
 import com.typesafe.scalalogging
+import com.typesafe.scalalogging.Logger
 import io.circe._
 
 class AkkaDiscourseApi[F[_]] private (
@@ -28,15 +26,12 @@ class AkkaDiscourseApi[F[_]] private (
 ) extends AkkaClientApi[F, cats.Id, DiscourseError]("Discourse", counter, settings)
     with DiscourseApi[F] {
 
-  protected val Logger = scalalogging.Logger("DiscourseApi")
+  protected val Logger: Logger = scalalogging.Logger("DiscourseApi")
 
-  private def startParams(poster: Option[String]) = Seq(
-    "api_key"      -> settings.apiKey,
-    "api_username" -> poster.getOrElse(settings.adminUser)
+  private def authHeaders(poster: Option[String]) = Seq(
+    `Api-Key`(settings.apiKey),
+    `Api-Username`(poster.getOrElse(settings.adminUser))
   )
-
-  private def apiQuery(poster: Option[String]) =
-    Uri.Query("api_key" -> settings.apiKey, "api_username" -> poster.getOrElse(settings.adminUser))
 
   override def createStatusError(statusCode: StatusCode, message: Option[String]): DiscourseError = statusCode match {
     case StatusCodes.TooManyRequests =>
@@ -89,7 +84,7 @@ class AkkaDiscourseApi[F[_]] private (
       content: String,
       categoryId: Option[Int]
   ): F[Either[DiscourseError, DiscoursePost]] = {
-    val base = startParams(Some(poster)) ++ Seq(
+    val base = Seq(
       "title" -> title,
       "raw"   -> content
     )
@@ -100,13 +95,14 @@ class AkkaDiscourseApi[F[_]] private (
       HttpRequest(
         HttpMethods.POST,
         apiUri(_ / "posts.json"),
+        headers = authHeaders(Some(poster)),
         entity = FormData(withCat: _*).toEntity
       )
     )
   }
 
   override def createPost(poster: String, topicId: Int, content: String): F[Either[DiscourseError, DiscoursePost]] = {
-    val params = startParams(Some(poster)) ++ Seq(
+    val params = Seq(
       "topic_id" -> topicId.toString,
       "raw"      -> content
     )
@@ -115,6 +111,7 @@ class AkkaDiscourseApi[F[_]] private (
       HttpRequest(
         HttpMethods.POST,
         apiUri(_ / "posts.json"),
+        headers = authHeaders(Some(poster)),
         entity = FormData(params: _*).toEntity
       )
     )
@@ -128,7 +125,7 @@ class AkkaDiscourseApi[F[_]] private (
   ): F[Either[DiscourseError, Unit]] = {
     if (title.isEmpty && categoryId.isEmpty) F.pure(Right(()))
     else {
-      val base = startParams(Some(poster)) :+ ("topic_id" -> topicId.toString)
+      val base = Seq("topic_id" -> topicId.toString)
 
       val withTitle = title.fold(base)(t => base :+ ("title"                      -> t))
       val withCat   = categoryId.fold(withTitle)(c => withTitle :+ ("category_id" -> c.toString))
@@ -137,6 +134,7 @@ class AkkaDiscourseApi[F[_]] private (
         HttpRequest(
           HttpMethods.PUT,
           apiUri(_ / "t" / "-" / s"$topicId.json"),
+          headers = authHeaders(Some(poster)),
           entity = FormData(withCat: _*).toEntity
         )
       ).map(_.void)
@@ -144,13 +142,12 @@ class AkkaDiscourseApi[F[_]] private (
   }
 
   override def updatePost(poster: String, postId: Int, content: String): F[Either[DiscourseError, Unit]] = {
-    val params = startParams(Some(poster)) :+ ("post[raw]" -> content)
-
     makeUnmarshallRequestEither[Json](
       HttpRequest(
         HttpMethods.PUT,
         apiUri(_ / "posts" / s"$postId.json"),
-        entity = FormData(params: _*).toEntity
+        headers = authHeaders(Some(poster)),
+        entity = FormData("post[raw]" -> content).toEntity
       )
     ).map(_.void)
   }
@@ -161,7 +158,8 @@ class AkkaDiscourseApi[F[_]] private (
         makeRequest(
           HttpRequest(
             HttpMethods.DELETE,
-            apiUri(_ / "t" / s"$topicId.json").withQuery(apiQuery(Some(poster)))
+            apiUri(_ / "t" / s"$topicId.json"),
+            headers = authHeaders(Some(poster))
           )
         )
       )

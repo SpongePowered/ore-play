@@ -16,7 +16,6 @@ import ore.models.project.{Project, Version}
 import akka.pattern.CircuitBreakerOpenException
 import com.typesafe.scalalogging
 import cats.syntax.all._
-import cats.instances.either._
 import slick.lifted.TableQuery
 import zio._
 import zio.clock.Clock

@@ -77,6 +77,7 @@ src_managed/
 project/boot/
 project/plugins/project/
 /.jvmopts
+.bsp
 
 # Scala-IDE specific
 .scala_dependencies

@@ -8,7 +8,7 @@ final class Bakery(config: OreConfig) {
       name: String,
       value: String,
       maxAge: Option[Int] = None,
-      secure: Boolean = this.config.security.secure
+      secure: Boolean = this.config.ore.session.secure
   ) = play.api.mvc.Cookie(name, value, maxAge, secure = secure)
 
 }

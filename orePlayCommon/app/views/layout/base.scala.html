@@ -13,10 +13,10 @@ this.
 <!DOCTYPE html>
 <html lang="@messages.lang.language">
     <head>
-        <link href="@config.security.api.url" rel="preconnect" crossorigin>
-        <link href="@config.app.discourseCdnUrl" rel="preconnect" crossorigin>
-        <link href="@config.security.api.url" rel="dns-prefetch" >
-        <link href="@config.app.discourseCdnUrl" rel="dns-prefetch" >
+        <link href="@config.auth.api.url" rel="preconnect" crossorigin>
+        <link href="@config.application.discourseCdnUrl" rel="preconnect" crossorigin>
+        <link href="@config.auth.api.url" rel="dns-prefetch" >
+        <link href="@config.application.discourseCdnUrl" rel="dns-prefetch" >
 
         <link rel="prefetch" href="@assetsFinder.path("images/favicon.ico")">
         <link rel="prefetch" href="https://fonts.googleapis.com/css?family=Montserrat:400,700">
@@ -94,7 +94,7 @@ this.
                 </script>
             }
 
-            <script type="text/javascript" src="@routes.Application.javascriptRoutes"></script>
+            <script type="text/javascript" src="@routes.Application.javascriptRoutes()"></script>
             <script type="text/javascript" src="@assetsFinder.path("build/vendors.js")"></script>
             <script type="text/javascript" src="@assetsFinder.path("build/font-awesome.js")"></script>
             <script type="text/javascript" src="@assetsFinder.path("build/commons.js")"></script>

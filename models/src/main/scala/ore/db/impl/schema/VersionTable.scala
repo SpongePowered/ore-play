@@ -48,5 +48,5 @@ class VersionTable(tag: Tag)
         createForumPost,
         postId
       )
-    ) <> (mkApply((Version.apply _).tupled), mkUnapply(Version.unapply))
+    ).<>(mkApply((Version.apply _).tupled), mkUnapply(Version.unapply))
 }

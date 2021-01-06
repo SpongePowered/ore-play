@@ -13,7 +13,7 @@ final class OreEnv(val env: Environment, config: OreConfig) {
   lazy val root: Path    = this.env.rootPath.toPath
   lazy val public: Path  = this.root.resolve("public")
   lazy val conf: Path    = this.root.resolve("conf")
-  lazy val uploads: Path = Paths.get(this.config.app.uploadsDir)
+  lazy val uploads: Path = Paths.get(this.config.application.uploadsDir)
   lazy val plugins: Path = this.uploads.resolve("plugins")
   lazy val tmp: Path     = this.uploads.resolve("tmp")
 

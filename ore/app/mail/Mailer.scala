@@ -117,9 +117,9 @@ final class SpongeMailer(config: OreConfig, actorSystem: ActorSystem)(implicit e
   override val username: String                = this.conf.username
   override val email: InternetAddress          = InternetAddress.parse(this.conf.email)(0)
   override val password: String                = this.conf.password
-  override val smtpHost: String                = this.conf.smtpHost
-  override val smtpPort: Int                   = this.conf.smtpPort
-  override val transportProtocol: String       = this.conf.transportProtocol
+  override val smtpHost: String                = this.conf.smtp.host
+  override val smtpPort: Int                   = this.conf.smtp.port
+  override val transportProtocol: String       = this.conf.transport.protocol
   override val interval: FiniteDuration        = this.conf.interval
   override val scheduler: Scheduler            = this.actorSystem.scheduler
   override val properties: Map[String, String] = this.conf.properties

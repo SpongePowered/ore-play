@@ -2,8 +2,6 @@ package db
 
 import java.time.LocalDate
 
-import play.api.Configuration
-
 import db.impl.query.APIV2Queries
 import ore.OreConfig
 import ore.data.project.Category
@@ -11,13 +9,13 @@ import ore.permission.Permission
 
 import org.junit.runner.RunWith
 import org.scalatestplus.junit.JUnitRunner
+import pureconfig.ConfigSource
+import pureconfig.generic.auto._
 
 @RunWith(classOf[JUnitRunner])
 class APIV2QueriesSpec extends DbSpec {
 
-  implicit val config: OreConfig = new OreConfig(
-    Configuration.load(getClass.getClassLoader, System.getProperties, Map.empty, allowMissingApplicationConf = false)
-  )
+  implicit val config: OreConfig = ConfigSource.default.loadOrThrow[OreConfig]
 
   test("GetApiAuthInfo") {
     check(APIV2Queries.getApiAuthInfo(""))
