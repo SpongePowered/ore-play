@@ -152,7 +152,7 @@ ore {
 
     orgs {
         enabled = true
-        dummy-email-domain = "ore.powernukkit.org"
+        dummy-email-domain = "plugins.powernukkit.org"
         create-limit = 5
     }
 
