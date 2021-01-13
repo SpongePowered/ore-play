@@ -25,7 +25,7 @@ jobs-db {
 
 # Discourse
 discourse {
-    base-url            =   "https://discuss.powernukkit.org/"
+    base-url            =   "https://discuss.powernukkit.org"
     category-default    =   -1
     category-default    =   ${?DISCOURSE_CATEGORY_OPEN}
     category-deleted    =   -1

@@ -7,8 +7,8 @@
 application {
     base-url             =   "http://localhost:9000"
     base-url             =   ${?BASE_URL}
-    discourse-url       =   "https://discuss.powernukkit.org/"
-    discourse-cdn-url   =   "https://discuss.powernukkit.org/"
+    discourse-url       =   "https://discuss.powernukkit.org"
+    discourse-cdn-url   =   "https://discuss.powernukkit.org"
 
     uploads-dir = "uploads"
     uploads-dir = ${?UPLOADS_DIR}
@@ -41,11 +41,11 @@ play {
         csp {
             directives = {
                 block-all-mixed-content = ""
-                script-src = ${play.filters.csp.nonce.pattern} "'self' https://discuss.powernukkit.org/ https://discuss.powernukkit.org/"
-                style-src = "'self' 'unsafe-inline' https://fonts.googleapis.com https://discuss.powernukkit.org/"
+                script-src = ${play.filters.csp.nonce.pattern} "'self' https://discuss.powernukkit.org https://discuss.powernukkit.org"
+                style-src = "'self' 'unsafe-inline' https://fonts.googleapis.com https://discuss.powernukkit.org"
                 img-src = "'self' data: https: http:"
                 font-src = "'self' data: https://fonts.gstatic.com"
-                frame-src = "https://discuss.powernukkit.org/"
+                frame-src = "https://discuss.powernukkit.org"
                 frame-ancestors = "'none'"
                 report-uri = ${?CSP_REPORT_URI}
                 report-to = ${?CSP_REPORT_TO}
@@ -228,7 +228,7 @@ slick.dbs.default {
 
 # Sponge stuff
 sponge {
-    logo = "https://powernukkit.org/logo.svg?v=2"
+    logo = "https://powernukkit.org/logo.svg"
     service = "Ore"
 
     # Sponsors from high to low donation amounts
