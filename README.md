@@ -1,6 +1,6 @@
 # Ore
-![Build Status Ore](https://github.com/SpongePowered/Ore/workflows/Ore%20CI/badge.svg?branch=staging)
-![Build Status Scalafmt](https://github.com/SpongePowered/Ore/workflows/Scalafmt%20Check/badge.svg?branch=staging)
+![Build Status Ore](https://github.com/PowerNukkit/Ore/workflows/Ore%20CI/badge.svg?branch=staging)
+![Build Status Scalafmt](https://github.com/PowerNukkit/Ore/workflows/Scalafmt%20Check/badge.svg?branch=staging)
 [![Hydra](https://img.shields.io/badge/%22%22%22%7CHydra-4%20cpus-brightgreen.svg)](https://www.triplequote.com/hydra)
 
 Repository software for Sponge plugins and Forge mods https://ore.spongepowered.org/
@@ -10,7 +10,7 @@ Ore is written in Scala using the [Play](https://www.playframework.com/) framewo
 ### Clone
 The following steps will ensure your project is cloned properly.
 
-1. `git clone https://github.com/SpongePowered/Ore.git`   
+1. `git clone https://github.com/PowerNukkit/Ore.git`   
 2. `cp scripts/pre-commit .git/hooks`
 
 ### Setup
@@ -24,11 +24,12 @@ You will also need to enable a few extensions for Ore. These are:
 
 In addition, you need to install Node.js and Yarn. Installation instructions are available for [Node.js](https://nodejs.org/en/download/) and [Yarn](https://yarnpkg.com/lang/en/docs/install).
 
-After setting up a database, create a copy of `application.conf.template` named `application.conf` and 
-configure the application, for the application you want to run. This file is in the `.gitignore` so it will not appear in your commits.
+After setting up a database, create a copy of `ore-default-settings.conf.template` named `ore-default-settings.conf` and
+a copy of `ore-jobs-default-settings.conf.template` named `ore-jobs-default-settings.conf` and configure the application,
+for the application you want to run. This file is in the `.gitignore` so it will not appear in your commits.
 Your local copy needs to get updated every time you pull changes, which add a new setting to the config. Currently valid 
-applications are `ore` and `jobs`, and their configuration files can be found in `ore/conf/application.conf.template` and 
-`jobs/src/main/resources/application.conf.template`.
+applications are `ore` and `jobs`, and their configuration files can be found in `ore/conf/ore-default-settings.conf.template` and 
+`jobs/src/main/resources/ore-jobs-default-settings.conf.template`.
 
 In a typical development environment, most of the defaults are fine. Here are a few you might want to take a look at though.
 
