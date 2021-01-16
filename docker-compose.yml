@@ -1,0 +1,32 @@
+version: "3.7"
+
+volumes:
+  ore-db:
+
+services:
+  db:
+    image: postgres:12.5-alpine
+    volumes:
+      - ore-db:/var/lib/postgresql
+    environment:
+      POSTGRES_USER: oredb
+      POSTGRES_PASSWORD: oredb
+      POSTGRES_DB: oredb
+    networks:
+      - web
+  app:
+    build: .
+    ports:
+      - "9000:9000"
+    stdin_open: true
+    environment:
+      JDBC_DATABASE_URL: "jdbc:postgresql://db/oredb"
+      JDBC_DATABASE_USERNAME: "oredb"
+      JDBC_DATABASE_PASSWORD: "oredb"
+      APPLICATION_SECRET: "secretkey"
+    depends_on:
+      - "db"
+    networks:
+      - web
+networks:
+  web:

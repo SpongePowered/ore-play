@@ -1,0 +1,30 @@
+/*
+
+!app/
+
+!ore/
+# This is created in the Dockerfile
+ore/conf/ore-default-settings.conf
+
+!OreTestPlugin/
+!orePlayCommon/
+!oreClient/
+!models/
+!jobs/
+!externalCommon/
+!discourse/
+!db/
+!auth/
+!apiV2/
+
+!project/
+project/target/
+project/project/
+# Hydra Scala Compiler
+project/hydra.sbt
+
+!public/
+
+!scripts/
+
+!build.sbt
