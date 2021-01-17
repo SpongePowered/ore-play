@@ -2,16 +2,19 @@ version: "3.7"
 
 volumes:
   ore-db:
+  uploads:
 
 services:
   db:
-    image: postgres:12.5-alpine
-    volumes:
-      - ore-db:/var/lib/postgresql
     environment:
       POSTGRES_USER: oredb
       POSTGRES_PASSWORD: oredb
       POSTGRES_DB: oredb
+    build:
+      context: .
+      dockerfile: pgDockerfile
+    volumes:
+      - ore-db:/var/lib/postgresql
     networks:
       - web
   app:
@@ -21,9 +24,9 @@ services:
     stdin_open: true
     environment:
       BASE_URL: "http://localhost:9000"
-      APPLICATION_SECRET: "secretkey",
-      ORE_DEBUG: false
-      ORE_STAGE: false
+      APPLICATION_SECRET: "secretkey"
+      ORE_DEBUG: "false"
+      ORE_STAGE: "false"
       JDBC_DATABASE_URL: "jdbc:postgresql://db/oredb"
       JDBC_DATABASE_USERNAME: "oredb"
       JDBC_DATABASE_PASSWORD: "oredb"
@@ -33,6 +36,8 @@ services:
       ORE_AUTH_SSO_API_KEY: "changeme"
     depends_on:
       - "db"
+    volumes:
+      - uploads:/home/ore/prod/uploads
     networks:
       - web
 networks:
