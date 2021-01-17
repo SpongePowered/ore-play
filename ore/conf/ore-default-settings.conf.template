@@ -74,10 +74,10 @@ play {
 auth {
     api {
         url = "http://localhost:8000"
-        url = ${?SPONGE_AUTH_URL}
+        url = ${?ORE_AUTH_URL}
         avatar-url = ${auth.api.url}"/avatar/%s?size=120x120"
         key = "changeme"
-        key = ${?SPONGE_AUTH_API_KEY}
+        key = ${?ORE_AUTH_API_KEY}
         timeout = 10000ms
 
         breaker {
@@ -92,19 +92,21 @@ auth {
         signup-url = ${auth.api.url}"/sso/signup/"
         verify-url = ${auth.api.url}"/sso/sudo/"
         secret = "changeme"
-        secret = ${?SPONGE_AUTH_SSO_SECRET}
+        secret = ${?ORE_AUTH_SSO_SECRET}
         timeout = 2s
         reset = 10m
         apikey = "changeme"
-        apikey = ${?SPONGE_AUTH_SSO_API_KEY}
+        apikey = ${?ORE_AUTH_SSO_API_KEY}
     }
 }
 
 # Ore configuration
 ore {
     debug       =  false
+	debug       =  ${?ORE_DEBUG}
     debug-level =  3
     staging     =  true
+	staging     =  ${?ORE_STAGE}
 
     log-timings = false
 

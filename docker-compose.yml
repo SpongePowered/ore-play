@@ -20,10 +20,17 @@ services:
       - "9000:9000"
     stdin_open: true
     environment:
+      BASE_URL: "http://localhost:9000"
+      APPLICATION_SECRET: "secretkey",
+      ORE_DEBUG: false
+      ORE_STAGE: false
       JDBC_DATABASE_URL: "jdbc:postgresql://db/oredb"
       JDBC_DATABASE_USERNAME: "oredb"
       JDBC_DATABASE_PASSWORD: "oredb"
-      APPLICATION_SECRET: "secretkey"
+      ORE_AUTH_URL: "http://localhost:8000"
+      ORE_AUTH_API_KEY: "changeme"
+      ORE_AUTH_SSO_SECRET: "changeme"
+      ORE_AUTH_SSO_API_KEY: "changeme"
     depends_on:
       - "db"
     networks:
