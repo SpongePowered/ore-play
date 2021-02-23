@@ -103,10 +103,8 @@ auth {
 # Ore configuration
 ore {
     debug       =  false
-	debug       =  ${?ORE_DEBUG}
     debug-level =  3
     staging     =  true
-	staging     =  ${?ORE_STAGE}
 
     log-timings = false
 

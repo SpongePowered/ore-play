@@ -5,6 +5,7 @@
 !ore/
 # This is created in the Dockerfile
 ore/conf/ore-default-settings.conf
+jobs/src/main/resources/ore-jobs-default-settings.conf
 
 !OreTestPlugin/
 !orePlayCommon/

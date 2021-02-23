@@ -1,4 +1,4 @@
-version: "3.7"
+version: "3.3"
 
 volumes:
   ore-db:
@@ -25,8 +25,6 @@ services:
     environment:
       BASE_URL: "http://localhost:9000"
       APPLICATION_SECRET: "secretkey"
-      ORE_DEBUG: "false"
-      ORE_STAGE: "false"
       JDBC_DATABASE_URL: "jdbc:postgresql://db/oredb"
       JDBC_DATABASE_USERNAME: "oredb"
       JDBC_DATABASE_PASSWORD: "oredb"
