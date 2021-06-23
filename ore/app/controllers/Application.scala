@@ -417,7 +417,7 @@ final class Application(forms: OreForms, val errorHandler: HttpErrorHandler)(
         <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
           {users.map(userSitemap)}
           <sitemap>
-            <loc>{routes.Application.globalSitemap().absoluteURL()}</loc>
+            <loc>{routes.Application.globalSitemap.absoluteURL()}</loc>
           </sitemap>
         </sitemapindex>
 
