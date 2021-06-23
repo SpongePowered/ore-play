@@ -134,15 +134,15 @@ lazy val oreClient = project
     useYarn := true,
     scalaJSUseMainModuleInitializer := false,
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },
-    webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack.config.dev.js"),
-    webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack.config.prod.js"),
+    fastOptJS / webpackConfigFile := Some(baseDirectory.value / "webpack.config.dev.js"),
+    fullOptJS / webpackConfigFile := Some(baseDirectory.value / "webpack.config.prod.js"),
     webpackMonitoredDirectories += baseDirectory.value / "assets",
-    includeFilter in webpackMonitoredFiles := "*.vue" || "*.js",
-    webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
-    webpackBundlingMode in fullOptJS := BundlingMode.LibraryOnly(),
-    version in startWebpackDevServer := NPMDeps.webpackDevServer,
-    version in webpack := NPMDeps.webpack,
-    npmDependencies in Compile ++= Seq(
+    webpackMonitoredFiles / includeFilter := "*.vue" || "*.js",
+    fastOptJS / webpackBundlingMode := BundlingMode.LibraryOnly(),
+    fullOptJS / webpackBundlingMode := BundlingMode.LibraryOnly(),
+    startWebpackDevServer / version := NPMDeps.webpackDevServer,
+    webpack / version := NPMDeps.webpack,
+    Compile / npmDependencies ++= Seq(
       NPMDeps.vue,
       NPMDeps.lodash,
       NPMDeps.queryString,
@@ -151,7 +151,7 @@ lazy val oreClient = project
       NPMDeps.fontAwesomeRegular,
       NPMDeps.fontAwesomeBrands
     ),
-    npmDevDependencies in Compile ++= Seq(
+    Compile / npmDevDependencies ++= Seq(
       NPMDeps.webpackMerge,
       NPMDeps.vueLoader,
       NPMDeps.vueTemplateCompiler,
@@ -212,8 +212,8 @@ lazy val ore = project
     PlayKeys.playMonitoredFiles += baseDirectory.value / "swagger.yml",
     PlayKeys.playMonitoredFiles += baseDirectory.value / "swagger-custom-mappings.yml",
     scalaJSProjects := Seq(oreClient),
-    pipelineStages in Assets += scalaJSPipeline,
-    WebKeys.exportedMappings in Assets := Seq(),
+    Assets / pipelineStages += scalaJSPipeline,
+    Assets / WebKeys.exportedMappings := Seq(),
     PlayKeys.playMonitoredFiles += (oreClient / baseDirectory).value / "assets",
     buildInfoKeys := Seq[BuildInfoKey](version, scalaVersion, resolvers, libraryDependencies),
     buildInfoOptions += BuildInfoOption.BuildTime,
