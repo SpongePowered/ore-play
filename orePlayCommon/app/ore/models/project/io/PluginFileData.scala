@@ -3,6 +3,7 @@ package ore.models.project.io
 import scala.language.higherKinds
 
 import java.io.BufferedReader
+import com.google.gson.stream.JsonReader
 
 import scala.collection.mutable.ArrayBuffer
 import scala.jdk.CollectionConverters._
@@ -102,7 +103,7 @@ class PluginFileData(data: Seq[DataValue]) {
 }
 
 object PluginFileData {
-  val fileTypes: Seq[FileTypeHandler] = Seq(McModInfoHandler, ManifestHandler, ModTomlHandler)
+  val fileTypes: Seq[FileTypeHandler] = Seq(McModInfoHandler, ManifestHandler, ModTomlHandler, SpongeJsonHandler)
 
   def fileNames: Seq[String] = fileTypes.map(_.fileName).distinct
 
@@ -206,4 +207,100 @@ object ModTomlHandler extends FileTypeHandler("mod.toml") {
   override def getData(bufferedReader: BufferedReader): Seq[DataValue] =
     // TODO: Get format from Forge once it has been decided on
     Nil
+}
+
+object SpongeJsonHandler extends FileTypeHandler("META-INF/plugins.json") {
+
+  def readDependencies(in: JsonReader) = {
+    val deps = new ArrayBuffer[Dependency]
+    in.beginArray()
+    while (in.hasNext) {
+      in.beginObject()
+      var dep = Dependency(null, None)
+      while (in.hasNext) {
+        in.nextName() match {
+          case "id"      => dep = dep.copy(pluginId = in.nextString())
+          case "version" => dep = dep.copy(version = Option(in.nextString()))
+          case _         => in.skipValue()
+        }
+      }
+      deps += dep
+      in.endObject()
+    }
+    in.endArray()
+    deps.toSeq
+  }
+
+  def readAuthors(in: JsonReader) = {
+    val authors = new ArrayBuffer[String]
+    in.beginArray()
+    while (in.hasNext) {
+      in.beginObject()
+      while (in.hasNext) {
+        in.nextName() match {
+          case "name" => authors += in.nextString()
+          case _      => in.skipValue()
+        }
+      }
+      in.endObject()
+    }
+    in.endArray()
+    authors.toSeq
+  }
+
+  def readDataValue(dvs: ArrayBuffer[DataValue], in: JsonReader) = {
+    while (in.hasNext) {
+      in.nextName() match {
+        case "id"           => dvs += StringDataValue("id", in.nextString());
+        case "version"      => dvs += StringDataValue("version", in.nextString());
+        case "name"         => dvs += StringDataValue("name", in.nextString());
+        case "description"  => dvs += StringDataValue("description", in.nextString());
+        case "contributors" => dvs += StringListValue("authors", readAuthors(in));
+        case "dependencies" => dvs += DependencyDataValue("dependencies", readDependencies(in));
+        // case "links" =>
+        // case "main-class" =>
+        // case "loader" =>
+        case _ => in.skipValue() // ignored
+      }
+
+    }
+  }
+
+  def readDataValues(dvs: ArrayBuffer[DataValue], in: JsonReader): Unit = {
+    var first = true;
+    in.beginArray()
+    while (in.hasNext) {
+      if (first) {
+        in.beginObject()
+        readDataValue(dvs, in)
+        first = false;
+        in.endObject()
+      } else {
+        in.skipValue() // cannot handle multiple plugins for now
+      }
+    }
+    in.endArray()
+  }
+
+  override def getData(bufferedReader: BufferedReader): Seq[DataValue] = {
+    val dataValues = new ArrayBuffer[DataValue]
+    try {
+      val reader = new JsonReader(bufferedReader)
+      reader.beginObject()
+      try {
+        if (reader.hasNext) {
+          if (reader.nextName().equals("plugins")) {
+            readDataValues(dataValues, reader)
+          }
+        }
+      } finally {
+        reader.endObject()
+      }
+      dataValues.toSeq
+    } catch {
+      case NonFatal(e) =>
+        e.printStackTrace()
+        Nil
+    }
+  }
 }
